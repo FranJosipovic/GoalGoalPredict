@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: ggpredict-postgres
+    environment:
+      POSTGRES_DB: gg_predict
+      POSTGRES_USER: gg_user
+      POSTGRES_PASSWORD: ggpredict
+    ports:
+      - "5435:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
