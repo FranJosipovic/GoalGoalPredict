@@ -3,6 +3,7 @@ export interface User {
   email: string
   firstName: string
   lastName: string
+  isAdmin?: boolean
 }
 
 export interface Group {
@@ -28,4 +29,116 @@ export interface GroupDetail extends Group {
 export interface AuthResponse {
   token: string
   user: User
+}
+
+// Matches
+export interface TeamSummary {
+  id: number
+  name: string
+  code: string
+  logoUrl: string
+}
+
+export interface MyPrediction {
+  id: string
+  homeGoals: number
+  awayGoals: number
+  goalscorerPlayerIds: number[]
+  totalPoints: number | null
+}
+
+export interface MatchListItem {
+  id: number
+  round: string
+  kickoffUtc: string
+  status: string
+  elapsedMinutes: number | null
+  homeTeam: TeamSummary
+  awayTeam: TeamSummary
+  homeGoals: number | null
+  awayGoals: number | null
+  myPrediction: MyPrediction | null
+}
+
+export interface LineupPlayer {
+  playerId: number
+  name: string
+  position: string
+  shirtNumber: number
+  isStarting: boolean
+  teamId: number
+}
+
+export interface GoalEvent {
+  minute: number
+  extraMinute: number | null
+  scorerPlayerId: number | null
+  scorerName: string | null
+  teamId: number
+  goalType: string
+}
+
+export interface MatchDetail extends MatchListItem {
+  lineup: LineupPlayer[]
+  goals: GoalEvent[]
+}
+
+// Predictions
+export interface ScorerPick {
+  playerId: number
+  name: string
+  position: string
+}
+
+export interface MemberPrediction {
+  userId: string
+  firstName: string
+  lastName: string
+  predHome: number
+  predAway: number
+  scorers: ScorerPick[]
+  projectedPoints: number
+}
+
+export interface GroupPredictions {
+  matchId: number
+  status: string
+  homeGoals: number | null
+  awayGoals: number | null
+  predictions: MemberPrediction[]
+}
+
+// Leaderboard
+export interface LeaderboardEntry {
+  userId: string
+  firstName: string
+  lastName: string
+  totalPoints: number
+  exactScores: number
+  correctOutcomes: number
+  goalscorerPoints: number
+  position: number
+}
+
+// Teams / Tournament
+export interface TeamInfo {
+  id: number
+  name: string
+  code: string
+  country: string
+  logoUrl: string
+}
+
+export interface Player {
+  id: number
+  name: string
+  shirtNumber: number
+  position: string
+  photoUrl: string
+  age: number
+}
+
+export interface TeamSquad {
+  team: { id: number; name: string; code: string; logoUrl: string }
+  players: Player[]
 }

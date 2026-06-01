@@ -20,4 +20,7 @@ public class GroupMember
         Role = role;
         JoinedAt = DateTime.UtcNow;
     }
+
+    public static GroupMember CreateOwner(Guid groupId, Guid userId) =>
+        new(groupId, userId, GroupRole.Owner);
 }

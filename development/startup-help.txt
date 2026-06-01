@@ -1,0 +1,7 @@
+start cloudflare frontend: cloudflared tunnel --url http://localhost:4173
+
+start cloudflare backend: cloudflared tunnel --url http://localhost:5221 -> result paste into .env.local 
+
+start FE: 
+npm run build
+npm run preview

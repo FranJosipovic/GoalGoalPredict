@@ -2,13 +2,21 @@ using System.Text;
 using GoalGoalPredict.Application.Interfaces;
 using GoalGoalPredict.Application.UseCases.Auth;
 using GoalGoalPredict.Application.UseCases.Groups;
+using GoalGoalPredict.Infrastructure.UseCases.Matches;
+using GoalGoalPredict.Infrastructure.UseCases.Predictions;
+using GoalGoalPredict.Infrastructure.ApiFootball;
 using GoalGoalPredict.Infrastructure.Auth;
 using GoalGoalPredict.Infrastructure.Data;
+using GoalGoalPredict.Infrastructure.Jobs;
 using GoalGoalPredict.Infrastructure.Repositories;
+using GoalGoalPredict.Infrastructure.Services;
+using GoalGoalPredict.Infrastructure.UseCases.Admin;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
+
+DotNetEnv.Env.Load();
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -27,13 +35,41 @@ builder.Services.AddScoped<IGroupRepository, GroupRepository>();
 builder.Services.AddScoped<ITokenService, JwtTokenService>();
 builder.Services.AddScoped<IPasswordHasher, BcryptPasswordHasher>();
 
-// Use cases
+// Use cases — Auth & Groups
 builder.Services.AddScoped<RegisterUser>();
 builder.Services.AddScoped<LoginUser>();
 builder.Services.AddScoped<CreateGroup>();
 builder.Services.AddScoped<JoinGroup>();
 builder.Services.AddScoped<GetMyGroups>();
 builder.Services.AddScoped<GetGroupDetail>();
+
+// Use cases — Matches & Predictions
+builder.Services.AddScoped<SyncTeamsAndPlayers>();
+builder.Services.AddScoped<SyncFixtures>();
+builder.Services.AddScoped<SyncMissingPlayers>();
+builder.Services.AddScoped<SyncLineups>();
+builder.Services.AddScoped<CreateSimulationGroup>();
+builder.Services.AddScoped<CreateSimulationMatch>();
+builder.Services.AddScoped<SimulateMatchStep>();
+builder.Services.AddScoped<PushNotificationService>();
+builder.Services.AddScoped<PollLiveMatch>();
+builder.Services.AddScoped<FinalizeMatch>();
+builder.Services.AddScoped<UpsertPrediction>();
+builder.Services.AddScoped<GetMyPrediction>();
+builder.Services.AddScoped<GetMatches>();
+builder.Services.AddScoped<GetGroupPredictions>();
+builder.Services.AddScoped<GetGroupLeaderboard>();
+
+// API Football HTTP client
+builder.Services.AddHttpClient<IApiFootballClient, ApiFootballClient>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["ApiFootball:BaseUrl"] ?? "https://v3.football.api-sports.io/");
+    client.Timeout = TimeSpan.FromSeconds(30);
+});
+
+// Background services
+builder.Services.AddHostedService<StartupSyncService>();
+builder.Services.AddHostedService<MatchSchedulerService>();
 
 // JWT
 var jwtKey = builder.Configuration["Jwt:Key"]!;
@@ -53,7 +89,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-// CORS — allow frontend dev server + local network
+// CORS
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>

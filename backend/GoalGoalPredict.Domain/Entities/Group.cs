@@ -7,16 +7,18 @@ public class Group
     public string InviteCode { get; private set; } = default!;
     public Guid CreatedByUserId { get; private set; }
     public DateTime CreatedAt { get; private set; }
+    public bool IsSimulation { get; private set; }
 
     private Group() { }
 
-    public Group(string name, Guid createdByUserId)
+    public Group(string name, Guid createdByUserId, bool isSimulation = false)
     {
         Id = Guid.NewGuid();
         Name = name;
         InviteCode = GenerateInviteCode();
         CreatedByUserId = createdByUserId;
         CreatedAt = DateTime.UtcNow;
+        IsSimulation = isSimulation;
     }
 
     private static string GenerateInviteCode()
