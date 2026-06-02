@@ -16,6 +16,7 @@ public class Match
     public int? PenaltyAwayGoals { get; private set; }
     public string Round { get; private set; } = "";
     public bool LineupsAvailable { get; private set; }
+    public bool LineupRevealNotified { get; private set; }
     public bool IsFinished { get; private set; }
     public DateTime LastSyncedAt { get; private set; }
     public string Source { get; private set; } = "ApiFootball";
@@ -72,6 +73,7 @@ public class Match
     }
 
     public void SetLineupsAvailable() => LineupsAvailable = true;
+    public void MarkLineupRevealNotified() => LineupRevealNotified = true;
     public void SetFinished() => IsFinished = true;
     public void TouchSyncedAt() => LastSyncedAt = DateTime.UtcNow;
 

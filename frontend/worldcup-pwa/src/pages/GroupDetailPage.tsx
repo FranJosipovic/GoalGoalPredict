@@ -3,13 +3,14 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { getGroupDetail } from '../api/groups'
 import Layout from '../components/Layout'
 import MatchesTab from '../components/tabs/MatchesTab'
+import PicksTab from '../components/tabs/PicksTab'
 import LeaderboardTab from '../components/tabs/LeaderboardTab'
 import MembersTab from '../components/tabs/MembersTab'
 import NotificationToggle from '../components/NotificationToggle'
 import type { GroupDetail } from '../types'
 
-type Tab = 'matches' | 'leaderboard' | 'members'
-const TABS: Tab[] = ['matches', 'leaderboard', 'members']
+type Tab = 'matches' | 'mypicks' | 'leaderboard' | 'members'
+const TABS: Tab[] = ['matches', 'mypicks', 'leaderboard', 'members']
 
 export default function GroupDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -57,11 +58,12 @@ export default function GroupDetailPage() {
               onClick={() => setTab(t)}
             >
               {t === 'matches' && '⚽ Matches'}
-              {t === 'leaderboard' && '🏆 Leaderboard'}
+              {t === 'mypicks' && '🎯 Picks'}
+              {t === 'leaderboard' && '🏆 Board'}
               {t === 'members' && '👥 Members'}
             </button>
           ))}
-          <div className="hub-tab-indicator" style={{ left: `calc(${tabIndex} * 33.333%)` }} />
+          <div className="hub-tab-indicator" style={{ left: `calc(${tabIndex} * 25%)`, width: '25%' }} />
         </div>
 
         <div className="hub-notif">
@@ -72,11 +74,13 @@ export default function GroupDetailPage() {
           {tab === 'matches' && (
             <MatchesTab
               groupId={id}
-              onMatchClick={(matchId, isLive) =>
-                navigate(isLive
-                  ? `/groups/${id}/match/${matchId}/live`
-                  : `/groups/${id}/match/${matchId}`)
-              }
+              onMatchClick={(matchId) => navigate(`/groups/${id}/match/${matchId}`)}
+            />
+          )}
+          {tab === 'mypicks' && (
+            <PicksTab
+              groupId={id}
+              onMatchClick={(matchId) => navigate(`/groups/${id}/match/${matchId}`)}
             />
           )}
           {tab === 'leaderboard' && <LeaderboardTab groupId={id} />}

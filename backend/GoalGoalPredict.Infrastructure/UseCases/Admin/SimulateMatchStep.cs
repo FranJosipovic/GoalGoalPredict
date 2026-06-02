@@ -60,18 +60,28 @@ public class SimulateMatchStep(
             .OrderBy(e => e.Minute)
             .ToListAsync(ct);
 
+        // Seed the order once from the DB; new goals aren't saved yet, so a per-iteration
+        // CountAsync would return the same value and collide on (match_id, api_event_order).
+        var order = await db.MatchGoals.CountAsync(g => g.MatchId == matchId, ct);
+
+        var newGoals = new List<MatchGoal>();
         foreach (var e in pending)
         {
-            var order = await db.MatchGoals.CountAsync(g => g.MatchId == matchId, ct);
-            db.MatchGoals.Add(MatchGoal.Create(
-                matchId, e.PlayerId, e.TeamId, e.Minute, null, e.GoalType, order));
+            var goal = MatchGoal.Create(
+                matchId, e.PlayerId, e.TeamId, e.Minute, null, e.GoalType, order);
+            db.MatchGoals.Add(goal);
+            newGoals.Add(goal);
+            order++;
             e.MarkProcessed();
 
             logger.LogInformation("Sim match {Id}: goal by {Player} at {Min}'", matchId, e.Player.Name, e.Minute);
         }
 
-        // Recalculate score from all goals
-        var allGoals = await db.MatchGoals.Where(g => g.MatchId == matchId).ToListAsync(ct);
+        // Recalculate score from all goals. The DB query won't include the goals we just
+        // added (not yet saved), so concat them in — otherwise the score lags a goal behind
+        // and notifications would announce a goal with a stale (e.g. 0-0) scoreline.
+        var allGoals = (await db.MatchGoals.Where(g => g.MatchId == matchId).ToListAsync(ct))
+            .Concat(newGoals).ToList();
         int homeGoals = allGoals.Count(g => g.TeamId == match.HomeTeamId && g.GoalType != "Own Goal")
                       + allGoals.Count(g => g.TeamId == match.AwayTeamId && g.GoalType == "Own Goal");
         int awayGoals = allGoals.Count(g => g.TeamId == match.AwayTeamId && g.GoalType != "Own Goal")
@@ -79,6 +89,10 @@ public class SimulateMatchStep(
 
         match.UpdateFromApi(newStatus, gameMinute, homeGoals, awayGoals, null, null, null, null);
         await db.SaveChangesAsync(ct);
+
+        var matchUrl = match.SimulationGroupId.HasValue
+            ? $"/groups/{match.SimulationGroupId.Value}/match/{matchId}"
+            : null;
 
         // Push notifications
         if (pending.Count > 0 && match.SimulationGroupId.HasValue)
@@ -92,7 +106,7 @@ public class SimulateMatchStep(
                     match.SimulationGroupId.Value,
                     $"⚽ GOAL! {e.Player.Name} {e.Minute}'",
                     $"{homeTeam?.Name} {homeGoals} - {awayGoals} {awayTeam?.Name}",
-                    ct);
+                    ct, matchUrl);
             }
         }
 
@@ -111,7 +125,7 @@ public class SimulateMatchStep(
             };
 
             if (msg.Item1 is not null)
-                await push.SendToGroupAsync(match.SimulationGroupId.Value, msg.Item1, msg.Item2!, ct);
+                await push.SendToGroupAsync(match.SimulationGroupId.Value, msg.Item1, msg.Item2!, ct, matchUrl);
         }
 
         // Finalize when FT

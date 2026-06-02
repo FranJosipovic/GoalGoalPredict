@@ -52,7 +52,7 @@ export default function AdminDashboard() {
       <div className="admin-section">
         <h2 className="admin-section-title">Quick Actions</h2>
         <div className="admin-quick-actions">
-          <Link to="/admin/groups/new" className="admin-btn admin-btn--primary">+ New Sim Group</Link>
+          <Link to="/admin/groups" className="admin-btn admin-btn--primary">+ New Sim Group</Link>
           <Link to="/admin/matches/new" className="admin-btn admin-btn--secondary">+ New Sim Match</Link>
         </div>
       </div>

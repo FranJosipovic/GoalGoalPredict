@@ -104,6 +104,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             b.Property(m => m.PenaltyAwayGoals).HasColumnName("pen_away_goals");
             b.Property(m => m.Round).HasColumnName("round").HasMaxLength(100);
             b.Property(m => m.LineupsAvailable).HasColumnName("lineups_available");
+            b.Property(m => m.LineupRevealNotified).HasColumnName("lineup_reveal_notified").HasDefaultValue(false);
             b.Property(m => m.IsFinished).HasColumnName("is_finished");
             b.Property(m => m.LastSyncedAt).HasColumnName("last_synced_at");
             b.Property(m => m.Source).HasColumnName("source").HasMaxLength(20).HasDefaultValue("ApiFootball");

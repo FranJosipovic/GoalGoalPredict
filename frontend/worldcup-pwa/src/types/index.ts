@@ -81,6 +81,25 @@ export interface GoalEvent {
 export interface MatchDetail extends MatchListItem {
   lineup: LineupPlayer[]
   goals: GoalEvent[]
+  lineupsRevealed: boolean
+  lineupRevealUtc: string
+}
+
+export interface MyPredictionItem {
+  matchId: number
+  round: string
+  kickoffUtc: string
+  status: string
+  homeTeam: TeamSummary
+  awayTeam: TeamSummary
+  actualHome: number | null
+  actualAway: number | null
+  predHome: number
+  predAway: number
+  scorers: ScorerPick[]
+  points: number | null
+  projectedPoints: number
+  isScored: boolean
 }
 
 // Predictions
@@ -88,6 +107,7 @@ export interface ScorerPick {
   playerId: number
   name: string
   position: string
+  pointsAwarded: number
 }
 
 export interface MemberPrediction {

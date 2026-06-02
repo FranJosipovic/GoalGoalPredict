@@ -50,9 +50,16 @@ public class GetMatches(AppDbContext db)
 
         if (m is null) return null;
 
-        var lineup = m.LineupPlayers
-            .Select(l => new LineupPlayerDto(l.PlayerId, l.Player.Name, l.Position, l.ShirtNumber, l.IsStarting, l.TeamId))
-            .ToList();
+        // Lineups are only revealed to users 30 minutes before kickoff (and stay
+        // visible once the match is under way), mirroring real-football behaviour.
+        var revealUtc = m.KickoffUtc.AddMinutes(-30);
+        var lineupsRevealed = DateTime.UtcNow >= revealUtc;
+
+        var lineup = lineupsRevealed
+            ? m.LineupPlayers
+                .Select(l => new LineupPlayerDto(l.PlayerId, l.Player.Name, l.Position, l.ShirtNumber, l.IsStarting, l.TeamId))
+                .ToList()
+            : new List<LineupPlayerDto>();
 
         var goals = m.Goals
             .OrderBy(g => g.Minute).ThenBy(g => g.ExtraMinute)
@@ -63,6 +70,6 @@ public class GetMatches(AppDbContext db)
             m.Id, m.Round, m.KickoffUtc, m.Status, m.ElapsedMinutes,
             new TeamSummaryDto(m.HomeTeam.Id, m.HomeTeam.Name, m.HomeTeam.Code, m.HomeTeam.LogoUrl),
             new TeamSummaryDto(m.AwayTeam.Id, m.AwayTeam.Name, m.AwayTeam.Code, m.AwayTeam.LogoUrl),
-            m.HomeGoals, m.AwayGoals, lineup, goals);
+            m.HomeGoals, m.AwayGoals, lineup, goals, lineupsRevealed, revealUtc);
     }
 }

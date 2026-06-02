@@ -9,6 +9,7 @@ import MatchPredictPage from './pages/MatchPredictPage'
 import MatchLivePage from './pages/MatchLivePage'
 import TournamentPage from './pages/TournamentPage'
 import TournamentTeamPage from './pages/TournamentTeamPage'
+import PlayerDetailPage from './pages/PlayerDetailPage'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import AdminGroups from './pages/admin/AdminGroups'
 import AdminMatches from './pages/admin/AdminMatches'
@@ -28,6 +29,7 @@ export default function App() {
         <Route path="/groups/:id" element={<P><GroupDetailPage /></P>} />
         <Route path="/groups/:groupId/match/:matchId" element={<P><MatchPredictPage /></P>} />
         <Route path="/groups/:groupId/match/:matchId/live" element={<P><MatchLivePage /></P>} />
+        <Route path="/groups/:groupId/player/:userId" element={<P><PlayerDetailPage /></P>} />
         <Route path="/tournament" element={<P><TournamentPage /></P>} />
         <Route path="/tournament/team/:teamId" element={<P><TournamentTeamPage /></P>} />
         {/* Admin */}

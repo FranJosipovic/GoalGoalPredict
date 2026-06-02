@@ -42,9 +42,12 @@ export function buildSlotsFromFormation(formation: string): PitchSlot[] {
 export default function FormationPitch({ formation, slots, mode, onSlotClick, highlightedPlayerIds = [] }: Props) {
   const rows = FORMATIONS[formation] ?? FORMATIONS['4-3-3']
 
-  // Map flat slots array to rows
-  let slotIdx = 0
-  const rowSlots = rows.map(row => row.map(() => slots[slotIdx++] ?? { position: 'M', player: null, shirtNumber: 0 }))
+  // Map flat slots array to rows, carrying each slot's stable flat index.
+  let counter = 0
+  const rowSlots = rows.map(row => row.map(pos => {
+    const flatIdx = counter++
+    return { slot: slots[flatIdx] ?? { position: pos, player: null, shirtNumber: 0 }, flatIdx }
+  }))
 
   return (
     <div className="pitch-container">
@@ -56,14 +59,13 @@ export default function FormationPitch({ formation, slots, mode, onSlotClick, hi
         {/* Rows from top (attack) to bottom (GK) */}
         {[...rowSlots].reverse().map((row, ri) => (
           <div key={ri} className="pitch-row">
-            {row.map((slot, si) => {
-              const flatIdx = slots.length - 1 - ([...rowSlots].reverse().slice(0, ri).reduce((a, r) => a + r.length, 0) + si)
+            {row.map(({ slot, flatIdx }) => {
               const colors = POS_COLORS[slot.position] ?? POS_COLORS['M']
               const isHighlighted = slot.player && highlightedPlayerIds.includes(slot.player.id)
 
               return (
                 <div
-                  key={si}
+                  key={flatIdx}
                   className={`pitch-slot ${mode === 'edit' ? 'pitch-slot--edit' : ''} ${isHighlighted ? 'pitch-slot--highlighted' : ''}`}
                   style={{
                     background: isHighlighted ? 'rgba(184,255,106,0.2)' : colors.bg,

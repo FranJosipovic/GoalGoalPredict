@@ -46,10 +46,17 @@ public class GetGroupPredictions(AppDbContext db)
                 projected = 0;
             }
 
+            var picks = p.GoalscorerPredictions.ToList();
+            var awarded = ScoringEngine.AwardScorerPoints(
+                picks.Select(g => (g.PlayerId, g.Player.Position)), goals);
+            var scorerDtos = picks
+                .Select((g, idx) => new ScorerPickDto(g.PlayerId, g.Player.Name, g.Player.Position.ToString(), awarded[idx]))
+                .ToList();
+
             return new MemberPredictionDto(
                 p.UserId, p.User.FirstName, p.User.LastName,
                 p.HomeGoals, p.AwayGoals,
-                p.GoalscorerPredictions.Select(g => new ScorerPickDto(g.PlayerId, g.Player.Name, g.Player.Position.ToString())).ToList(),
+                scorerDtos,
                 projected);
         }).OrderByDescending(m => m.ProjectedPoints).ToList();
 

@@ -57,6 +57,35 @@ public class MatchSchedulerService(IServiceScopeFactory scopeFactory, ILogger<Ma
             await Task.Delay(300, ct);
         }
 
+        // 2b. Notify once when lineups become visible (30 min before kickoff, sim matches).
+        var lineupReveal = await db.Matches
+            .Where(m => m.Source == "Simulation"
+                && m.Status == "NS"
+                && m.LineupsAvailable
+                && !m.LineupRevealNotified
+                && m.SimulationGroupId != null
+                && m.KickoffUtc <= now.AddMinutes(30)   // reveal window reached
+                && m.KickoffUtc > now)                  // not yet kicked off
+            .ToListAsync(ct);
+
+        if (lineupReveal.Count > 0)
+        {
+            var push = scope.ServiceProvider.GetRequiredService<Services.PushNotificationService>();
+            foreach (var match in lineupReveal)
+            {
+                var home = await db.Teams.FindAsync([match.HomeTeamId], ct);
+                var away = await db.Teams.FindAsync([match.AwayTeamId], ct);
+                await push.SendToGroupAsync(
+                    match.SimulationGroupId!.Value,
+                    "📋 Lineups are out!",
+                    $"{home?.Name} vs {away?.Name} — confirmed XI is available",
+                    ct, $"/groups/{match.SimulationGroupId.Value}/match/{match.Id}");
+                match.MarkLineupRevealNotified();
+                logger.LogInformation("Lineup-reveal notification sent for match {Id}", match.Id);
+            }
+            await db.SaveChangesAsync(ct);
+        }
+
         // 3a. Poll real WC live matches (every 3 min)
         var liveReal = await db.Matches
             .Where(m => (m.Status == "1H" || m.Status == "HT" || m.Status == "2H" || m.Status == "ET" || m.Status == "P")

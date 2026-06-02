@@ -9,7 +9,7 @@ namespace GoalGoalPredict.API.Controllers;
 [ApiController]
 [Route("api/predictions")]
 [Authorize]
-public class PredictionsController(UpsertPrediction upsert, GetGroupLeaderboard leaderboard, GetMyPrediction getMyPrediction) : ControllerBase
+public class PredictionsController(UpsertPrediction upsert, GetGroupLeaderboard leaderboard, GetMyPrediction getMyPrediction, GetMyPredictions getMyPredictions) : ControllerBase
 {
     private Guid UserId => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
@@ -18,6 +18,22 @@ public class PredictionsController(UpsertPrediction upsert, GetGroupLeaderboard 
     {
         var result = await getMyPrediction.ExecuteAsync(UserId, matchId, groupId, ct);
         if (result is null) return NoContent();
+        return Ok(result);
+    }
+
+    [HttpGet("mine")]
+    public async Task<IActionResult> GetMine([FromQuery] Guid groupId, CancellationToken ct)
+    {
+        var result = await getMyPredictions.ExecuteAsync(UserId, groupId, onlyStarted: false, ct);
+        return Ok(result);
+    }
+
+    [HttpGet("user/{userId:guid}")]
+    public async Task<IActionResult> GetForUser(Guid userId, [FromQuery] Guid groupId, CancellationToken ct)
+    {
+        // Own history shows everything; other members only after kickoff.
+        var onlyStarted = userId != UserId;
+        var result = await getMyPredictions.ExecuteAsync(userId, groupId, onlyStarted, ct);
         return Ok(result);
     }
 

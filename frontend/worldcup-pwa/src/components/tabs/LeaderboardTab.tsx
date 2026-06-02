@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { getLeaderboard } from '../../api/matches'
 import { useAuthStore } from '../../store/authStore'
 import type { LeaderboardEntry } from '../../types'
@@ -7,6 +8,7 @@ export default function LeaderboardTab({ groupId }: { groupId: string }) {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([])
   const [loading, setLoading] = useState(true)
   const { user } = useAuthStore()
+  const navigate = useNavigate()
 
   useEffect(() => {
     getLeaderboard(groupId).then(setEntries).finally(() => setLoading(false))
@@ -32,7 +34,13 @@ export default function LeaderboardTab({ groupId }: { groupId: string }) {
         {entries.map((e, i) => {
           const isMe = e.userId === user?.id
           return (
-            <div key={e.userId} className={`lb-row ${isMe ? 'lb-row--me' : ''}`}>
+            <button
+              key={e.userId}
+              className={`lb-row ${isMe ? 'lb-row--me' : ''}`}
+              onClick={() => navigate(`/groups/${groupId}/player/${e.userId}`, {
+                state: { name: `${e.firstName} ${e.lastName}`, isMe },
+              })}
+            >
               <div className="lb-pos">
                 {i < 3 ? medals[i] : <span className="lb-pos-num">{e.position}</span>}
               </div>
@@ -48,7 +56,8 @@ export default function LeaderboardTab({ groupId }: { groupId: string }) {
                 </div>
               </div>
               <div className="lb-pts">{e.totalPoints}<span className="lb-pts-label">pts</span></div>
-            </div>
+              <span className="lb-chevron">›</span>
+            </button>
           )
         })}
       </div>

@@ -14,17 +14,17 @@ public class PushNotificationService(AppDbContext db, IConfiguration config, ILo
         config["Push:VapidPublicKey"] ?? "",
         config["Push:VapidPrivateKey"] ?? "");
 
-    public async Task SendToGroupAsync(Guid groupId, string title, string body, CancellationToken ct = default)
+    public async Task SendToGroupAsync(Guid groupId, string title, string body, CancellationToken ct = default, string? url = null)
     {
         var memberIds = await db.GroupMembers
             .Where(m => m.GroupId == groupId)
             .Select(m => m.UserId)
             .ToListAsync(ct);
 
-        await SendToUsersAsync(memberIds, title, body, ct);
+        await SendToUsersAsync(memberIds, title, body, ct, url);
     }
 
-    public async Task SendToUsersAsync(IEnumerable<Guid> userIds, string title, string body, CancellationToken ct = default)
+    public async Task SendToUsersAsync(IEnumerable<Guid> userIds, string title, string body, CancellationToken ct = default, string? url = null)
     {
         var subscriptions = await db.PushSubscriptions
             .Where(s => userIds.Contains(s.UserId))
@@ -32,7 +32,7 @@ public class PushNotificationService(AppDbContext db, IConfiguration config, ILo
 
         if (subscriptions.Count == 0) return;
 
-        var payload = JsonSerializer.Serialize(new { title, body });
+        var payload = JsonSerializer.Serialize(new { title, body, url, tag = url ?? "ggpredict" });
         var vapid = GetVapid();
         var client = new WebPushClient();
         client.SetVapidDetails(vapid);

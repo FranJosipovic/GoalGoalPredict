@@ -92,8 +92,8 @@ function MatchCard({ match, onClick }: { match: MatchListItem; onClick: () => vo
 export default function MatchesTab({ groupId, onMatchClick }: Props) {
   const [matches, setMatches] = useState<MatchListItem[]>([])
   const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState<'today' | 'upcoming' | 'all'>(() => {
-    return (sessionStorage.getItem(`matches_filter_${groupId}`) as 'today' | 'upcoming' | 'all') ?? 'upcoming'
+  const [filter, setFilter] = useState<'today' | 'upcoming' | 'finished' | 'all'>(() => {
+    return (sessionStorage.getItem(`matches_filter_${groupId}`) as 'today' | 'upcoming' | 'finished' | 'all') ?? 'upcoming'
   })
 
   const load = useCallback(async () => {
@@ -118,8 +118,12 @@ export default function MatchesTab({ groupId, onMatchClick }: Props) {
   const filtered = matches.filter(m => {
     if (filter === 'today') return isToday(m.kickoffUtc) || LIVE_STATUSES.includes(m.status)
     if (filter === 'upcoming') return m.status === 'NS'
+    if (filter === 'finished') return FINISHED_STATUSES.includes(m.status)
     return true
   })
+
+  // Finished matches read best most-recent-first
+  if (filter === 'finished') filtered.reverse()
 
   // Group by date
   const grouped = filtered.reduce<Record<string, MatchListItem[]>>((acc, m) => {
@@ -147,7 +151,7 @@ export default function MatchesTab({ groupId, onMatchClick }: Props) {
 
       {/* Filter pills */}
       <div className="match-filters">
-        {(['today', 'upcoming', 'all'] as const).map(f => (
+        {(['today', 'upcoming', 'finished', 'all'] as const).map(f => (
           <button
             key={f}
             className={`filter-pill ${filter === f ? 'filter-pill--active' : ''}`}
@@ -156,7 +160,7 @@ export default function MatchesTab({ groupId, onMatchClick }: Props) {
               sessionStorage.setItem(`matches_filter_${groupId}`, f)
             }}
           >
-            {f === 'today' ? 'Today' : f === 'upcoming' ? 'Upcoming' : 'All'}
+            {f === 'today' ? 'Today' : f === 'upcoming' ? 'Upcoming' : f === 'finished' ? 'Finished' : 'All'}
           </button>
         ))}
       </div>

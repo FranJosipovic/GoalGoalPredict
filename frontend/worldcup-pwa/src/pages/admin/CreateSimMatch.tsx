@@ -8,6 +8,14 @@ import type { Player, TeamInfo } from '../../types'
 const FORMATIONS = ['4-3-3', '4-4-2', '4-2-3-1', '3-5-2', '5-3-2', '5-4-1', '3-4-3', '4-5-1']
 const GOAL_TYPES = ['Normal Goal', 'Penalty', 'Own Goal']
 
+// Pitch slot position codes (G/D/M/F) → API player position strings
+const POS_MAP: Record<string, string> = {
+  G: 'Goalkeeper', D: 'Defender', M: 'Midfielder', F: 'Attacker',
+}
+const POS_LABEL: Record<string, string> = {
+  G: 'goalkeepers', D: 'defenders', M: 'midfielders', F: 'attackers',
+}
+
 type Step = 1 | 2 | 3 | 4 | 5
 
 export default function CreateSimMatch() {
@@ -23,7 +31,11 @@ export default function CreateSimMatch() {
   const [groupId, setGroupId] = useState('')
   const [homeTeamId, setHomeTeamId] = useState<number>(0)
   const [awayTeamId, setAwayTeamId] = useState<number>(0)
-  const [kickoff, setKickoff] = useState('')
+  // Kickoff split into date + 24h hour/minute so the picker never shows AM/PM
+  const [kickoffDate, setKickoffDate] = useState('')
+  const [kickoffHour, setKickoffHour] = useState('18')
+  const [kickoffMin, setKickoffMin] = useState('00')
+  const kickoff = kickoffDate ? `${kickoffDate}T${kickoffHour}:${kickoffMin}` : ''
 
   // Step 2 & 3 — lineups
   const [homeFormation, setHomeFormation] = useState('4-3-3')
@@ -117,9 +129,24 @@ export default function CreateSimMatch() {
 
   const homeTeam = teams.find(t => t.id === homeTeamId)
   const awayTeam = teams.find(t => t.id === awayTeamId)
+
+  // Player picker — restrict to the clicked slot's position and hide players
+  // already placed elsewhere in this team's lineup.
   const pickingPlayers = pickingSlot?.team === 'home' ? homePlayers : awayPlayers
+  const pickingSlots = pickingSlot?.team === 'home' ? homeSlots : awaySlots
+  const pickingPosition = pickingSlot ? pickingSlots[pickingSlot.slotIdx]?.position : undefined
+  const assignedIds = new Set(
+    pickingSlots
+      .filter((s, i) => s.player && i !== pickingSlot?.slotIdx)
+      .map(s => s.player!.id))
   const filteredPickers = pickingPlayers.filter(p =>
-    !playerSearch || p.name.toLowerCase().includes(playerSearch.toLowerCase()))
+    (!pickingPosition || p.position === POS_MAP[pickingPosition]) &&
+    !assignedIds.has(p.id) &&
+    (!playerSearch || p.name.toLowerCase().includes(playerSearch.toLowerCase())))
+
+  // Goal events can only be scored by players in the selected starting XI.
+  const homeEleven = homeSlots.filter(s => s.player).map(s => ({ ...s.player!, shirtNumber: s.shirtNumber }))
+  const awayEleven = awaySlots.filter(s => s.player).map(s => ({ ...s.player!, shirtNumber: s.shirtNumber }))
 
   const goalEvents = [...events].sort((a, b) => a.minute - b.minute)
   const homeGoals = events.filter(e => (e.goalType !== 'Own Goal' && e.teamId === homeTeamId) || (e.goalType === 'Own Goal' && e.teamId === awayTeamId)).length
@@ -160,8 +187,19 @@ export default function CreateSimMatch() {
                 {teams.filter(t => t.id !== homeTeamId).map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
               </select>
             </label>
-            <label className="admin-label">Kickoff (local time)
-              <input type="datetime-local" className="admin-input" value={kickoff} onChange={e => setKickoff(e.target.value)} />
+            <label className="admin-label">Kickoff (local time, 24h)
+              <div className="admin-datetime">
+                <input type="date" className="admin-input" value={kickoffDate} onChange={e => setKickoffDate(e.target.value)} />
+                <select className="admin-input admin-input--sm" value={kickoffHour} onChange={e => setKickoffHour(e.target.value)} aria-label="Hour">
+                  {Array.from({ length: 24 }, (_, h) => String(h).padStart(2, '0')).map(h =>
+                    <option key={h} value={h}>{h}</option>)}
+                </select>
+                <span className="admin-datetime-colon">:</span>
+                <select className="admin-input admin-input--sm" value={kickoffMin} onChange={e => setKickoffMin(e.target.value)} aria-label="Minute">
+                  {Array.from({ length: 60 }, (_, m) => String(m).padStart(2, '0')).map(m =>
+                    <option key={m} value={m}>{m}</option>)}
+                </select>
+              </div>
             </label>
           </div>
           <button className="admin-btn admin-btn--primary admin-btn--lg"
@@ -231,13 +269,13 @@ export default function CreateSimMatch() {
           <div className="admin-event-builder">
             <input type="number" className="admin-input admin-input--sm" placeholder="Min"
               value={evtMinute} min={1} max={120} onChange={e => setEvtMinute(Number(e.target.value))} />
-            <select className="admin-input admin-input--sm" value={evtTeam} onChange={e => setEvtTeam(e.target.value as 'home' | 'away')}>
+            <select className="admin-input admin-input--sm" value={evtTeam} onChange={e => { setEvtTeam(e.target.value as 'home' | 'away'); setEvtPlayerId(0) }}>
               <option value="home">{homeTeam?.name}</option>
               <option value="away">{awayTeam?.name}</option>
             </select>
             <select className="admin-input" value={evtPlayerId} onChange={e => setEvtPlayerId(Number(e.target.value))}>
               <option value={0}>Select player...</option>
-              {(evtTeam === 'home' ? homePlayers : awayPlayers).map(p =>
+              {(evtTeam === 'home' ? homeEleven : awayEleven).map(p =>
                 <option key={p.id} value={p.id}>#{p.shirtNumber} {p.name} ({p.position.slice(0,3)})</option>
               )}
             </select>
@@ -310,12 +348,15 @@ export default function CreateSimMatch() {
         <div className="admin-modal-overlay" onClick={() => setPickingSlot(null)}>
           <div className="admin-modal" onClick={e => e.stopPropagation()}>
             <div className="admin-modal-header">
-              <span>Pick player — {pickingSlot.team === 'home' ? homeTeam?.name : awayTeam?.name}</span>
+              <span>Pick {pickingPosition ? POS_LABEL[pickingPosition] : 'player'} — {pickingSlot.team === 'home' ? homeTeam?.name : awayTeam?.name}</span>
               <button onClick={() => setPickingSlot(null)}>✕</button>
             </div>
             <input className="admin-input" placeholder="Search..." value={playerSearch}
               onChange={e => setPlayerSearch(e.target.value)} autoFocus />
             <div className="admin-modal-players">
+              {filteredPickers.length === 0 && (
+                <p className="admin-empty">No available {pickingPosition ? POS_LABEL[pickingPosition] : 'players'} for this slot.</p>
+              )}
               {filteredPickers.map(p => (
                 <button key={p.id} className="admin-player-pick-row" onClick={() => handlePlayerPick(p)}>
                   <span className="admin-player-pick-num">#{p.shirtNumber}</span>

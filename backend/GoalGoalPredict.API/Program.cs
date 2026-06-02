@@ -56,6 +56,7 @@ builder.Services.AddScoped<PollLiveMatch>();
 builder.Services.AddScoped<FinalizeMatch>();
 builder.Services.AddScoped<UpsertPrediction>();
 builder.Services.AddScoped<GetMyPrediction>();
+builder.Services.AddScoped<GetMyPredictions>();
 builder.Services.AddScoped<GetMatches>();
 builder.Services.AddScoped<GetGroupPredictions>();
 builder.Services.AddScoped<GetGroupLeaderboard>();
