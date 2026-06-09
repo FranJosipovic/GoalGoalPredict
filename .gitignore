@@ -89,3 +89,5 @@ desktop.ini
 *.log
 coverage/
 TestResults/
+
+DEPLOY.md
