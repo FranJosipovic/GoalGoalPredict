@@ -62,6 +62,24 @@ public class ApiFootballClient(HttpClient http, IConfiguration config, ILogger<A
             )).ToList();
     }
 
+    public async Task<List<ApiCardEventData>> GetCardEventsAsync(int fixtureId, CancellationToken ct = default)
+    {
+        var json = await GetAsync($"fixtures/events?fixture={fixtureId}&type=Card", ct);
+        var resp = Deserialize<ApiResponse<EventResponse>>(json);
+        if (resp is null) return [];
+
+        return resp.Response
+            .Where(e => e.Type == "Card")
+            .Select((e, i) => new ApiCardEventData(
+                e.Time.Elapsed,
+                e.Time.Extra,
+                e.Team.Id,
+                e.Player.Id,
+                e.Detail,
+                i
+            )).ToList();
+    }
+
     public async Task<List<ApiLineupPlayerData>> GetLineupsAsync(int fixtureId, CancellationToken ct = default)
     {
         var json = await GetAsync($"fixtures/lineups?fixture={fixtureId}", ct);

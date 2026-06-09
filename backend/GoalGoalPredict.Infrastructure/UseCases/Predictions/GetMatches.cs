@@ -46,6 +46,7 @@ public class GetMatches(AppDbContext db)
             .Include(m => m.AwayTeam)
             .Include(m => m.LineupPlayers).ThenInclude(l => l.Player)
             .Include(m => m.Goals).ThenInclude(g => g.Scorer)
+            .Include(m => m.Cards).ThenInclude(c => c.Player)
             .FirstOrDefaultAsync(m => m.Id == matchId, ct);
 
         if (m is null) return null;
@@ -66,10 +67,15 @@ public class GetMatches(AppDbContext db)
             .Select(g => new GoalEventDto(g.Minute, g.ExtraMinute, g.ScorerPlayerId, g.Scorer?.Name, g.TeamId, g.GoalType))
             .ToList();
 
+        var cards = m.Cards
+            .OrderBy(c => c.Minute).ThenBy(c => c.ExtraMinute)
+            .Select(c => new CardEventDto(c.Minute, c.ExtraMinute, c.PlayerId, c.Player?.Name, c.TeamId, c.CardType))
+            .ToList();
+
         return new MatchDetailDto(
             m.Id, m.Round, m.KickoffUtc, m.Status, m.ElapsedMinutes,
             new TeamSummaryDto(m.HomeTeam.Id, m.HomeTeam.Name, m.HomeTeam.Code, m.HomeTeam.LogoUrl),
             new TeamSummaryDto(m.AwayTeam.Id, m.AwayTeam.Name, m.AwayTeam.Code, m.AwayTeam.LogoUrl),
-            m.HomeGoals, m.AwayGoals, lineup, goals, lineupsRevealed, revealUtc);
+            m.HomeGoals, m.AwayGoals, lineup, goals, cards, lineupsRevealed, revealUtc);
     }
 }

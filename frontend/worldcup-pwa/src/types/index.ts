@@ -78,9 +78,19 @@ export interface GoalEvent {
   goalType: string
 }
 
+export interface CardEvent {
+  minute: number
+  extraMinute: number | null
+  playerId: number | null
+  playerName: string | null
+  teamId: number
+  cardType: string
+}
+
 export interface MatchDetail extends MatchListItem {
   lineup: LineupPlayer[]
   goals: GoalEvent[]
+  cards: CardEvent[]
   lineupsRevealed: boolean
   lineupRevealUtc: string
 }
@@ -97,6 +107,7 @@ export interface MyPredictionItem {
   predHome: number
   predAway: number
   scorers: ScorerPick[]
+  cards: CardPick[]
   points: number | null
   projectedPoints: number
   isScored: boolean
@@ -107,6 +118,14 @@ export interface ScorerPick {
   playerId: number
   name: string
   position: string
+  goalType: string
+  pointsAwarded: number
+}
+
+export interface CardPick {
+  playerId: number
+  name: string
+  kind: string
   pointsAwarded: number
 }
 
@@ -117,6 +136,7 @@ export interface MemberPrediction {
   predHome: number
   predAway: number
   scorers: ScorerPick[]
+  cards: CardPick[]
   projectedPoints: number
 }
 
@@ -161,4 +181,49 @@ export interface Player {
 export interface TeamSquad {
   team: { id: number; name: string; code: string; logoUrl: string }
   players: Player[]
+}
+
+// Scoring rules
+export type CardPredictionMode = 'Limited' | 'Single' | 'Net'
+
+export interface GroupScoringRules {
+  exactScoreEnabled: boolean
+  exactScorePoints: number
+  outcomeEnabled: boolean
+  outcomePoints: number
+  goalscorerEnabled: boolean
+  scorerGkPoints: number
+  scorerDefPoints: number
+  scorerMidPoints: number
+  scorerAttPoints: number
+  ownGoalEnabled: boolean
+  ownGoalPoints: number
+  yellowCardEnabled: boolean
+  yellowCardPoints: number
+  yellowCardMaxPicks: number
+  redCardEnabled: boolean
+  redCardPoints: number
+  redCardMaxPicks: number
+  missedPenaltyEnabled: boolean
+  missedPenaltyPoints: number
+  missedPenaltyMaxPicks: number
+  cardPredictionMode: CardPredictionMode
+  wrongPickPenalty: number
+  isLocked: boolean
+  canEdit: boolean
+}
+
+// Prediction input/rehydration (from GET /predictions/my)
+export interface ScorerPickInput { playerId: number; goalType: string }
+export interface CardPickInput { playerId: number; kind: string }
+
+export interface PredictionResult {
+  id: string
+  matchId: number
+  groupId: string
+  homeGoals: number
+  awayGoals: number
+  scorers: ScorerPickInput[]
+  cards: CardPickInput[]
+  updatedAt: string
 }

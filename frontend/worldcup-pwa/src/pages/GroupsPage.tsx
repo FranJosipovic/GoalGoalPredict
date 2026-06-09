@@ -112,7 +112,7 @@ export default function GroupsPage() {
               key={group.id}
               className="group-card"
               style={{ animationDelay: `${i * 60}ms` }}
-              onClick={() => navigate(`/groups/${group.id}`)}
+              onClick={() => navigate(`/groups/${group.id}/matches`)}
             >
               <div className="group-card-left">
                 <div className="group-card-icon">

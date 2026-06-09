@@ -11,6 +11,7 @@ public class SimulateMatchStep(
     AppDbContext db,
     PushNotificationService push,
     FinalizeMatch finalize,
+    EffectiveRulesService effectiveRules,
     ILogger<SimulateMatchStep> logger)
 {
     // Halftime pause: 5 real minutes = 5 wall-clock minutes after 45 game minutes
@@ -29,6 +30,10 @@ public class SimulateMatchStep(
 
         if (wallElapsed < 0)
             return; // not started yet
+
+        // Freeze the group's scoring rules for this match at kickoff (idempotent).
+        if (match.SimulationGroupId.HasValue)
+            await effectiveRules.EnsureSnapshotAsync(match.SimulationGroupId.Value, match, ct);
 
         if (wallElapsed <= 45)
         {
@@ -60,18 +65,28 @@ public class SimulateMatchStep(
             .OrderBy(e => e.Minute)
             .ToListAsync(ct);
 
-        // Seed the order once from the DB; new goals aren't saved yet, so a per-iteration
+        // Seed the order once from the DB; new rows aren't saved yet, so a per-iteration
         // CountAsync would return the same value and collide on (match_id, api_event_order).
-        var order = await db.MatchGoals.CountAsync(g => g.MatchId == matchId, ct);
+        var goalOrder = await db.MatchGoals.CountAsync(g => g.MatchId == matchId, ct);
+        var cardOrder = await db.MatchCards.CountAsync(c => c.MatchId == matchId, ct);
 
         var newGoals = new List<MatchGoal>();
         foreach (var e in pending)
         {
+            if (e.EventKind == SimEventKind.Card)
+            {
+                db.MatchCards.Add(MatchCard.Create(matchId, e.PlayerId, e.TeamId, e.Minute, null, e.CardType ?? "Yellow Card", cardOrder));
+                cardOrder++;
+                e.MarkProcessed();
+                logger.LogInformation("Sim match {Id}: {Card} for {Player} at {Min}'", matchId, e.CardType, e.Player.Name, e.Minute);
+                continue;
+            }
+
             var goal = MatchGoal.Create(
-                matchId, e.PlayerId, e.TeamId, e.Minute, null, e.GoalType, order);
+                matchId, e.PlayerId, e.TeamId, e.Minute, null, e.GoalType, goalOrder);
             db.MatchGoals.Add(goal);
             newGoals.Add(goal);
-            order++;
+            goalOrder++;
             e.MarkProcessed();
 
             logger.LogInformation("Sim match {Id}: goal by {Player} at {Min}'", matchId, e.Player.Name, e.Minute);
@@ -80,8 +95,11 @@ public class SimulateMatchStep(
         // Recalculate score from all goals. The DB query won't include the goals we just
         // added (not yet saved), so concat them in — otherwise the score lags a goal behind
         // and notifications would announce a goal with a stale (e.g. 0-0) scoreline.
+        // Only real goals count — "Missed Penalty" rows are stored as goals but must not score.
         var allGoals = (await db.MatchGoals.Where(g => g.MatchId == matchId).ToListAsync(ct))
-            .Concat(newGoals).ToList();
+            .Concat(newGoals)
+            .Where(g => g.GoalType is "Normal Goal" or "Penalty" or "Own Goal")
+            .ToList();
         int homeGoals = allGoals.Count(g => g.TeamId == match.HomeTeamId && g.GoalType != "Own Goal")
                       + allGoals.Count(g => g.TeamId == match.AwayTeamId && g.GoalType == "Own Goal");
         int awayGoals = allGoals.Count(g => g.TeamId == match.AwayTeamId && g.GoalType != "Own Goal")
@@ -94,13 +112,16 @@ public class SimulateMatchStep(
             ? $"/groups/{match.SimulationGroupId.Value}/match/{matchId}"
             : null;
 
-        // Push notifications
-        if (pending.Count > 0 && match.SimulationGroupId.HasValue)
+        // Push notifications — only for actual scored goals (not cards, own goals or missed pens).
+        var scoredGoalEvents = pending
+            .Where(e => e.EventKind == SimEventKind.Goal && e.GoalType is "Normal Goal" or "Penalty")
+            .ToList();
+        if (scoredGoalEvents.Count > 0 && match.SimulationGroupId.HasValue)
         {
             var homeTeam = await db.Teams.FindAsync([match.HomeTeamId], ct);
             var awayTeam = await db.Teams.FindAsync([match.AwayTeamId], ct);
 
-            foreach (var e in pending.Where(e => e.GoalType != "Own Goal"))
+            foreach (var e in scoredGoalEvents)
             {
                 await push.SendToGroupAsync(
                     match.SimulationGroupId.Value,

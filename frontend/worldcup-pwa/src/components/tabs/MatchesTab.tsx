@@ -12,7 +12,11 @@ const FINISHED_STATUSES = ['FT', 'AET', 'PEN']
 
 function formatKickoff(utc: string) {
   const d = new Date(utc)
-  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })
+}
+
+function formatKickoffDate(utc: string) {
+  return new Date(utc).toLocaleDateString([], { day: '2-digit', month: 'short' })
 }
 
 function formatDate(utc: string) {
@@ -57,7 +61,7 @@ function MatchCard({ match, onClick }: { match: MatchListItem; onClick: () => vo
           ) : (
             <div className="match-kickoff">
               <span className="kickoff-time">{formatKickoff(match.kickoffUtc)}</span>
-              <span className="kickoff-label">KO</span>
+              <span className="kickoff-label">{formatKickoffDate(match.kickoffUtc)}</span>
             </div>
           )}
         </div>

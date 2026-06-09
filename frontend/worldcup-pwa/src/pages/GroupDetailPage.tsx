@@ -1,21 +1,23 @@
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, Navigate } from 'react-router-dom'
 import { getGroupDetail } from '../api/groups'
 import Layout from '../components/Layout'
 import MatchesTab from '../components/tabs/MatchesTab'
 import PicksTab from '../components/tabs/PicksTab'
 import LeaderboardTab from '../components/tabs/LeaderboardTab'
 import MembersTab from '../components/tabs/MembersTab'
+import RulesTab from '../components/tabs/RulesTab'
 import NotificationToggle from '../components/NotificationToggle'
 import type { GroupDetail } from '../types'
 
-type Tab = 'matches' | 'mypicks' | 'leaderboard' | 'members'
-const TABS: Tab[] = ['matches', 'mypicks', 'leaderboard', 'members']
+type Tab = 'matches' | 'mypicks' | 'leaderboard' | 'members' | 'rules'
+const TABS: Tab[] = ['matches', 'mypicks', 'leaderboard', 'members', 'rules']
 
 export default function GroupDetailPage() {
-  const { id } = useParams<{ id: string }>()
+  const { id, tab: tabParam } = useParams<{ id: string; tab: string }>()
   const navigate = useNavigate()
-  const [tab, setTab] = useState<Tab>('matches')
+  const tab = tabParam as Tab
+  const setTab = (t: Tab) => navigate(`/groups/${id}/${t}`)
   const [group, setGroup] = useState<GroupDetail | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -25,6 +27,10 @@ export default function GroupDetailPage() {
   }, [id])
 
   if (!id) return null
+
+  if (!tabParam || !TABS.includes(tab)) {
+    return <Navigate to={`/groups/${id}/matches`} replace />
+  }
 
   if (loading) {
     return (
@@ -61,9 +67,10 @@ export default function GroupDetailPage() {
               {t === 'mypicks' && '🎯 Picks'}
               {t === 'leaderboard' && '🏆 Board'}
               {t === 'members' && '👥 Members'}
+              {t === 'rules' && '⚙️ Rules'}
             </button>
           ))}
-          <div className="hub-tab-indicator" style={{ left: `calc(${tabIndex} * 25%)`, width: '25%' }} />
+          <div className="hub-tab-indicator" style={{ left: `calc(${tabIndex} * ${100 / TABS.length}%)`, width: `${100 / TABS.length}%` }} />
         </div>
 
         <div className="hub-notif">
@@ -85,6 +92,7 @@ export default function GroupDetailPage() {
           )}
           {tab === 'leaderboard' && <LeaderboardTab groupId={id} />}
           {tab === 'members' && <MembersTab group={group} />}
+          {tab === 'rules' && <RulesTab groupId={id} />}
         </div>
       </div>
     </Layout>

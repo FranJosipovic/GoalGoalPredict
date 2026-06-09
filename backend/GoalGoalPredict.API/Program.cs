@@ -42,6 +42,7 @@ builder.Services.AddScoped<CreateGroup>();
 builder.Services.AddScoped<JoinGroup>();
 builder.Services.AddScoped<GetMyGroups>();
 builder.Services.AddScoped<GetGroupDetail>();
+builder.Services.AddScoped<GoalGoalPredict.Infrastructure.UseCases.Groups.GroupRulesUseCase>();
 
 // Use cases — Matches & Predictions
 builder.Services.AddScoped<SyncTeamsAndPlayers>();
@@ -52,6 +53,7 @@ builder.Services.AddScoped<CreateSimulationGroup>();
 builder.Services.AddScoped<CreateSimulationMatch>();
 builder.Services.AddScoped<SimulateMatchStep>();
 builder.Services.AddScoped<PushNotificationService>();
+builder.Services.AddScoped<EffectiveRulesService>();
 builder.Services.AddScoped<PollLiveMatch>();
 builder.Services.AddScoped<FinalizeMatch>();
 builder.Services.AddScoped<UpsertPrediction>();

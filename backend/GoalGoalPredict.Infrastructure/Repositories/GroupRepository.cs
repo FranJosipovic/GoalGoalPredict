@@ -38,6 +38,12 @@ public class GroupRepository(AppDbContext db) : IGroupRepository
         await db.SaveChangesAsync();
     }
 
+    public async Task AddScoringRulesAsync(GroupScoringRules rules)
+    {
+        db.GroupScoringRules.Add(rules);
+        await db.SaveChangesAsync();
+    }
+
     public async Task<bool> IsMemberAsync(Guid groupId, Guid userId) =>
         await db.GroupMembers.AnyAsync(m => m.GroupId == groupId && m.UserId == userId);
 }

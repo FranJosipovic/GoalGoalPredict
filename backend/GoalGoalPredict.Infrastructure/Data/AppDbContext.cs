@@ -8,13 +8,16 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<User> Users => Set<User>();
     public DbSet<Group> Groups => Set<Group>();
     public DbSet<GroupMember> GroupMembers => Set<GroupMember>();
+    public DbSet<GroupScoringRules> GroupScoringRules => Set<GroupScoringRules>();
     public DbSet<Team> Teams => Set<Team>();
     public DbSet<Player> Players => Set<Player>();
     public DbSet<Match> Matches => Set<Match>();
     public DbSet<MatchLineupPlayer> MatchLineupPlayers => Set<MatchLineupPlayer>();
     public DbSet<MatchGoal> MatchGoals => Set<MatchGoal>();
+    public DbSet<MatchCard> MatchCards => Set<MatchCard>();
     public DbSet<Prediction> Predictions => Set<Prediction>();
     public DbSet<GoalscorerPrediction> GoalscorerPredictions => Set<GoalscorerPrediction>();
+    public DbSet<CardPrediction> CardPredictions => Set<CardPrediction>();
     public DbSet<PredictionScore> PredictionScores => Set<PredictionScore>();
     public DbSet<SimulationEvent> SimulationEvents => Set<SimulationEvent>();
     public DbSet<PushSubscription> PushSubscriptions => Set<PushSubscription>();
@@ -46,6 +49,39 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             b.Property(g => g.CreatedAt).HasColumnName("created_at");
             b.Property(g => g.IsSimulation).HasColumnName("is_simulation").HasDefaultValue(false);
             b.HasIndex(g => g.InviteCode).IsUnique();
+        });
+
+        modelBuilder.Entity<GroupScoringRules>(b =>
+        {
+            b.ToTable("group_scoring_rules");
+            b.HasKey(r => r.Id);
+            b.Property(r => r.Id).HasColumnName("id");
+            b.Property(r => r.GroupId).HasColumnName("group_id");
+            b.Property(r => r.MatchId).HasColumnName("match_id");
+            b.Property(r => r.ExactScoreEnabled).HasColumnName("exact_score_enabled");
+            b.Property(r => r.ExactScorePoints).HasColumnName("exact_score_points");
+            b.Property(r => r.OutcomeEnabled).HasColumnName("outcome_enabled");
+            b.Property(r => r.OutcomePoints).HasColumnName("outcome_points");
+            b.Property(r => r.GoalscorerEnabled).HasColumnName("goalscorer_enabled");
+            b.Property(r => r.ScorerGkPoints).HasColumnName("scorer_gk_points");
+            b.Property(r => r.ScorerDefPoints).HasColumnName("scorer_def_points");
+            b.Property(r => r.ScorerMidPoints).HasColumnName("scorer_mid_points");
+            b.Property(r => r.ScorerAttPoints).HasColumnName("scorer_att_points");
+            b.Property(r => r.OwnGoalEnabled).HasColumnName("own_goal_enabled");
+            b.Property(r => r.OwnGoalPoints).HasColumnName("own_goal_points");
+            b.Property(r => r.YellowCardEnabled).HasColumnName("yellow_card_enabled");
+            b.Property(r => r.YellowCardPoints).HasColumnName("yellow_card_points");
+            b.Property(r => r.YellowCardMaxPicks).HasColumnName("yellow_card_max_picks");
+            b.Property(r => r.RedCardEnabled).HasColumnName("red_card_enabled");
+            b.Property(r => r.RedCardPoints).HasColumnName("red_card_points");
+            b.Property(r => r.RedCardMaxPicks).HasColumnName("red_card_max_picks");
+            b.Property(r => r.MissedPenaltyEnabled).HasColumnName("missed_penalty_enabled");
+            b.Property(r => r.MissedPenaltyPoints).HasColumnName("missed_penalty_points");
+            b.Property(r => r.MissedPenaltyMaxPicks).HasColumnName("missed_penalty_max_picks");
+            b.Property(r => r.CardPredictionMode).HasColumnName("card_prediction_mode").HasConversion<string>().HasMaxLength(20);
+            b.Property(r => r.WrongPickPenalty).HasColumnName("wrong_pick_penalty");
+            b.Property(r => r.UpdatedAt).HasColumnName("updated_at");
+            b.HasIndex(r => new { r.GroupId, r.MatchId }).IsUnique();
         });
 
         modelBuilder.Entity<GroupMember>(b =>
@@ -149,6 +185,25 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             b.HasIndex(g => new { g.MatchId, g.ApiEventOrder }).IsUnique();
         });
 
+        modelBuilder.Entity<MatchCard>(b =>
+        {
+            b.ToTable("match_cards");
+            b.HasKey(c => c.Id);
+            b.Property(c => c.Id).HasColumnName("id");
+            b.Property(c => c.MatchId).HasColumnName("match_id");
+            b.Property(c => c.PlayerId).HasColumnName("player_id");
+            b.Property(c => c.TeamId).HasColumnName("team_id");
+            b.Property(c => c.Minute).HasColumnName("minute");
+            b.Property(c => c.ExtraMinute).HasColumnName("extra_minute");
+            b.Property(c => c.CardType).HasColumnName("card_type").HasMaxLength(30);
+            b.Property(c => c.ApiEventOrder).HasColumnName("api_event_order");
+            b.HasOne(c => c.Match).WithMany(m => m.Cards).HasForeignKey(c => c.MatchId);
+            b.HasOne(c => c.Player).WithMany().HasForeignKey(c => c.PlayerId);
+            b.Ignore(c => c.IsYellow);
+            b.Ignore(c => c.IsRed);
+            b.HasIndex(c => new { c.MatchId, c.ApiEventOrder }).IsUnique();
+        });
+
         modelBuilder.Entity<Prediction>(b =>
         {
             b.ToTable("predictions");
@@ -166,6 +221,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             b.HasOne(p => p.Match).WithMany().HasForeignKey(p => p.MatchId);
             b.HasOne(p => p.Group).WithMany().HasForeignKey(p => p.GroupId);
             b.HasMany(p => p.GoalscorerPredictions).WithOne(g => g.Prediction).HasForeignKey(g => g.PredictionId);
+            b.HasMany(p => p.CardPredictions).WithOne(c => c.Prediction).HasForeignKey(c => c.PredictionId);
             b.HasOne(p => p.Score).WithOne(s => s.Prediction).HasForeignKey<PredictionScore>(s => s.PredictionId);
             b.HasIndex(p => new { p.UserId, p.MatchId, p.GroupId }).IsUnique();
         });
@@ -177,7 +233,20 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             b.Property(g => g.Id).HasColumnName("id");
             b.Property(g => g.PredictionId).HasColumnName("prediction_id");
             b.Property(g => g.PlayerId).HasColumnName("player_id");
+            b.Property(g => g.GoalType).HasColumnName("goal_type").HasMaxLength(30).HasDefaultValue("Normal Goal");
             b.HasOne(g => g.Player).WithMany().HasForeignKey(g => g.PlayerId);
+            b.Ignore(g => g.IsOwnGoal);
+        });
+
+        modelBuilder.Entity<CardPrediction>(b =>
+        {
+            b.ToTable("card_predictions");
+            b.HasKey(c => c.Id);
+            b.Property(c => c.Id).HasColumnName("id");
+            b.Property(c => c.PredictionId).HasColumnName("prediction_id");
+            b.Property(c => c.PlayerId).HasColumnName("player_id");
+            b.Property(c => c.Kind).HasColumnName("kind").HasConversion<string>().HasMaxLength(20);
+            b.HasOne(c => c.Player).WithMany().HasForeignKey(c => c.PlayerId);
         });
 
         modelBuilder.Entity<PredictionScore>(b =>
@@ -192,6 +261,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             b.Property(s => s.ExactScorePoints).HasColumnName("exact_score_points");
             b.Property(s => s.OutcomePoints).HasColumnName("outcome_points");
             b.Property(s => s.GoalscorerPoints).HasColumnName("goalscorer_points");
+            b.Property(s => s.OwnGoalPoints).HasColumnName("own_goal_points").HasDefaultValue(0);
+            b.Property(s => s.YellowCardPoints).HasColumnName("yellow_card_points").HasDefaultValue(0);
+            b.Property(s => s.RedCardPoints).HasColumnName("red_card_points").HasDefaultValue(0);
+            b.Property(s => s.MissedPenaltyPoints).HasColumnName("missed_penalty_points").HasDefaultValue(0);
             b.Property(s => s.TotalPoints).HasColumnName("total_points");
             b.Property(s => s.CalculatedAt).HasColumnName("calculated_at");
             b.HasIndex(s => s.PredictionId).IsUnique();
@@ -206,7 +279,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             b.Property(e => e.PlayerId).HasColumnName("player_id");
             b.Property(e => e.TeamId).HasColumnName("team_id");
             b.Property(e => e.Minute).HasColumnName("minute");
+            b.Property(e => e.EventKind).HasColumnName("event_kind").HasConversion<string>().HasMaxLength(20).HasDefaultValue(SimEventKind.Goal);
             b.Property(e => e.GoalType).HasColumnName("goal_type").HasMaxLength(30);
+            b.Property(e => e.CardType).HasColumnName("card_type").HasMaxLength(30);
             b.Property(e => e.IsProcessed).HasColumnName("is_processed");
             b.Property(e => e.ProcessedAt).HasColumnName("processed_at");
             b.HasOne(e => e.Match).WithMany().HasForeignKey(e => e.MatchId);

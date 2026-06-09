@@ -13,6 +13,8 @@ public class CreateSimulationGroup(AppDbContext db)
         var member = GroupMember.CreateOwner(group.Id, adminUserId);
         db.GroupMembers.Add(member);
 
+        db.GroupScoringRules.Add(GroupScoringRules.CreateDefault(group.Id));
+
         await db.SaveChangesAsync(ct);
         return group;
     }

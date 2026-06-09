@@ -26,6 +26,7 @@ public class Match
     public Team AwayTeam { get; private set; } = null!;
     public ICollection<MatchLineupPlayer> LineupPlayers { get; private set; } = [];
     public ICollection<MatchGoal> Goals { get; private set; } = [];
+    public ICollection<MatchCard> Cards { get; private set; } = [];
 
     private Match() { }
 

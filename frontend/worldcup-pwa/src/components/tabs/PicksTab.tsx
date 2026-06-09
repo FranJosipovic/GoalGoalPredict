@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { getMyPredictions, getMatchPredictions } from '../../api/matches'
 import { useAuthStore } from '../../store/authStore'
-import type { MyPredictionItem, GroupPredictions, ScorerPick } from '../../types'
+import type { MyPredictionItem, GroupPredictions, ScorerPick, CardPick } from '../../types'
 
 interface Props {
   groupId: string
@@ -27,6 +27,14 @@ const POS_COLOR: Record<string, string> = {
   Goalkeeper: '#64b5f6', Defender: '#4db6ac', Midfielder: '#ffd54f', Attacker: '#ef5350',
 }
 
+const CARD_ICON: Record<string, string> = { Yellow: '🟨', Red: '🟥', MissedPenalty: '❌' }
+
+function typeTag(goalType: string) {
+  if (goalType === 'Penalty') return ' (P)'
+  if (goalType === 'Own Goal') return ' (OG)'
+  return ''
+}
+
 function ScorerChips({ scorers }: { scorers: ScorerPick[] }) {
   if (scorers.length === 0) return null
   return (
@@ -40,8 +48,27 @@ function ScorerChips({ scorers }: { scorers: ScorerPick[] }) {
             style={{ borderColor: hit ? 'var(--accent)' : (POS_COLOR[s.position] ?? '#666') }}
           >
             <span className="mypred-scorer-dot" style={{ background: hit ? 'var(--accent)' : (POS_COLOR[s.position] ?? '#666') }} />
-            {s.name.split(' ').pop()}
+            {s.name.split(' ').pop()}{typeTag(s.goalType)}
             {hit && <span className="mypred-scorer-pts">+{s.pointsAwarded}</span>}
+          </span>
+        )
+      })}
+    </div>
+  )
+}
+
+function CardChips({ cards }: { cards: CardPick[] }) {
+  if (!cards || cards.length === 0) return null
+  return (
+    <div className="mypred-scorers">
+      {cards.map((c, i) => {
+        const hit = c.pointsAwarded > 0
+        const miss = c.pointsAwarded < 0
+        return (
+          <span key={i} className={`mypred-scorer ${hit ? 'mypred-scorer--hit' : ''}`}
+            style={{ borderColor: hit ? 'var(--accent)' : miss ? '#ef5350' : '#666' }}>
+            {CARD_ICON[c.kind] ?? '🟨'} {c.name.split(' ').pop()}
+            {c.pointsAwarded !== 0 && <span className="mypred-scorer-pts">{c.pointsAwarded > 0 ? `+${c.pointsAwarded}` : c.pointsAwarded}</span>}
           </span>
         )
       })}
@@ -75,14 +102,23 @@ function GroupPicksPanel({ matchId, groupId, meId }: { matchId: number; groupId:
               <span className="picks-name">{p.firstName} {isMe && <span className="you-badge">you</span>}</span>
               <span className="picks-pick">{p.predHome}–{p.predAway}</span>
             </div>
-            {p.scorers.length > 0 && (
+            {(p.scorers.length > 0 || p.cards.length > 0) && (
               <div className="picks-row-scorers">
                 {p.scorers.map((s, i) => {
                   const hit = s.pointsAwarded > 0
                   return (
-                    <span key={i} className={`picks-scorer ${hit ? 'picks-scorer--hit' : ''}`}
+                    <span key={`s${i}`} className={`picks-scorer ${hit ? 'picks-scorer--hit' : ''}`}
                       style={{ color: hit ? 'var(--accent)' : (POS_COLOR[s.position] ?? '#999') }}>
-                      {s.name.split(' ').pop()}{hit && <strong> +{s.pointsAwarded}</strong>}
+                      {s.name.split(' ').pop()}{typeTag(s.goalType)}{hit && <strong> +{s.pointsAwarded}</strong>}
+                    </span>
+                  )
+                })}
+                {p.cards.map((c, i) => {
+                  const hit = c.pointsAwarded > 0
+                  return (
+                    <span key={`c${i}`} className={`picks-scorer ${hit ? 'picks-scorer--hit' : ''}`}
+                      style={{ color: hit ? 'var(--accent)' : '#999' }}>
+                      {CARD_ICON[c.kind] ?? '🟨'}{c.name.split(' ').pop()}{c.pointsAwarded !== 0 && <strong> {c.pointsAwarded > 0 ? `+${c.pointsAwarded}` : c.pointsAwarded}</strong>}
                     </span>
                   )
                 })}
@@ -138,6 +174,7 @@ function PredictionCard({ p, groupId, meId, onClick }: { p: MyPredictionItem; gr
         </div>
 
         <ScorerChips scorers={p.scorers} />
+        <CardChips cards={p.cards} />
 
         <div className="mypred-foot">
           {exact && <span className="mypred-badge mypred-badge--exact">✓ Exact score</span>}

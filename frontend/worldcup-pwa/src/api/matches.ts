@@ -1,5 +1,5 @@
 import client from './client'
-import type { MatchListItem, MatchDetail, GroupPredictions, LeaderboardEntry, MyPredictionItem } from '../types'
+import type { MatchListItem, MatchDetail, GroupPredictions, LeaderboardEntry, MyPredictionItem, PredictionResult, ScorerPickInput, CardPickInput } from '../types'
 
 export const getMatches = (groupId: string) =>
   client.get<MatchListItem[]>('/matches', { params: { groupId } }).then(r => r.data)
@@ -20,7 +20,7 @@ export const getUserPredictions = (userId: string, groupId: string) =>
   client.get<MyPredictionItem[]>(`/predictions/user/${userId}`, { params: { groupId } }).then(r => r.data)
 
 export const getMyPrediction = (matchId: number, groupId: string) =>
-  client.get(`/predictions/my`, { params: { matchId, groupId } })
+  client.get<PredictionResult>(`/predictions/my`, { params: { matchId, groupId } })
     .then(r => r.status === 204 ? null : r.data)
     .catch(() => null)
 
@@ -29,5 +29,6 @@ export const upsertPrediction = (data: {
   groupId: string
   homeGoals: number
   awayGoals: number
-  goalscorerPlayerIds: number[]
+  scorers: ScorerPickInput[]
+  cards: CardPickInput[]
 }) => client.post('/predictions', data).then(r => r.data)

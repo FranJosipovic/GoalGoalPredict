@@ -27,6 +27,7 @@ export default function App() {
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/groups" element={<P><GroupsPage /></P>} />
         <Route path="/groups/:id" element={<P><GroupDetailPage /></P>} />
+        <Route path="/groups/:id/:tab" element={<P><GroupDetailPage /></P>} />
         <Route path="/groups/:groupId/match/:matchId" element={<P><MatchPredictPage /></P>} />
         <Route path="/groups/:groupId/match/:matchId/live" element={<P><MatchLivePage /></P>} />
         <Route path="/groups/:groupId/player/:userId" element={<P><PlayerDetailPage /></P>} />

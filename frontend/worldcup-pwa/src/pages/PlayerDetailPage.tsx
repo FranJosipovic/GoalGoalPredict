@@ -11,12 +11,20 @@ const POS_COLOR: Record<string, string> = {
   Goalkeeper: '#64b5f6', Defender: '#4db6ac', Midfielder: '#ffd54f', Attacker: '#ef5350',
 }
 
+const CARD_ICON: Record<string, string> = { Yellow: '🟨', Red: '🟥', MissedPenalty: '❌' }
+
+function typeTag(goalType: string) {
+  if (goalType === 'Penalty') return ' (P)'
+  if (goalType === 'Own Goal') return ' (OG)'
+  return ''
+}
+
 function formatKickoff(utc: string) {
   return new Date(utc).toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 }
 
-// Reconstruct the scoring breakdown from predicted vs actual score (no extra API call):
-// exact = 7, correct outcome = 2, the remainder of the total is goalscorer points.
+// Breakdown derived from backend-awarded points (rules-agnostic): scorer & card points come
+// straight from each pick's pointsAwarded; the remainder of the total is the score (exact/outcome) part.
 function breakdown(p: MyPredictionItem) {
   const hasResult = p.actualHome !== null && p.actualAway !== null
   if (!hasResult) return null
@@ -25,8 +33,10 @@ function breakdown(p: MyPredictionItem) {
   const realSign = Math.sign((p.actualHome ?? 0) - (p.actualAway ?? 0))
   const outcome = !exact && predSign === realSign
   const total = p.isScored ? (p.points ?? 0) : p.projectedPoints
-  const base = exact ? 7 : outcome ? 2 : 0
-  return { exact, outcome, base, scorer: Math.max(0, total - base), total }
+  const scorer = p.scorers.reduce((s, x) => s + x.pointsAwarded, 0)
+  const card = p.cards.reduce((s, x) => s + x.pointsAwarded, 0)
+  const result = total - scorer - card // exact/outcome contribution under whatever rules apply
+  return { exact, outcome, scorer, card, result, total }
 }
 
 export default function PlayerDetailPage() {
@@ -105,14 +115,23 @@ export default function PlayerDetailPage() {
                     </div>
                   </div>
 
-                  {p.scorers.length > 0 && (
+                  {(p.scorers.length > 0 || p.cards.length > 0) && (
                     <div className="pd-scorers">
                       {p.scorers.map((s, i) => {
                         const hit = s.pointsAwarded > 0
                         return (
-                          <span key={i} className={`pd-scorer ${hit ? 'pd-scorer--hit' : ''}`}
+                          <span key={`s${i}`} className={`pd-scorer ${hit ? 'pd-scorer--hit' : ''}`}
                             style={{ borderColor: hit ? 'var(--accent)' : (POS_COLOR[s.position] ?? '#666') }}>
-                            {s.name.split(' ').pop()}{hit && <strong> +{s.pointsAwarded}</strong>}
+                            {s.name.split(' ').pop()}{typeTag(s.goalType)}{hit && <strong> +{s.pointsAwarded}</strong>}
+                          </span>
+                        )
+                      })}
+                      {p.cards.map((c, i) => {
+                        const hit = c.pointsAwarded > 0
+                        return (
+                          <span key={`c${i}`} className={`pd-scorer ${hit ? 'pd-scorer--hit' : ''}`}
+                            style={{ borderColor: hit ? 'var(--accent)' : '#666' }}>
+                            {CARD_ICON[c.kind] ?? '🟨'}{c.name.split(' ').pop()}{c.pointsAwarded !== 0 && <strong> {c.pointsAwarded > 0 ? `+${c.pointsAwarded}` : c.pointsAwarded}</strong>}
                           </span>
                         )
                       })}
@@ -121,10 +140,11 @@ export default function PlayerDetailPage() {
 
                   {b ? (
                     <div className="pd-breakdown">
-                      {b.exact && <span className="pd-chip pd-chip--exact">Exact +7</span>}
-                      {b.outcome && <span className="pd-chip">Outcome +2</span>}
-                      {!b.exact && !b.outcome && b.base === 0 && <span className="pd-chip pd-chip--miss">Score missed</span>}
-                      {b.scorer > 0 && <span className="pd-chip pd-chip--scorer">Scorers +{b.scorer}</span>}
+                      {b.exact && <span className="pd-chip pd-chip--exact">Exact +{b.result}</span>}
+                      {b.outcome && <span className="pd-chip">Outcome +{b.result}</span>}
+                      {!b.exact && !b.outcome && <span className="pd-chip pd-chip--miss">Score missed</span>}
+                      {b.scorer !== 0 && <span className="pd-chip pd-chip--scorer">Scorers +{b.scorer}</span>}
+                      {b.card !== 0 && <span className="pd-chip pd-chip--scorer">Cards {b.card > 0 ? `+${b.card}` : b.card}</span>}
                       <span className={`pd-total ${p.isScored ? '' : 'pd-total--live'}`}>
                         {b.total} pts {!p.isScored && <em>live</em>}
                       </span>

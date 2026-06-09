@@ -1,11 +1,15 @@
 namespace GoalGoalPredict.Application.DTOs;
 
+public record ScorerPickInput(int PlayerId, string GoalType);
+public record CardPickInput(int PlayerId, string Kind);
+
 public record UpsertPredictionRequest(
     int MatchId,
     Guid GroupId,
     int HomeGoals,
     int AwayGoals,
-    List<int> GoalscorerPlayerIds);
+    List<ScorerPickInput> Scorers,
+    List<CardPickInput> Cards);
 
 public record PredictionResultDto(
     Guid Id,
@@ -13,7 +17,8 @@ public record PredictionResultDto(
     Guid GroupId,
     int HomeGoals,
     int AwayGoals,
-    List<int> GoalscorerPlayerIds,
+    List<ScorerPickInput> Scorers,
+    List<CardPickInput> Cards,
     DateTime UpdatedAt);
 
 public record LeaderboardEntryDto(

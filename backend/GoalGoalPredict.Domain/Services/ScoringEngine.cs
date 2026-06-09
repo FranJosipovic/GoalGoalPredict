@@ -2,91 +2,131 @@ using GoalGoalPredict.Domain.Entities;
 
 namespace GoalGoalPredict.Domain.Services;
 
+/// <summary>
+/// Full per-category point breakdown for a single prediction.
+/// Card categories can be negative under <see cref="CardPredictionMode.Net"/>.
+/// </summary>
+public record ScoreBreakdown(
+    int Exact, int Outcome, int Goalscorer, int OwnGoal,
+    int Yellow, int Red, int MissedPenalty)
+{
+    public int Total => Exact + Outcome + Goalscorer + OwnGoal + Yellow + Red + MissedPenalty;
+
+    public static readonly ScoreBreakdown Zero = new(0, 0, 0, 0, 0, 0, 0);
+}
+
 public static class ScoringEngine
 {
-    public static (int ExactScore, int Outcome, int Goalscorer) Calculate(
+    public static ScoreBreakdown Calculate(
+        GroupScoringRules rules,
         int predHome, int predAway,
         int matchHome, int matchAway,
-        IEnumerable<int> goalscorerPlayerIds,
+        IEnumerable<(int PlayerId, string GoalType, PlayerPosition Position)> scorerPicks,
+        IEnumerable<(int PlayerId, CardKind Kind)> cardPicks,
         IEnumerable<MatchGoal> goals,
-        IEnumerable<Player> players)
+        IEnumerable<MatchCard> cards)
     {
-        int exactScore = 0, outcome = 0, goalscorer = 0;
+        var goalsList = goals as ICollection<MatchGoal> ?? goals.ToList();
+        var cardsList = cards as ICollection<MatchCard> ?? cards.ToList();
 
-        if (predHome == matchHome && predAway == matchAway)
-            exactScore = 7;
-        else if (Math.Sign(predHome - predAway) == Math.Sign(matchHome - matchAway))
-            outcome = 2;
+        int exact = 0, outcome = 0;
+        if (rules.ExactScoreEnabled && predHome == matchHome && predAway == matchAway)
+            exact = rules.ExactScorePoints;
+        else if (rules.OutcomeEnabled && Math.Sign(predHome - predAway) == Math.Sign(matchHome - matchAway))
+            outcome = rules.OutcomePoints;
 
-        // The same player can be passed more than once (e.g. predicted to score twice),
-        // so dedupe by id to avoid a duplicate-key crash.
-        var playerMap = players.DistinctBy(p => p.Id).ToDictionary(p => p.Id);
-
-        // Count predicted goals per player (same player can appear multiple times)
-        var predictedCounts = goalscorerPlayerIds
-            .GroupBy(id => id)
-            .ToDictionary(g => g.Key, g => g.Count());
-
-        // Count actual scored goals per player (Normal Goal + Penalty only)
-        var actualCounts = goals
-            .Where(g => g.CountsForScorer && g.ScorerPlayerId.HasValue)
-            .GroupBy(g => g.ScorerPlayerId!.Value)
-            .ToDictionary(g => g.Key, g => g.Count());
-
-        foreach (var (playerId, predictedCount) in predictedCounts)
+        var picks = scorerPicks.ToList();
+        var scorerAwards = AwardScorerPoints(rules, picks, goalsList);
+        int goalscorer = 0, ownGoal = 0;
+        for (int i = 0; i < picks.Count; i++)
         {
-            if (!actualCounts.TryGetValue(playerId, out var actualCount)) continue;
-            if (!playerMap.TryGetValue(playerId, out var player)) continue;
-
-            var matchedGoals = Math.Min(predictedCount, actualCount);
-            goalscorer += matchedGoals * player.Position switch
-            {
-                PlayerPosition.Goalkeeper => 4,
-                PlayerPosition.Defender => 4,
-                PlayerPosition.Midfielder => 2,
-                PlayerPosition.Attacker => 1,
-                _ => 0
-            };
+            if (picks[i].GoalType == "Own Goal") ownGoal += scorerAwards[i];
+            else goalscorer += scorerAwards[i];
         }
 
-        return (exactScore, outcome, goalscorer);
+        var cList = cardPicks.ToList();
+        var cardAwards = AwardCardPoints(rules, cList, goalsList, cardsList);
+        int yellow = 0, red = 0, missed = 0;
+        for (int i = 0; i < cList.Count; i++)
+        {
+            switch (cList[i].Kind)
+            {
+                case CardKind.Yellow: yellow += cardAwards[i]; break;
+                case CardKind.Red: red += cardAwards[i]; break;
+                case CardKind.MissedPenalty: missed += cardAwards[i]; break;
+            }
+        }
+
+        return new ScoreBreakdown(exact, outcome, goalscorer, ownGoal, yellow, red, missed);
     }
 
-    public static int PositionPoints(PlayerPosition position) => position switch
-    {
-        PlayerPosition.Goalkeeper => 4,
-        PlayerPosition.Defender => 4,
-        PlayerPosition.Midfielder => 2,
-        PlayerPosition.Attacker => 1,
-        _ => 0
-    };
-
     /// <summary>
-    /// Awards points to each individual scorer pick (in order). A pick earns its position
-    /// value only if backed by an actual goal not already consumed by an earlier pick of the
-    /// same player — so duplicate picks distribute correctly and the total matches Calculate.
+    /// Per-pick points for goalscorer picks. A pick scores only when the same player has an
+    /// actual goal of the *same predicted type* not yet consumed by an earlier pick. Own Goal
+    /// picks pay the flat own-goal value (position ignored); Normal/Penalty pay by position.
     /// </summary>
     public static List<int> AwardScorerPoints(
-        IEnumerable<(int PlayerId, PlayerPosition Position)> picks,
+        GroupScoringRules rules,
+        IEnumerable<(int PlayerId, string GoalType, PlayerPosition Position)> picks,
         IEnumerable<MatchGoal> goals)
     {
         var remaining = goals
-            .Where(g => g.CountsForScorer && g.ScorerPlayerId.HasValue)
-            .GroupBy(g => g.ScorerPlayerId!.Value)
+            .Where(g => g.ScorerPlayerId.HasValue && g.GoalType is "Normal Goal" or "Penalty" or "Own Goal")
+            .GroupBy(g => (g.ScorerPlayerId!.Value, g.GoalType))
             .ToDictionary(g => g.Key, g => g.Count());
 
         var result = new List<int>();
-        foreach (var (playerId, position) in picks)
+        foreach (var (playerId, goalType, position) in picks)
         {
-            if (remaining.TryGetValue(playerId, out var left) && left > 0)
+            var key = (playerId, goalType);
+            if (remaining.TryGetValue(key, out var left) && left > 0)
             {
-                result.Add(PositionPoints(position));
-                remaining[playerId] = left - 1;
+                int pts = goalType == "Own Goal"
+                    ? (rules.OwnGoalEnabled ? rules.OwnGoalPoints : 0)
+                    : (rules.GoalscorerEnabled ? rules.ScorerPointsFor(position) : 0);
+                result.Add(pts);
+                remaining[key] = left - 1;
             }
             else
             {
                 result.Add(0);
             }
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// Per-pick points for card-style picks (yellow / red / missed penalty). A correct pick pays
+    /// the configured flat points; in Net mode a wrong pick subtracts WrongPickPenalty.
+    /// Missed penalties are read from <see cref="MatchGoal"/> rows of type "Missed Penalty".
+    /// </summary>
+    public static List<int> AwardCardPoints(
+        GroupScoringRules rules,
+        IEnumerable<(int PlayerId, CardKind Kind)> picks,
+        IEnumerable<MatchGoal> goals,
+        IEnumerable<MatchCard> cards)
+    {
+        var yellow = cards.Where(c => c.IsYellow && c.PlayerId.HasValue).Select(c => c.PlayerId!.Value).ToHashSet();
+        var red = cards.Where(c => c.IsRed && c.PlayerId.HasValue).Select(c => c.PlayerId!.Value).ToHashSet();
+        var missed = goals.Where(g => g.GoalType == "Missed Penalty" && g.ScorerPlayerId.HasValue)
+            .Select(g => g.ScorerPlayerId!.Value).ToHashSet();
+
+        HashSet<int> ActualFor(CardKind k) => k switch
+        {
+            CardKind.Yellow => yellow,
+            CardKind.Red => red,
+            _ => missed
+        };
+
+        var result = new List<int>();
+        foreach (var (playerId, kind) in picks)
+        {
+            if (!rules.EnabledFor(kind)) { result.Add(0); continue; }
+
+            if (ActualFor(kind).Contains(playerId))
+                result.Add(rules.PointsFor(kind));
+            else
+                result.Add(rules.CardPredictionMode == CardPredictionMode.Net ? -rules.WrongPickPenalty : 0);
         }
         return result;
     }

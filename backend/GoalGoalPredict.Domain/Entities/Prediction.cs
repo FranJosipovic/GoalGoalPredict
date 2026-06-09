@@ -16,6 +16,7 @@ public class Prediction
     public Match Match { get; private set; } = null!;
     public Group Group { get; private set; } = null!;
     public ICollection<GoalscorerPrediction> GoalscorerPredictions { get; private set; } = [];
+    public ICollection<CardPrediction> CardPredictions { get; private set; } = [];
     public PredictionScore? Score { get; private set; }
 
     private Prediction() { }

@@ -33,8 +33,17 @@ public record MatchDetailDto(
     int? AwayGoals,
     List<LineupPlayerDto> Lineup,
     List<GoalEventDto> Goals,
+    List<CardEventDto> Cards,
     bool LineupsRevealed,
     DateTime LineupRevealUtc);
+
+public record CardEventDto(
+    int Minute,
+    int? ExtraMinute,
+    int? PlayerId,
+    string? PlayerName,
+    int TeamId,
+    string CardType);
 
 public record LineupPlayerDto(
     int PlayerId,
@@ -66,9 +75,12 @@ public record MemberPredictionDto(
     int PredHome,
     int PredAway,
     List<ScorerPickDto> Scorers,
+    List<CardPickDto> Cards,
     int ProjectedPoints);
 
-public record ScorerPickDto(int PlayerId, string Name, string Position, int PointsAwarded = 0);
+public record ScorerPickDto(int PlayerId, string Name, string Position, string GoalType, int PointsAwarded = 0);
+
+public record CardPickDto(int PlayerId, string Name, string Kind, int PointsAwarded = 0);
 
 public record MyPredictionItemDto(
     int MatchId,
@@ -82,6 +94,7 @@ public record MyPredictionItemDto(
     int PredHome,
     int PredAway,
     List<ScorerPickDto> Scorers,
+    List<CardPickDto> Cards,
     int? Points,
     int ProjectedPoints,
     bool IsScored);

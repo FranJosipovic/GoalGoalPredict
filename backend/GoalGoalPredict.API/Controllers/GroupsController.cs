@@ -1,5 +1,7 @@
 using System.Security.Claims;
+using GoalGoalPredict.Application.DTOs;
 using GoalGoalPredict.Application.UseCases.Groups;
+using GoalGoalPredict.Infrastructure.UseCases.Groups;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -12,7 +14,8 @@ public class GroupsController(
     CreateGroup createGroup,
     JoinGroup joinGroup,
     GetMyGroups getMyGroups,
-    GetGroupDetail getGroupDetail) : ControllerBase
+    GetGroupDetail getGroupDetail,
+    GroupRulesUseCase groupRules) : ControllerBase
 {
     private Guid CurrentUserId =>
         Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub")!);
@@ -61,6 +64,22 @@ public class GroupsController(
         {
             return Forbid();
         }
+    }
+
+    [HttpGet("{id:guid}/rules")]
+    public async Task<IActionResult> GetRules(Guid id, CancellationToken ct)
+    {
+        var result = await groupRules.GetAsync(id, CurrentUserId, ct);
+        if (result is null) return NotFound(new { error = "Group not found" });
+        return Ok(result);
+    }
+
+    [HttpPut("{id:guid}/rules")]
+    public async Task<IActionResult> UpdateRules(Guid id, [FromBody] UpdateGroupRulesRequest req, CancellationToken ct)
+    {
+        var (result, error) = await groupRules.UpdateAsync(id, CurrentUserId, req, ct);
+        if (error is not null) return BadRequest(new { error });
+        return Ok(result);
     }
 }
 

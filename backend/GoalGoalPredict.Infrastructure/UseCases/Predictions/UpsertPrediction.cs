@@ -1,12 +1,15 @@
 using GoalGoalPredict.Application.DTOs;
 using GoalGoalPredict.Domain.Entities;
 using GoalGoalPredict.Infrastructure.Data;
+using GoalGoalPredict.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace GoalGoalPredict.Infrastructure.UseCases.Predictions;
 
-public class UpsertPrediction(AppDbContext db)
+public class UpsertPrediction(AppDbContext db, EffectiveRulesService effectiveRules)
 {
+    private static readonly string[] ValidGoalTypes = ["Normal Goal", "Penalty", "Own Goal"];
+
     public async Task<(PredictionResultDto? Result, string? Error)> ExecuteAsync(
         Guid userId, UpsertPredictionRequest request, CancellationToken ct = default)
     {
@@ -16,6 +19,39 @@ public class UpsertPrediction(AppDbContext db)
 
         var isMember = await db.GroupMembers.AnyAsync(m => m.GroupId == request.GroupId && m.UserId == userId, ct);
         if (!isMember) return (null, "Not a member of this group");
+
+        var rules = await effectiveRules.GetLiveAsync(request.GroupId, ct);
+
+        var scorers = request.Scorers ?? [];
+        var cards = request.Cards ?? [];
+
+        // --- Validate scorer picks ---
+        foreach (var s in scorers)
+        {
+            if (!ValidGoalTypes.Contains(s.GoalType))
+                return (null, $"Invalid goal type '{s.GoalType}'");
+            if (s.GoalType == "Own Goal" && !rules.OwnGoalEnabled)
+                return (null, "Own goal predictions are disabled for this group");
+            if (s.GoalType != "Own Goal" && !rules.GoalscorerEnabled)
+                return (null, "Goalscorer predictions are disabled for this group");
+        }
+
+        // --- Validate card picks ---
+        var parsedCards = new List<(int PlayerId, CardKind Kind)>();
+        foreach (var c in cards)
+        {
+            if (!Enum.TryParse<CardKind>(c.Kind, out var kind))
+                return (null, $"Invalid card kind '{c.Kind}'");
+            if (!rules.EnabledFor(kind))
+                return (null, $"{kind} predictions are disabled for this group");
+            parsedCards.Add((c.PlayerId, kind));
+        }
+        foreach (var grp in parsedCards.GroupBy(c => c.Kind))
+        {
+            var max = rules.MaxPicksFor(grp.Key);
+            if (grp.Count() > max)
+                return (null, $"Too many {grp.Key} picks (max {max})");
+        }
 
         var existing = await db.Predictions
             .FirstOrDefaultAsync(p => p.UserId == userId && p.MatchId == request.MatchId && p.GroupId == request.GroupId, ct);
@@ -33,15 +69,20 @@ public class UpsertPrediction(AppDbContext db)
             predictionId = existing.Id;
             var oldScorers = await db.GoalscorerPredictions.Where(g => g.PredictionId == predictionId).ToListAsync(ct);
             db.GoalscorerPredictions.RemoveRange(oldScorers);
+            var oldCards = await db.CardPredictions.Where(c => c.PredictionId == predictionId).ToListAsync(ct);
+            db.CardPredictions.RemoveRange(oldCards);
         }
 
-        // Allow duplicate player IDs (same player can score multiple goals)
-        var scorerIds = request.GoalscorerPlayerIds.ToList();
-        db.GoalscorerPredictions.AddRange(scorerIds.Select(pid => GoalscorerPrediction.Create(predictionId, pid)));
+        // Allow duplicate (player, goalType) pairs (same player can score multiple goals of a type).
+        db.GoalscorerPredictions.AddRange(scorers.Select(s => GoalscorerPrediction.Create(predictionId, s.PlayerId, s.GoalType)));
+        db.CardPredictions.AddRange(parsedCards.Select(c => CardPrediction.Create(predictionId, c.PlayerId, c.Kind)));
 
         await db.SaveChangesAsync(ct);
 
         return (new PredictionResultDto(predictionId, request.MatchId, request.GroupId,
-            request.HomeGoals, request.AwayGoals, scorerIds, DateTime.UtcNow), null);
+            request.HomeGoals, request.AwayGoals,
+            scorers.ToList(),
+            parsedCards.Select(c => new CardPickInput(c.PlayerId, c.Kind.ToString())).ToList(),
+            DateTime.UtcNow), null);
     }
 }

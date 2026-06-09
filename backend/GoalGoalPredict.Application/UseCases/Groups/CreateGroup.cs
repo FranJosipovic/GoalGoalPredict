@@ -17,6 +17,8 @@ public class CreateGroup(IGroupRepository groups)
         var owner = new GroupMember(group.Id, input.UserId, GroupRole.Owner);
         await groups.AddMemberAsync(owner);
 
+        await groups.AddScoringRulesAsync(GroupScoringRules.CreateDefault(group.Id));
+
         return new CreateGroupOutput(new GroupDto(group.Id, group.Name, group.InviteCode, group.CreatedByUserId, group.CreatedAt));
     }
 }
