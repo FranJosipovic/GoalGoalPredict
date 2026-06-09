@@ -112,11 +112,16 @@ public class SimAdminController(
         return Ok(new { match.Id, match.Status });
     }
 
-    // ── Seed admin ────────────────────────────────────────────────
+    // ── Seed admin (dev bootstrap only) ───────────────────────────
+    // Anonymous + email-allowlisted. Disabled outside Development: in production an
+    // attacker could register the owner's email then self-elevate. Prod admins are
+    // seeded directly in the DB (see DEPLOY.md).
     [HttpPost("make-admin")]
     [AllowAnonymous]
-    public async Task<IActionResult> MakeAdmin([FromBody] MakeAdminBody body, [FromServices] IConfiguration config, CancellationToken ct)
+    public async Task<IActionResult> MakeAdmin([FromBody] MakeAdminBody body, [FromServices] IConfiguration config, [FromServices] IWebHostEnvironment env, CancellationToken ct)
     {
+        if (!env.IsDevelopment()) return NotFound();
+
         var allowedEmails = config.GetSection("Admin:Emails").Get<List<string>>() ?? [];
         if (!allowedEmails.Contains(body.Email, StringComparer.OrdinalIgnoreCase))
             return Forbid();

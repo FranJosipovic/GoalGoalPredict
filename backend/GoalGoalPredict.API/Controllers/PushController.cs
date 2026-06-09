@@ -45,6 +45,15 @@ public class PushController(AppDbContext db) : ControllerBase
 
         return Ok();
     }
+
+    // Removes every push subscription for the current user (all devices / stale rows).
+    // Used by the toggle's "disable" so the account is fully opted out.
+    [HttpDelete("all")]
+    public async Task<IActionResult> UnsubscribeAll(CancellationToken ct)
+    {
+        await db.PushSubscriptions.Where(s => s.UserId == UserId).ExecuteDeleteAsync(ct);
+        return Ok();
+    }
 }
 
 public record PushSubscribeBody(string Endpoint, string P256dh, string Auth);

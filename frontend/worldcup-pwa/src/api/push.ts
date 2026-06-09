@@ -8,3 +8,6 @@ export const subscribePush = (sub: { endpoint: string; p256dh: string; auth: str
 
 export const unsubscribePush = (endpoint: string) =>
   client.delete('/push/subscribe', { data: { endpoint } }).then(r => r.data)
+
+export const unsubscribeAllPush = () =>
+  client.delete('/push/all').then(r => r.data)

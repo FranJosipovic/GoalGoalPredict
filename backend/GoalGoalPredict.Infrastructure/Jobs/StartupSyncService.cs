@@ -11,31 +11,40 @@ public class StartupSyncService(IServiceScopeFactory scopeFactory, ILogger<Start
 {
     public async Task StartAsync(CancellationToken ct)
     {
-        using var scope = scopeFactory.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-
-        var teamsExist = await db.Teams.AnyAsync(ct);
-        if (!teamsExist)
+        // Must never throw: a failed startup sync (e.g. API-Football hiccup) must not
+        // take the whole site down. The recurring scheduler will retry afterwards.
+        try
         {
-            logger.LogInformation("No teams found — running initial sync...");
-            var syncTeams = scope.ServiceProvider.GetRequiredService<SyncTeamsAndPlayers>();
-            await syncTeams.ExecuteAsync(ct);
+            using var scope = scopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            var teamsExist = await db.Teams.AnyAsync(ct);
+            if (!teamsExist)
+            {
+                logger.LogInformation("No teams found — running initial sync...");
+                var syncTeams = scope.ServiceProvider.GetRequiredService<SyncTeamsAndPlayers>();
+                await syncTeams.ExecuteAsync(ct);
+            }
+
+            var lastSync = await db.Matches
+                .OrderByDescending(m => m.LastSyncedAt)
+                .Select(m => m.LastSyncedAt)
+                .FirstOrDefaultAsync(ct);
+
+            if (lastSync == default || DateTime.UtcNow - lastSync > TimeSpan.FromHours(1))
+            {
+                logger.LogInformation("Fixtures stale — syncing...");
+                var syncFixtures = scope.ServiceProvider.GetRequiredService<SyncFixtures>();
+                await syncFixtures.ExecuteAsync(ct);
+            }
+            else
+            {
+                logger.LogInformation("Fixtures up to date (last sync: {LastSync:u})", lastSync);
+            }
         }
-
-        var lastSync = await db.Matches
-            .OrderByDescending(m => m.LastSyncedAt)
-            .Select(m => m.LastSyncedAt)
-            .FirstOrDefaultAsync(ct);
-
-        if (lastSync == default || DateTime.UtcNow - lastSync > TimeSpan.FromHours(1))
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            logger.LogInformation("Fixtures stale — syncing...");
-            var syncFixtures = scope.ServiceProvider.GetRequiredService<SyncFixtures>();
-            await syncFixtures.ExecuteAsync(ct);
-        }
-        else
-        {
-            logger.LogInformation("Fixtures up to date (last sync: {LastSync:u})", lastSync);
+            logger.LogError(ex, "Startup sync failed — continuing; scheduler will retry");
         }
     }
 

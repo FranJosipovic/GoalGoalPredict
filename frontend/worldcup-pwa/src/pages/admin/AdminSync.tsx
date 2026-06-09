@@ -1,0 +1,235 @@
+import { useState } from 'react'
+import AdminLayout from '../../components/admin/AdminLayout'
+import type { ReactNode } from 'react'
+import {
+  compareTeams, compareFixtures, comparePlayers,
+  syncTeamsPlayers, syncMissingPlayers, syncFixtures, prunePlayers,
+  setPlayerActive, deletePlayer,
+} from '../../api/admin'
+
+interface FieldDiff { field: string; db: string | null; api: string | null }
+interface EntityDiff { id: string; label: string; state: string; fields: FieldDiff[]; inUse?: boolean; active?: boolean }
+interface CompareResult {
+  dbCount: number; apiCount: number; matched: number; mismatched: number
+  missingInDb: number; extraInDb: number; diffs: EntityDiff[]
+}
+interface TeamPlayersCompare { teamId: number; teamName: string; result: CompareResult }
+
+const stateLabel: Record<string, string> = {
+  mismatch: 'Mismatch', missing_in_db: 'Missing in DB', extra_in_db: 'Extra in DB',
+}
+
+function Summary({ r }: { r: CompareResult }) {
+  return (
+    <div className="admin-compare-summary">
+      <span className="admin-chip">DB: {r.dbCount}</span>
+      <span className="admin-chip">API: {r.apiCount}</span>
+      <span className="admin-chip admin-chip--ok">✓ {r.matched}</span>
+      {r.mismatched > 0 && <span className="admin-chip admin-chip--warn">≠ {r.mismatched}</span>}
+      {r.missingInDb > 0 && <span className="admin-chip admin-chip--bad">+API {r.missingInDb}</span>}
+      {r.extraInDb > 0 && <span className="admin-chip admin-chip--muted">+DB {r.extraInDb}</span>}
+    </div>
+  )
+}
+
+function DiffTable({ diffs, renderActions }: { diffs: EntityDiff[]; renderActions?: (d: EntityDiff) => ReactNode }) {
+  if (diffs.length === 0) return <p className="admin-empty">In sync — no differences.</p>
+  return (
+    <table className="admin-table">
+      <thead><tr><th>Entity</th><th>State</th><th>Differences</th>{renderActions && <th></th>}</tr></thead>
+      <tbody>
+        {diffs.map(d => (
+          <tr key={`${d.state}-${d.id}`}>
+            <td>
+              {d.label} <span className="admin-dim">#{d.id}</span>
+              {d.active === false && <span className="admin-diff-state admin-diff-state--extra_in_db" style={{ marginLeft: 6 }}>INACTIVE</span>}
+            </td>
+            <td><span className={`admin-diff-state admin-diff-state--${d.state}`}>{stateLabel[d.state] ?? d.state}</span></td>
+            <td>
+              {d.fields.length === 0
+                ? <span className="admin-dim">{d.inUse ? 'in use' : '—'}</span>
+                : d.fields.map(f => (
+                    <div key={f.field} className="admin-field-diff">
+                      <span className="admin-field-name">{f.field}</span>
+                      <span className="admin-field-db">{f.db ?? '∅'}</span>
+                      <span className="admin-field-arrow">→</span>
+                      <span className="admin-field-api">{f.api ?? '∅'}</span>
+                    </div>
+                  ))}
+            </td>
+            {renderActions && <td className="admin-row-actions">{renderActions(d)}</td>}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )
+}
+
+export default function AdminSync() {
+  const [busy, setBusy] = useState<string | null>(null)
+  const [msg, setMsg] = useState<string | null>(null)
+  const [err, setErr] = useState<string | null>(null)
+
+  const [teams, setTeams] = useState<CompareResult | null>(null)
+  const [fixtures, setFixtures] = useState<CompareResult | null>(null)
+  const [players, setPlayers] = useState<TeamPlayersCompare[] | null>(null)
+
+  const run = async (key: string, fn: () => Promise<any>, after?: (d: any) => void) => {
+    setBusy(key); setErr(null); setMsg(null)
+    try {
+      const d = await fn()
+      after?.(d)
+      if (d?.message) setMsg(d.message)
+    } catch (e: any) {
+      setErr(e?.response?.data?.message ?? e?.message ?? 'Action failed')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const refreshTeam = async (teamId: number) => {
+    const fresh: TeamPlayersCompare[] = await comparePlayers(teamId)
+    setPlayers(prev => prev?.map(p => p.teamId === teamId ? (fresh[0] ?? p) : p) ?? fresh)
+  }
+
+  const teamAction = async (key: string, teamId: number, fn: () => Promise<any>) => {
+    setBusy(key); setErr(null); setMsg(null)
+    try {
+      const r = await fn()
+      if (r?.message) setMsg(r.message)
+      await refreshTeam(teamId)
+    } catch (e: any) {
+      setErr(e?.response?.data?.message ?? 'Action failed')
+    } finally { setBusy(null) }
+  }
+
+  const handlePruneTeam = (teamId: number) => {
+    if (!confirm('Remove extra (no-longer-in-API) players for this team? Players referenced by predictions or match data are kept.')) return
+    teamAction(`prune-${teamId}`, teamId, () => prunePlayers(teamId))
+  }
+
+  const renderPlayerActions = (teamId: number) => (d: EntityDiff): ReactNode => {
+    if (d.state !== 'extra_in_db') return null
+    const pid = Number(d.id)
+    const busyMe = busy === `pl-${pid}`
+    if (d.active === false) {
+      return (
+        <>
+          <button className="admin-btn admin-btn--ghost admin-btn--xs" disabled={!!busy}
+            onClick={() => teamAction(`pl-${pid}`, teamId, () => setPlayerActive(pid, true))}>
+            {busyMe ? '…' : 'Reactivate'}
+          </button>
+          {!d.inUse && (
+            <button className="admin-btn admin-btn--danger admin-btn--xs" disabled={!!busy}
+              onClick={() => { if (confirm(`Permanently delete ${d.label}?`)) teamAction(`pl-${pid}`, teamId, () => deletePlayer(pid)) }}>Remove</button>
+          )}
+        </>
+      )
+    }
+    // active + still in API gone:
+    if (d.inUse) {
+      return (
+        <button className="admin-btn admin-btn--secondary admin-btn--xs" disabled={!!busy}
+          onClick={() => teamAction(`pl-${pid}`, teamId, () => setPlayerActive(pid, false))}>
+          {busyMe ? '…' : 'Deactivate'}
+        </button>
+      )
+    }
+    return (
+      <button className="admin-btn admin-btn--danger admin-btn--xs" disabled={!!busy}
+        onClick={() => { if (confirm(`Permanently delete ${d.label}?`)) teamAction(`pl-${pid}`, teamId, () => deletePlayer(pid)) }}>
+        {busyMe ? '…' : 'Remove'}
+      </button>
+    )
+  }
+
+  const playersWithDiffs = players?.filter(p =>
+    p.result.mismatched + p.result.missingInDb + p.result.extraInDb > 0) ?? []
+
+  return (
+    <AdminLayout title="Sync & Compare">
+      {msg && <div className="admin-section"><div className="admin-banner-ok">{msg}</div></div>}
+      {err && <div className="admin-error">{err}</div>}
+
+      {/* Teams */}
+      <div className="admin-section">
+        <div className="admin-compare-head">
+          <h2 className="admin-section-title">Teams</h2>
+          <div className="admin-compare-actions">
+            <button className="admin-btn admin-btn--ghost" disabled={!!busy}
+              onClick={() => run('cmp-teams', compareTeams, setTeams)}>
+              {busy === 'cmp-teams' ? 'Comparing…' : 'Compare DB ↔ API'}
+            </button>
+            <button className="admin-btn admin-btn--primary" disabled={!!busy}
+              onClick={() => run('sync-teams', syncTeamsPlayers, () => run('cmp-teams', compareTeams, setTeams))}>
+              {busy === 'sync-teams' ? 'Syncing…' : 'Sync teams + squads'}
+            </button>
+          </div>
+        </div>
+        {teams && <><Summary r={teams} /><DiffTable diffs={teams.diffs} /></>}
+      </div>
+
+      {/* Fixtures */}
+      <div className="admin-section">
+        <div className="admin-compare-head">
+          <h2 className="admin-section-title">Fixtures (real)</h2>
+          <div className="admin-compare-actions">
+            <button className="admin-btn admin-btn--ghost" disabled={!!busy}
+              onClick={() => run('cmp-fix', compareFixtures, setFixtures)}>
+              {busy === 'cmp-fix' ? 'Comparing…' : 'Compare DB ↔ API'}
+            </button>
+            <button className="admin-btn admin-btn--primary" disabled={!!busy}
+              onClick={() => run('sync-fix', syncFixtures, () => run('cmp-fix', compareFixtures, setFixtures))}>
+              {busy === 'sync-fix' ? 'Syncing…' : 'Sync fixtures'}
+            </button>
+          </div>
+        </div>
+        {fixtures && <><Summary r={fixtures} /><DiffTable diffs={fixtures.diffs} /></>}
+      </div>
+
+      {/* Players */}
+      <div className="admin-section">
+        <div className="admin-compare-head">
+          <h2 className="admin-section-title">Players (all squads)</h2>
+          <div className="admin-compare-actions">
+            <button className="admin-btn admin-btn--ghost" disabled={!!busy}
+              onClick={() => run('cmp-players', () => comparePlayers(), setPlayers)}>
+              {busy === 'cmp-players' ? 'Comparing… (slow)' : 'Compare all squads'}
+            </button>
+            <button className="admin-btn admin-btn--secondary" disabled={!!busy}
+              onClick={() => run('sync-missing', syncMissingPlayers)}>
+              {busy === 'sync-missing' ? 'Syncing…' : 'Sync missing squads'}
+            </button>
+            <button className="admin-btn admin-btn--danger" disabled={!!busy}
+              onClick={() => {
+                if (!confirm('Remove all extra (no-longer-in-API) players across every team? Players referenced by predictions or match data are kept.')) return
+                run('prune-all', () => prunePlayers(), () => run('cmp-players', () => comparePlayers(), setPlayers))
+              }}>
+              {busy === 'prune-all' ? 'Pruning…' : 'Remove extra players (safe)'}
+            </button>
+          </div>
+        </div>
+        <p className="admin-hint">Walking every team's squad hits the API once per team and is throttled — give it a moment. "Remove extra players" deletes DB players no longer in the API squad, unless they're referenced by predictions or match data.</p>
+        {players && (
+          playersWithDiffs.length === 0
+            ? <p className="admin-empty">All squads in sync.</p>
+            : playersWithDiffs.map(t => (
+                <div key={t.teamId} className="admin-team-diff-block">
+                  <div className="admin-compare-head">
+                    <div className="admin-team-diff-head">{t.teamName}</div>
+                    {t.result.extraInDb > 0 && (
+                      <button className="admin-btn admin-btn--danger admin-btn--xs" disabled={!!busy}
+                        onClick={() => handlePruneTeam(t.teamId)}>
+                        {busy === `prune-${t.teamId}` ? 'Pruning…' : `Prune ${t.result.extraInDb} extra`}
+                      </button>
+                    )}
+                  </div>
+                  <Summary r={t.result} />
+                  <DiffTable diffs={t.result.diffs} renderActions={renderPlayerActions(t.teamId)} />
+                </div>
+              ))
+        )}
+      </div>
+    </AdminLayout>
+  )
+}

@@ -8,9 +8,15 @@ export default function AdminLayout({ children, title }: { children: React.React
 
   const nav = [
     { label: 'Dashboard', path: '/admin' },
+    { label: 'Sync & Compare', path: '/admin/sync' },
+    { label: 'Users', path: '/admin/users' },
+    { label: 'Groups', path: '/admin/all-groups' },
     { label: 'Sim Groups', path: '/admin/groups' },
     { label: 'Sim Matches', path: '/admin/matches' },
   ]
+
+  const isActive = (path: string) =>
+    path === '/admin' ? location.pathname === '/admin' : location.pathname.startsWith(path)
 
   return (
     <div className="admin-shell">
@@ -19,12 +25,13 @@ export default function AdminLayout({ children, title }: { children: React.React
           <span className="admin-brand-gg">GG</span>
           <span className="admin-brand-admin">ADMIN</span>
         </div>
+        <Link to="/groups" className="admin-back-app">← Back to app</Link>
         <nav className="admin-nav">
           {nav.map(n => (
             <Link
               key={n.path}
               to={n.path}
-              className={`admin-nav-item ${location.pathname === n.path ? 'admin-nav-item--active' : ''}`}
+              className={`admin-nav-item ${isActive(n.path) ? 'admin-nav-item--active' : ''}`}
             >
               {n.label}
             </Link>

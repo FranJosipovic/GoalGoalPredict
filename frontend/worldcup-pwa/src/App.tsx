@@ -15,6 +15,11 @@ import AdminGroups from './pages/admin/AdminGroups'
 import AdminMatches from './pages/admin/AdminMatches'
 import CreateSimMatch from './pages/admin/CreateSimMatch'
 import AdminMatchDetail from './pages/admin/AdminMatchDetail'
+import AdminSync from './pages/admin/AdminSync'
+import AdminUsers from './pages/admin/AdminUsers'
+import AdminUserDetail from './pages/admin/AdminUserDetail'
+import AdminAllGroups from './pages/admin/AdminAllGroups'
+import AdminGroupDetail from './pages/admin/AdminGroupDetail'
 
 const P = ({ children }: { children: React.ReactNode }) => <ProtectedRoute>{children}</ProtectedRoute>
 const A = ({ children }: { children: React.ReactNode }) => <AdminRoute>{children}</AdminRoute>
@@ -35,6 +40,11 @@ export default function App() {
         <Route path="/tournament/team/:teamId" element={<P><TournamentTeamPage /></P>} />
         {/* Admin */}
         <Route path="/admin" element={<A><AdminDashboard /></A>} />
+        <Route path="/admin/sync" element={<A><AdminSync /></A>} />
+        <Route path="/admin/users" element={<A><AdminUsers /></A>} />
+        <Route path="/admin/users/:id" element={<A><AdminUserDetail /></A>} />
+        <Route path="/admin/all-groups" element={<A><AdminAllGroups /></A>} />
+        <Route path="/admin/all-groups/:id" element={<A><AdminGroupDetail /></A>} />
         <Route path="/admin/groups" element={<A><AdminGroups /></A>} />
         <Route path="/admin/matches" element={<A><AdminMatches /></A>} />
         <Route path="/admin/matches/new" element={<A><CreateSimMatch /></A>} />

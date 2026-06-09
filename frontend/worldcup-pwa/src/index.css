@@ -1963,6 +1963,54 @@ input { font-family: inherit; }
 .admin-player-pick-pos { font-size: 11px; font-family: 'Oswald', sans-serif; color: rgba(232,232,240,0.4); }
 
 
+/* ─── Admin: management & compare ─── */
+.admin-back-app {
+  display: block; padding: 10px 20px; font-size: 13px;
+  color: rgba(232,232,240,0.5); text-decoration: none;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.admin-back-app:hover { color: #b8ff6a; background: rgba(255,255,255,0.04); }
+
+.admin-dim { color: rgba(232,232,240,0.4); font-size: 13px; }
+.admin-banner-ok {
+  background: rgba(184,255,106,0.08); border: 1px solid rgba(184,255,106,0.3);
+  color: #b8ff6a; padding: 10px 14px; border-radius: 8px; font-size: 13px;
+}
+
+.admin-btn--danger { background: rgba(239,83,80,0.12); color: #ef5350; border: 1px solid rgba(239,83,80,0.3); }
+.admin-btn--danger:hover { background: rgba(239,83,80,0.2); }
+.admin-btn--danger:disabled { opacity: 0.5; cursor: not-allowed; }
+.admin-btn--xs { padding: 4px 12px; font-size: 12px; }
+.admin-row-actions { display: flex; gap: 6px; justify-content: flex-end; }
+
+/* Compare */
+.admin-compare-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 12px; flex-wrap: wrap; }
+.admin-compare-head .admin-section-title { margin-bottom: 0; }
+.admin-compare-actions { display: flex; gap: 8px; }
+.admin-compare-summary { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.admin-chip {
+  font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 6px;
+  background: rgba(255,255,255,0.06); color: rgba(232,232,240,0.7); border: 1px solid rgba(255,255,255,0.08);
+}
+.admin-chip--ok { color: #4caf50; border-color: rgba(76,175,80,0.3); background: rgba(76,175,80,0.08); }
+.admin-chip--warn { color: #ffb74d; border-color: rgba(255,183,77,0.3); background: rgba(255,183,77,0.08); }
+.admin-chip--bad { color: #64b5f6; border-color: rgba(100,181,246,0.3); background: rgba(100,181,246,0.08); }
+.admin-chip--muted { color: rgba(232,232,240,0.5); }
+
+.admin-diff-state { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; padding: 2px 8px; border-radius: 4px; }
+.admin-diff-state--mismatch { color: #ffb74d; background: rgba(255,183,77,0.12); }
+.admin-diff-state--missing_in_db { color: #64b5f6; background: rgba(100,181,246,0.12); }
+.admin-diff-state--extra_in_db { color: rgba(232,232,240,0.6); background: rgba(255,255,255,0.06); }
+
+.admin-field-diff { display: flex; align-items: center; gap: 8px; font-size: 12px; margin: 2px 0; }
+.admin-field-name { font-family: 'Oswald', sans-serif; letter-spacing: 0.04em; color: rgba(232,232,240,0.4); min-width: 70px; }
+.admin-field-db { color: #ef9a9a; }
+.admin-field-arrow { color: rgba(232,232,240,0.3); }
+.admin-field-api { color: #a5d6a7; }
+
+.admin-team-diff-block { margin-bottom: 24px; }
+.admin-team-diff-head { font-family: 'Oswald', sans-serif; font-size: 15px; color: #e8e8f0; margin-bottom: 8px; }
+
 /* ─── Scoring Rules Tab ─── */
 .rules-tab { padding: 4px 16px 24px; display: flex; flex-direction: column; gap: 14px; }
 .rules-banner {

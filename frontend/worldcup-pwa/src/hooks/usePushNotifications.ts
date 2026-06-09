@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { getVapidPublicKey, subscribePush, unsubscribePush } from '../api/push'
+import { getVapidPublicKey, subscribePush, unsubscribeAllPush } from '../api/push'
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
@@ -19,15 +19,20 @@ export type PushStatus = 'unsupported' | 'denied' | 'default' | 'granted'
 
 export function usePushNotifications() {
   const supported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window
-  const [status, setStatus] = useState<PushStatus>(supported ? Notification.permission : 'unsupported')
+  // "granted" tracks an active push subscription, not the browser permission —
+  // permission stays granted after unsubscribing, so we must not derive it from that.
+  const [status, setStatus] = useState<PushStatus>(
+    !supported ? 'unsupported' : Notification.permission === 'denied' ? 'denied' : 'default'
+  )
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
     if (!supported) return
-    // Sync existing subscription state on mount
+    // Reflect actual subscription presence on mount
     navigator.serviceWorker.ready.then(reg =>
       reg.pushManager.getSubscription().then(sub => {
         if (sub) setStatus('granted')
+        else setStatus(Notification.permission === 'denied' ? 'denied' : 'default')
       })
     ).catch(() => {})
   }, [supported])
@@ -72,10 +77,9 @@ export function usePushNotifications() {
     try {
       const reg = await navigator.serviceWorker.ready
       const sub = await reg.pushManager.getSubscription()
-      if (sub) {
-        await unsubscribePush(sub.endpoint)
-        await sub.unsubscribe()
-      }
+      if (sub) await sub.unsubscribe()
+      // Clear all server-side subscriptions for this account (other devices / stale rows)
+      await unsubscribeAllPush()
       setStatus('default')
     } finally {
       setBusy(false)

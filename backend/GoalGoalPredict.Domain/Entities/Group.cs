@@ -21,6 +21,8 @@ public class Group
         IsSimulation = isSimulation;
     }
 
+    public void TransferOwnership(Guid newOwnerUserId) => CreatedByUserId = newOwnerUserId;
+
     private static string GenerateInviteCode()
     {
         const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";

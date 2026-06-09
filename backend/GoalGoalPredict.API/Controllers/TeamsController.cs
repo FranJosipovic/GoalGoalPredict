@@ -20,14 +20,16 @@ public class TeamsController(AppDbContext db) : ControllerBase
         return Ok(teams);
     }
 
+    // Returns the current (active) squad for selection contexts — predictions, lineup
+    // builders. Pass includeInactive=true to also get cut/injured players (e.g. admin).
     [HttpGet("{id:int}/players")]
-    public async Task<IActionResult> GetPlayers(int id, CancellationToken ct)
+    public async Task<IActionResult> GetPlayers(int id, [FromQuery] bool includeInactive, CancellationToken ct)
     {
         var team = await db.Teams.FindAsync([id], ct);
         if (team is null) return NotFound();
 
         var players = await db.Players
-            .Where(p => p.TeamId == id)
+            .Where(p => p.TeamId == id && (includeInactive || p.IsActive))
             .OrderBy(p => p.Position)
             .ThenBy(p => p.ShirtNumber)
             .Select(p => new { p.Id, p.Name, p.ShirtNumber, Position = p.Position.ToString(), p.PhotoUrl, p.Age })

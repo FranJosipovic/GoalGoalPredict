@@ -23,4 +23,6 @@ public class GroupMember
 
     public static GroupMember CreateOwner(Guid groupId, Guid userId) =>
         new(groupId, userId, GroupRole.Owner);
+
+    public void ChangeRole(GroupRole role) => Role = role;
 }

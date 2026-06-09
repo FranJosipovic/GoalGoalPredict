@@ -4,6 +4,7 @@ using GoalGoalPredict.Application.Interfaces;
 using GoalGoalPredict.Application.UseCases.Auth;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace GoalGoalPredict.API.Controllers;
 
@@ -12,6 +13,7 @@ namespace GoalGoalPredict.API.Controllers;
 public class AuthController(RegisterUser register, LoginUser login, IUserRepository users) : ControllerBase
 {
     [HttpPost("register")]
+    [EnableRateLimiting("auth")]
     public async Task<IActionResult> Register([FromBody] RegisterRequest req)
     {
         try
@@ -26,6 +28,7 @@ public class AuthController(RegisterUser register, LoginUser login, IUserReposit
     }
 
     [HttpPost("login")]
+    [EnableRateLimiting("auth")]
     public async Task<IActionResult> Login([FromBody] LoginRequest req)
     {
         try

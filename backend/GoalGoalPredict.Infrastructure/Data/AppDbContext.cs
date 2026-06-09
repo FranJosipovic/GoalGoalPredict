@@ -119,6 +119,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             b.Property(p => p.ShirtNumber).HasColumnName("shirt_number");
             b.Property(p => p.Position).HasColumnName("position").HasConversion<string>();
             b.Property(p => p.PhotoUrl).HasColumnName("photo_url").HasMaxLength(300);
+            b.Property(p => p.IsActive).HasColumnName("is_active").HasDefaultValue(true);
             b.HasOne(p => p.Team).WithMany(t => t.Players).HasForeignKey(p => p.TeamId);
         });
 
