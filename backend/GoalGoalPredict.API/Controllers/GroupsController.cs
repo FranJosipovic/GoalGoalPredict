@@ -15,6 +15,8 @@ public class GroupsController(
     JoinGroup joinGroup,
     GetMyGroups getMyGroups,
     GetGroupDetail getGroupDetail,
+    GetGroupPreview getGroupPreview,
+    ResetInviteCode resetInviteCode,
     GroupRulesUseCase groupRules) : ControllerBase
 {
     private Guid CurrentUserId =>
@@ -38,6 +40,33 @@ public class GroupsController(
         catch (InvalidOperationException ex)
         {
             return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpGet("preview/{code}")]
+    [AllowAnonymous]
+    public async Task<IActionResult> Preview(string code)
+    {
+        var preview = await getGroupPreview.ExecuteAsync(code);
+        if (preview is null) return NotFound(new { error = "Invalid invite link." });
+        return Ok(preview);
+    }
+
+    [HttpPost("{id:guid}/invite/reset")]
+    public async Task<IActionResult> ResetInvite(Guid id)
+    {
+        try
+        {
+            var result = await resetInviteCode.ExecuteAsync(id, CurrentUserId);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return NotFound(new { error = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, new { error = ex.Message });
         }
     }
 

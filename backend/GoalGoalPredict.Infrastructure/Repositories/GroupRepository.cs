@@ -32,6 +32,12 @@ public class GroupRepository(AppDbContext db) : IGroupRepository
         await db.SaveChangesAsync();
     }
 
+    public async Task UpdateGroupAsync(Group group)
+    {
+        db.Groups.Update(group);
+        await db.SaveChangesAsync();
+    }
+
     public async Task AddMemberAsync(GroupMember member)
     {
         db.GroupMembers.Add(member);
