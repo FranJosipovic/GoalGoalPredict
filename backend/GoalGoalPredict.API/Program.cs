@@ -16,6 +16,7 @@ using GoalGoalPredict.Infrastructure.UseCases.Admin;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Npgsql;
 using Scalar.AspNetCore;
 
 // Local dev reads secrets from a .env file; in production (Railway) real env vars are
@@ -32,9 +33,10 @@ if (!string.IsNullOrWhiteSpace(port))
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
-// PostgreSQL
+// PostgreSQL — accepts both Npgsql key-value and Railway/Heroku postgres:// URI.
+var connectionString = ResolvePostgresConnectionString(builder.Configuration);
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
+    options.UseNpgsql(connectionString));
 
 // Repositories
 builder.Services.AddScoped<IUserRepository, UserRepository>();
@@ -175,3 +177,33 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+// Resolve the Postgres connection string. Accepts the native Npgsql key-value format
+// (Host=...;Port=...;...) or a Railway/Heroku-style URI (postgres://user:pass@host:port/db),
+// converting the latter so it doesn't blow up Npgsql's parser.
+static string? ResolvePostgresConnectionString(IConfiguration cfg)
+{
+    var cs = cfg.GetConnectionString("Default");
+    if (string.IsNullOrWhiteSpace(cs))
+        cs = Environment.GetEnvironmentVariable("DATABASE_URL");
+    if (string.IsNullOrWhiteSpace(cs))
+        return cs;
+
+    if (cs.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase) ||
+        cs.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase))
+    {
+        var uri = new Uri(cs);
+        var creds = uri.UserInfo.Split(':', 2);
+        var builder = new NpgsqlConnectionStringBuilder
+        {
+            Host = uri.Host,
+            Port = uri.Port > 0 ? uri.Port : 5432,
+            Username = Uri.UnescapeDataString(creds[0]),
+            Password = creds.Length > 1 ? Uri.UnescapeDataString(creds[1]) : "",
+            Database = uri.AbsolutePath.TrimStart('/'),
+            SslMode = SslMode.Prefer
+        };
+        cs = builder.ConnectionString;
+    }
+    return cs;
+}
