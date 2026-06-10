@@ -49,10 +49,13 @@ builder.Services.AddScoped<IPasswordHasher, BcryptPasswordHasher>();
 // Use cases — Auth & Groups
 builder.Services.AddScoped<RegisterUser>();
 builder.Services.AddScoped<LoginUser>();
+builder.Services.AddScoped<UpdateProfile>();
 builder.Services.AddScoped<CreateGroup>();
 builder.Services.AddScoped<JoinGroup>();
 builder.Services.AddScoped<GetMyGroups>();
 builder.Services.AddScoped<GetGroupDetail>();
+builder.Services.AddScoped<GetGroupPreview>();
+builder.Services.AddScoped<ResetInviteCode>();
 builder.Services.AddScoped<GoalGoalPredict.Infrastructure.UseCases.Groups.GroupRulesUseCase>();
 
 // Use cases — Matches & Predictions

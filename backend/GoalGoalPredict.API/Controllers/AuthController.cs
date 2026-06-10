@@ -10,7 +10,7 @@ namespace GoalGoalPredict.API.Controllers;
 
 [ApiController]
 [Route("api/auth")]
-public class AuthController(RegisterUser register, LoginUser login, IUserRepository users) : ControllerBase
+public class AuthController(RegisterUser register, LoginUser login, UpdateProfile updateProfile, IUserRepository users) : ControllerBase
 {
     [HttpPost("register")]
     [EnableRateLimiting("auth")]
@@ -57,7 +57,30 @@ public class AuthController(RegisterUser register, LoginUser login, IUserReposit
 
         return Ok(UserDto.From(user));
     }
+
+    [HttpPut("me")]
+    [Authorize]
+    public async Task<IActionResult> UpdateMe([FromBody] UpdateProfileRequest req)
+    {
+        var sub = User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? User.FindFirstValue("sub");
+
+        if (sub is null || !Guid.TryParse(sub, out var userId))
+            return Unauthorized();
+
+        try
+        {
+            var result = await updateProfile.ExecuteAsync(
+                new UpdateProfileInput(userId, req.FirstName, req.LastName));
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
 }
 
 public record RegisterRequest(string Email, string FirstName, string LastName, string Password);
 public record LoginRequest(string Email, string Password);
+public record UpdateProfileRequest(string FirstName, string LastName);
