@@ -9,6 +9,7 @@ public interface IGroupRepository
     Task<List<Group>> GetByUserIdAsync(Guid userId);
     Task<List<GroupMember>> GetMembersAsync(Guid groupId);
     Task AddGroupAsync(Group group);
+    Task UpdateGroupAsync(Group group);
     Task AddMemberAsync(GroupMember member);
     Task AddScoringRulesAsync(GroupScoringRules rules);
     Task<bool> IsMemberAsync(Guid groupId, Guid userId);

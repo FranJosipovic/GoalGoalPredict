@@ -23,6 +23,8 @@ public class Group
 
     public void TransferOwnership(Guid newOwnerUserId) => CreatedByUserId = newOwnerUserId;
 
+    public void RegenerateInviteCode() => InviteCode = GenerateInviteCode();
+
     private static string GenerateInviteCode()
     {
         const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
