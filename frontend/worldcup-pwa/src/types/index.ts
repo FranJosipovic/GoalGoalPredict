@@ -93,10 +93,21 @@ export interface CardEvent {
   cardType: string
 }
 
+export interface SubstitutionEvent {
+  minute: number
+  extraMinute: number | null
+  teamId: number
+  playerInId: number | null
+  playerInName: string | null
+  playerOutId: number | null
+  playerOutName: string | null
+}
+
 export interface MatchDetail extends MatchListItem {
   lineup: LineupPlayer[]
   goals: GoalEvent[]
   cards: CardEvent[]
+  substitutions: SubstitutionEvent[]
   lineupsRevealed: boolean
   lineupRevealUtc: string
 }
@@ -125,6 +136,7 @@ export interface ScorerPick {
   name: string
   position: string
   goalType: string
+  teamId: number
   pointsAwarded: number
 }
 
@@ -132,6 +144,7 @@ export interface CardPick {
   playerId: number
   name: string
   kind: string
+  teamId: number
   pointsAwarded: number
 }
 

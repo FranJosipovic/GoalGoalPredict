@@ -17,8 +17,71 @@ public class AdminController(
     SyncFixtures syncFixtures,
     SyncMissingPlayers syncMissingPlayers,
     PrunePlayers prunePlayers,
+    PollLiveMatch pollLiveMatch,
+    SyncLineups syncLineups,
     AppDbContext db) : ControllerBase
 {
+    private static readonly string[] FinishedStatuses = ["FT", "AET", "PEN"];
+
+    // Finished (API-Football) matches with their stored event + lineup counts, for the
+    // admin "Match Events" sync panel. Most-recent kickoff first. Only finished matches
+    // are listed — those are the ones with complete data worth backfilling.
+    [HttpGet("matches")]
+    public async Task<IActionResult> Matches(CancellationToken ct)
+    {
+        var matches = await db.Matches
+            .Include(m => m.HomeTeam)
+            .Include(m => m.AwayTeam)
+            .Where(m => m.Source == "ApiFootball" && FinishedStatuses.Contains(m.Status))
+            .OrderByDescending(m => m.KickoffUtc)
+            .Select(m => new {
+                m.Id, m.KickoffUtc, m.Status, m.HomeGoals, m.AwayGoals, m.LastSyncedAt,
+                Home = m.HomeTeam.Name, Away = m.AwayTeam.Name,
+                Goals = m.Goals.Count, Cards = m.Cards.Count, Subs = m.Substitutions.Count,
+                Lineup = m.LineupPlayers.Count
+            })
+            .ToListAsync(ct);
+        return Ok(matches);
+    }
+
+    // Pull fixture status + goal/card/substitution events from the API and
+    // upsert only what's missing in the DB (idempotent).
+    [HttpPost("matches/{id:int}/sync-events")]
+    public async Task<IActionResult> SyncMatchEvents(int id, CancellationToken ct)
+    {
+        var match = await db.Matches.FirstOrDefaultAsync(m => m.Id == id, ct);
+        if (match is null) return NotFound();
+        if (match.Source != "ApiFootball")
+            return BadRequest(new { message = "Only real (API-Football) matches can sync events." });
+
+        await pollLiveMatch.ExecuteAsync(id, ct);
+
+        var goals = await db.MatchGoals.CountAsync(g => g.MatchId == id, ct);
+        var cards = await db.MatchCards.CountAsync(c => c.MatchId == id, ct);
+        var subs = await db.MatchSubstitutions.CountAsync(s => s.MatchId == id, ct);
+        return Ok(new { message = $"Synced — {goals} goal(s), {cards} card(s), {subs} substitution(s).", goals, cards, subs });
+    }
+
+    // Pull starting XI + bench from the API. Skips if lineups are already stored
+    // (SyncLineups is a no-op once LineupsAvailable is set).
+    [HttpPost("matches/{id:int}/sync-lineups")]
+    public async Task<IActionResult> SyncMatchLineups(int id, CancellationToken ct)
+    {
+        var match = await db.Matches.FirstOrDefaultAsync(m => m.Id == id, ct);
+        if (match is null) return NotFound();
+        if (match.Source != "ApiFootball")
+            return BadRequest(new { message = "Only real (API-Football) matches can sync lineups." });
+
+        var alreadyHad = match.LineupsAvailable;
+        await syncLineups.ExecuteAsync(id, ct);
+
+        var lineup = await db.MatchLineupPlayers.CountAsync(l => l.MatchId == id, ct);
+        var message = alreadyHad
+            ? $"Lineups already stored — {lineup} player(s), nothing to fetch."
+            : lineup > 0 ? $"Lineups synced — {lineup} player(s)." : "No lineups available from the API yet.";
+        return Ok(new { message, lineup });
+    }
+
     [HttpPost("sync-teams-players")]
     public async Task<IActionResult> SyncTeamsAndPlayers(CancellationToken ct)
     {

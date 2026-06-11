@@ -15,6 +15,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<MatchLineupPlayer> MatchLineupPlayers => Set<MatchLineupPlayer>();
     public DbSet<MatchGoal> MatchGoals => Set<MatchGoal>();
     public DbSet<MatchCard> MatchCards => Set<MatchCard>();
+    public DbSet<MatchSubstitution> MatchSubstitutions => Set<MatchSubstitution>();
     public DbSet<Prediction> Predictions => Set<Prediction>();
     public DbSet<GoalscorerPrediction> GoalscorerPredictions => Set<GoalscorerPrediction>();
     public DbSet<CardPrediction> CardPredictions => Set<CardPrediction>();
@@ -203,6 +204,24 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             b.Ignore(c => c.IsYellow);
             b.Ignore(c => c.IsRed);
             b.HasIndex(c => new { c.MatchId, c.ApiEventOrder }).IsUnique();
+        });
+
+        modelBuilder.Entity<MatchSubstitution>(b =>
+        {
+            b.ToTable("match_substitutions");
+            b.HasKey(s => s.Id);
+            b.Property(s => s.Id).HasColumnName("id");
+            b.Property(s => s.MatchId).HasColumnName("match_id");
+            b.Property(s => s.TeamId).HasColumnName("team_id");
+            b.Property(s => s.Minute).HasColumnName("minute");
+            b.Property(s => s.ExtraMinute).HasColumnName("extra_minute");
+            b.Property(s => s.PlayerInId).HasColumnName("player_in_id");
+            b.Property(s => s.PlayerOutId).HasColumnName("player_out_id");
+            b.Property(s => s.ApiEventOrder).HasColumnName("api_event_order");
+            b.HasOne(s => s.Match).WithMany(m => m.Substitutions).HasForeignKey(s => s.MatchId);
+            b.HasOne(s => s.PlayerIn).WithMany().HasForeignKey(s => s.PlayerInId);
+            b.HasOne(s => s.PlayerOut).WithMany().HasForeignKey(s => s.PlayerOutId);
+            b.HasIndex(s => new { s.MatchId, s.ApiEventOrder }).IsUnique();
         });
 
         modelBuilder.Entity<Prediction>(b =>

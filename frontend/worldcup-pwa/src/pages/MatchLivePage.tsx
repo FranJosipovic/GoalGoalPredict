@@ -1,48 +1,106 @@
-import { useEffect, useState, useCallback } from 'react'
-import { useParams } from 'react-router-dom'
-import Layout from '../components/Layout'
-import NotificationToggle from '../components/NotificationToggle'
-import { getMatchDetail, getMatchPredictions } from '../api/matches'
-import { useAuthStore } from '../store/authStore'
-import type { MatchDetail, GroupPredictions } from '../types'
-
-const posColor: Record<string, string> = {
-  Goalkeeper: '#64b5f6', Defender: '#4db6ac', Midfielder: '#ffd54f', Attacker: '#ef5350'
-}
+import { useEffect, useState, useCallback } from "react";
+import { useParams } from "react-router-dom";
+import Layout from "../components/Layout";
+import NotificationToggle from "../components/NotificationToggle";
+import { getMatchDetail, getMatchPredictions } from "../api/matches";
+import { useAuthStore } from "../store/authStore";
+import PicksByTeam from "../components/PicksByTeam";
+import type { MatchDetail, GroupPredictions } from "../types";
 
 export default function MatchLivePage() {
-  const { groupId, matchId } = useParams<{ groupId: string; matchId: string }>()
-  const { user } = useAuthStore()
-  const [match, setMatch] = useState<MatchDetail | null>(null)
-  const [preds, setPreds] = useState<GroupPredictions | null>(null)
-  const [loading, setLoading] = useState(true)
+  const { groupId, matchId } = useParams<{
+    groupId: string;
+    matchId: string;
+  }>();
+  const { user } = useAuthStore();
+  const [match, setMatch] = useState<MatchDetail | null>(null);
+  const [preds, setPreds] = useState<GroupPredictions | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    if (!matchId || !groupId) return
+    if (!matchId || !groupId) return;
     const [m, p] = await Promise.all([
       getMatchDetail(Number(matchId)),
       getMatchPredictions(Number(matchId), groupId).catch(() => null),
-    ])
-    setMatch(m)
-    setPreds(p)
-    setLoading(false)
-  }, [matchId, groupId])
-
-  useEffect(() => { load() }, [load])
+    ]);
+    setMatch(m);
+    setPreds(p);
+    setLoading(false);
+  }, [matchId, groupId]);
 
   useEffect(() => {
-    if (!match) return
-    const isLive = ['1H','HT','2H','ET','P'].includes(match.status)
-    if (!isLive) return
-    const t = setInterval(load, 30000)
-    return () => clearInterval(t)
-  }, [match, load])
+    load();
+  }, [load]);
 
-  if (loading) return <Layout showBack><div className="loading-state"><span className="loading-ball">⚽</span></div></Layout>
-  if (!match) return <Layout showBack><div className="empty-state"><p>Match not found</p></div></Layout>
+  useEffect(() => {
+    if (!match) return;
+    const isLive = ["1H", "HT", "2H", "ET", "P"].includes(match.status);
+    if (!isLive) return;
+    const t = setInterval(load, 30000);
+    return () => clearInterval(t);
+  }, [match, load]);
 
-  const isLive = ['1H','HT','2H','ET','P'].includes(match.status)
-  const isFinished = ['FT','AET','PEN'].includes(match.status)
+  if (loading)
+    return (
+      <Layout showBack>
+        <div className="loading-state">
+          <span className="loading-ball">⚽</span>
+        </div>
+      </Layout>
+    );
+  if (!match)
+    return (
+      <Layout showBack>
+        <div className="empty-state">
+          <p>Match not found</p>
+        </div>
+      </Layout>
+    );
+
+  const isLive = ["1H", "HT", "2H", "ET", "P"].includes(match.status);
+  const isFinished = ["FT", "AET", "PEN"].includes(match.status);
+  const myPred = preds?.predictions.find((p) => p.userId === user?.id) ?? null;
+
+  type Ev = {
+    minute: number;
+    extraMinute: number | null;
+    teamId: number;
+    kind: "goal" | "card" | "sub";
+    goalType?: string;
+    cardType?: string;
+    main?: string | null;
+    inName?: string | null;
+    outName?: string | null;
+  };
+  const events: Ev[] = [
+    ...match.goals.map((g) => ({
+      minute: g.minute,
+      extraMinute: g.extraMinute,
+      teamId: g.teamId,
+      kind: "goal" as const,
+      goalType: g.goalType,
+      main: g.scorerName,
+    })),
+    ...match.cards.map((c) => ({
+      minute: c.minute,
+      extraMinute: c.extraMinute,
+      teamId: c.teamId,
+      kind: "card" as const,
+      cardType: c.cardType,
+      main: c.playerName,
+    })),
+    ...match.substitutions.map((s) => ({
+      minute: s.minute,
+      extraMinute: s.extraMinute,
+      teamId: s.teamId,
+      kind: "sub" as const,
+      inName: s.playerInName,
+      outName: s.playerOutName,
+    })),
+  ].sort(
+    (a, b) =>
+      a.minute - b.minute || (a.extraMinute ?? 0) - (b.extraMinute ?? 0),
+  );
 
   return (
     <Layout title="Match" showBack>
@@ -50,20 +108,33 @@ export default function MatchLivePage() {
         {/* Score header */}
         <div className="live-scoreboard">
           <div className="live-team">
-            <img src={match.homeTeam.logoUrl} className="live-team-logo" alt="" />
+            <img
+              src={match.homeTeam.logoUrl}
+              className="live-team-logo"
+              alt=""
+            />
             <span className="live-team-name">{match.homeTeam.name}</span>
           </div>
           <div className="live-score-block">
             <div className="live-score-nums">
-              <span>{match.homeGoals ?? '-'}</span>
+              <span>{match.homeGoals ?? "-"}</span>
               <span className="live-score-colon">:</span>
-              <span>{match.awayGoals ?? '-'}</span>
+              <span>{match.awayGoals ?? "-"}</span>
             </div>
-            {isLive && <div className="live-indicator"><span className="live-dot" />{match.elapsedMinutes}'</div>}
+            {isLive && (
+              <div className="live-indicator">
+                <span className="live-dot" />
+                {match.elapsedMinutes}'
+              </div>
+            )}
             {isFinished && <div className="ft-label">FULL TIME</div>}
           </div>
           <div className="live-team live-team--right">
-            <img src={match.awayTeam.logoUrl} className="live-team-logo" alt="" />
+            <img
+              src={match.awayTeam.logoUrl}
+              className="live-team-logo"
+              alt=""
+            />
             <span className="live-team-name">{match.awayTeam.name}</span>
           </div>
         </div>
@@ -73,54 +144,74 @@ export default function MatchLivePage() {
           <NotificationToggle />
         </div>
 
-        {/* Goals timeline */}
-        {match.goals.length > 0 && (
-          <div className="goals-timeline">
-            <div className="section-label">GOALS</div>
-            {match.goals.map((g, i) => (
-              <div key={i} className={`goal-event ${g.teamId === match.homeTeam.id ? 'goal-event--home' : 'goal-event--away'}`}>
-                <span className="goal-min">{g.minute}{g.extraMinute ? `+${g.extraMinute}` : ''}'</span>
-                <span className="goal-type-icon">
-                  {g.goalType === 'Penalty' ? '(P)' : g.goalType === 'Own Goal' ? '(OG)' : '⚽'}
-                </span>
-                <span className="goal-scorer">{g.scorerName ?? 'Unknown'}</span>
-              </div>
-            ))}
+        {/* My prediction */}
+        {myPred && (
+          <div className="my-pred">
+            <div className="my-pred-head">
+              <span className="section-label">YOUR PREDICTION</span>
+              <span className="my-pred-pts">
+                {myPred.projectedPoints}
+                <em>{isFinished ? "pts" : "proj"}</em>
+              </span>
+            </div>
+            <div className="my-pred-score">
+              <span>{match.homeTeam.code || match.homeTeam.name}</span>
+              <strong>
+                {myPred.predHome} : {myPred.predAway}
+              </strong>
+              <span>{match.awayTeam.code || match.awayTeam.name}</span>
+            </div>
+            <PicksByTeam
+              scorers={myPred.scorers}
+              cards={myPred.cards}
+              home={match.homeTeam}
+              away={match.awayTeam}
+            />
           </div>
         )}
 
-        {/* Group predictions */}
-        {preds && preds.predictions.length > 0 && (
-          <div className="live-predictions">
-            <div className="section-label">GROUP PREDICTIONS</div>
-            {preds.predictions.map(p => {
-              const isMe = p.userId === user?.id
+        {/* Match events — goals, cards and subs in one timeline */}
+        {events.length > 0 && (
+          <div className="events-timeline">
+            <div className="section-label">MATCH EVENTS</div>
+            {events.map((e, i) => {
+              const home = e.teamId === match.homeTeam.id;
               return (
-                <div key={p.userId} className={`live-pred-row ${isMe ? 'live-pred-row--me' : ''}`}>
-                  <div className="live-pred-user">
-                    <div className="live-pred-avatar">
-                      {p.firstName[0]}{p.lastName[0]}
-                    </div>
-                    <div>
-                      <div className="live-pred-name">
-                        {p.firstName} {isMe && <span className="you-badge">you</span>}
-                      </div>
-                      <div className="live-pred-pick">{p.predHome}:{p.predAway}</div>
-                    </div>
-                  </div>
-                  <div className="live-pred-scorers">
-                    {p.scorers.map((s, i) => (
-                      <span key={i} className="live-scorer-chip" style={{ borderColor: posColor[s.position] }}>
-                        {s.name.split(' ').pop()}
-                      </span>
-                    ))}
-                  </div>
-                  <div className="live-pred-pts">
-                    <span className="live-pts-num">{p.projectedPoints}</span>
-                    <span className="live-pts-label">pts</span>
+                <div
+                  key={i}
+                  className={`ev-row ${home ? "ev-row--home" : "ev-row--away"}`}
+                >
+                  <span className="ev-min">
+                    {e.minute}
+                    {e.extraMinute ? `+${e.extraMinute}` : ""}'
+                  </span>
+                  <span className="ev-icon">
+                    {e.kind === "goal"
+                      ? e.goalType === "Penalty"
+                        ? "⚽(P)"
+                        : e.goalType === "Own Goal"
+                          ? "⚽(OG)"
+                          : "⚽"
+                      : e.kind === "card"
+                        ? e.cardType === "Red Card"
+                          ? "🟥"
+                          : "🟨"
+                        : ""}
+                  </span>
+                  <div className="ev-text">
+                    {e.kind === "sub" ? (
+                      <>
+                        <span className="ev-in">▲ {e.inName ?? "Unknown"}</span>
+                        <span className="ev-out">
+                          ▼ {e.outName ?? "Unknown"}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="ev-main">{e.main ?? "Unknown"}</span>
+                    )}
                   </div>
                 </div>
-              )
+              );
             })}
           </div>
         )}
@@ -130,12 +221,12 @@ export default function MatchLivePage() {
           <div className="lineup-section">
             <div className="section-label">LINEUPS</div>
             <div className="lineup-cols">
-              {[match.homeTeam, match.awayTeam].map(team => (
+              {[match.homeTeam, match.awayTeam].map((team) => (
                 <div key={team.id} className="lineup-col">
                   <div className="lineup-team-name">{team.name}</div>
                   {match.lineup
-                    .filter(l => l.teamId === team.id && l.isStarting)
-                    .map(l => (
+                    .filter((l) => l.teamId === team.id && l.isStarting)
+                    .map((l) => (
                       <div key={l.playerId} className="lineup-player">
                         <span className="lineup-num">#{l.shirtNumber}</span>
                         <span className="lineup-name">{l.name}</span>
@@ -149,5 +240,5 @@ export default function MatchLivePage() {
         )}
       </div>
     </Layout>
-  )
+  );
 }

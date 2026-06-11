@@ -5,6 +5,7 @@ import {
   compareTeams, compareFixtures, comparePlayers,
   syncTeamsPlayers, syncMissingPlayers, syncFixtures, prunePlayers,
   setPlayerActive, deletePlayer,
+  getAdminMatches, syncMatchEvents, syncMatchLineups,
 } from '../../api/admin'
 
 interface FieldDiff { field: string; db: string | null; api: string | null }
@@ -14,6 +15,11 @@ interface CompareResult {
   missingInDb: number; extraInDb: number; diffs: EntityDiff[]
 }
 interface TeamPlayersCompare { teamId: number; teamName: string; result: CompareResult }
+interface AdminMatch {
+  id: number; kickoffUtc: string; status: string
+  homeGoals: number | null; awayGoals: number | null; lastSyncedAt: string
+  home: string; away: string; goals: number; cards: number; subs: number; lineup: number
+}
 
 const stateLabel: Record<string, string> = {
   mismatch: 'Mismatch', missing_in_db: 'Missing in DB', extra_in_db: 'Extra in DB',
@@ -73,6 +79,7 @@ export default function AdminSync() {
   const [teams, setTeams] = useState<CompareResult | null>(null)
   const [fixtures, setFixtures] = useState<CompareResult | null>(null)
   const [players, setPlayers] = useState<TeamPlayersCompare[] | null>(null)
+  const [matches, setMatches] = useState<AdminMatch[] | null>(null)
 
   const run = async (key: string, fn: () => Promise<any>, after?: (d: any) => void) => {
     setBusy(key); setErr(null); setMsg(null)
@@ -143,6 +150,18 @@ export default function AdminSync() {
     )
   }
 
+  const syncMatch = async (key: string, fn: () => Promise<any>) => {
+    setBusy(key); setErr(null); setMsg(null)
+    try {
+      const r = await fn()
+      if (r?.message) setMsg(r.message)
+      const fresh: AdminMatch[] = await getAdminMatches()
+      setMatches(fresh)
+    } catch (e: any) {
+      setErr(e?.response?.data?.message ?? e?.message ?? 'Sync failed')
+    } finally { setBusy(null) }
+  }
+
   const playersWithDiffs = players?.filter(p =>
     p.result.mismatched + p.result.missingInDb + p.result.extraInDb > 0) ?? []
 
@@ -185,6 +204,53 @@ export default function AdminSync() {
           </div>
         </div>
         {fixtures && <><Summary r={fixtures} /><DiffTable diffs={fixtures.diffs} /></>}
+      </div>
+
+      {/* Match events */}
+      <div className="admin-section">
+        <div className="admin-compare-head">
+          <h2 className="admin-section-title">Match Events & Lineups</h2>
+          <div className="admin-compare-actions">
+            <button className="admin-btn admin-btn--ghost" disabled={!!busy}
+              onClick={() => run('load-matches', getAdminMatches, setMatches)}>
+              {busy === 'load-matches' ? 'Loading…' : 'Load matches'}
+            </button>
+          </div>
+        </div>
+        <p className="admin-hint">Finished matches only. Pulls status + goals/cards/subs (events) or starting XI + bench (lineups) from the API and upserts only what's missing. Safe to run repeatedly.</p>
+        {matches && (
+          matches.length === 0
+            ? <p className="admin-empty">No finished matches.</p>
+            : (
+              <table className="admin-table">
+                <thead>
+                  <tr><th>Match</th><th>Kickoff</th><th>Status</th><th>Score</th><th>Events (G/C/S)</th><th>Lineup</th><th></th></tr>
+                </thead>
+                <tbody>
+                  {matches.map(m => (
+                    <tr key={m.id}>
+                      <td>{m.home} vs {m.away} <span className="admin-dim">#{m.id}</span></td>
+                      <td>{new Date(m.kickoffUtc).toLocaleString()}</td>
+                      <td><span className="admin-diff-state">{m.status}</span></td>
+                      <td>{m.homeGoals ?? '—'} : {m.awayGoals ?? '—'}</td>
+                      <td>{m.goals} / {m.cards} / {m.subs}</td>
+                      <td>{m.lineup}</td>
+                      <td className="admin-row-actions">
+                        <button className="admin-btn admin-btn--primary admin-btn--xs" disabled={!!busy}
+                          onClick={() => syncMatch(`evt-${m.id}`, () => syncMatchEvents(m.id))}>
+                          {busy === `evt-${m.id}` ? 'Syncing…' : 'Sync events'}
+                        </button>
+                        <button className="admin-btn admin-btn--secondary admin-btn--xs" disabled={!!busy}
+                          onClick={() => syncMatch(`lu-${m.id}`, () => syncMatchLineups(m.id))}>
+                          {busy === `lu-${m.id}` ? 'Syncing…' : 'Sync lineups'}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )
+        )}
       </div>
 
       {/* Players */}

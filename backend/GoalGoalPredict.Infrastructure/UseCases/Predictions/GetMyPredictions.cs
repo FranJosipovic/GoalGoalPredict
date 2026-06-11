@@ -48,10 +48,10 @@ public class GetMyPredictions(AppDbContext db, EffectiveRulesService effectiveRu
                     rules, cardPicks.Select(c => (c.PlayerId, c.Kind)), goals, cards);
 
                 var scorers = scorerPicks
-                    .Select((g, idx) => new ScorerPickDto(g.PlayerId, g.Player.Name, g.Player.Position.ToString(), g.GoalType, scorerAwards[idx]))
+                    .Select((g, idx) => new ScorerPickDto(g.PlayerId, g.Player.Name, g.Player.Position.ToString(), g.GoalType, g.Player.TeamId, scorerAwards[idx]))
                     .ToList();
                 var cardDtos = cardPicks
-                    .Select((c, idx) => new CardPickDto(c.PlayerId, c.Player.Name, c.Kind.ToString(), cardAwards[idx]))
+                    .Select((c, idx) => new CardPickDto(c.PlayerId, c.Player.Name, c.Kind.ToString(), c.Player.TeamId, cardAwards[idx]))
                     .ToList();
 
                 int? finalPoints = p.Score?.TotalPoints;

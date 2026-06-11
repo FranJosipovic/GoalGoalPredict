@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate, Navigate } from 'react-router-dom'
 import { getGroupDetail } from '../api/groups'
 import Layout from '../components/Layout'
@@ -20,6 +20,24 @@ export default function GroupDetailPage() {
   const setTab = (t: Tab) => navigate(`/groups/${id}/${t}`)
   const [group, setGroup] = useState<GroupDetail | null>(null)
   const [loading, setLoading] = useState(true)
+  const touchStart = useRef<{ x: number; y: number } | null>(null)
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    const t = e.touches[0]
+    touchStart.current = { x: t.clientX, y: t.clientY }
+  }
+  const onTouchEnd = (e: React.TouchEvent) => {
+    if (!touchStart.current) return
+    const t = e.changedTouches[0]
+    const dx = t.clientX - touchStart.current.x
+    const dy = t.clientY - touchStart.current.y
+    touchStart.current = null
+    // Horizontal swipe only: ignore mostly-vertical gestures (scrolling).
+    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return
+    const i = TABS.indexOf(tab)
+    const next = dx < 0 ? i + 1 : i - 1
+    if (next >= 0 && next < TABS.length) setTab(TABS[next])
+  }
 
   useEffect(() => {
     if (!id) return
@@ -77,17 +95,17 @@ export default function GroupDetailPage() {
           <NotificationToggle />
         </div>
 
-        <div className="hub-content">
+        <div className="hub-content" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
           {tab === 'matches' && (
             <MatchesTab
               groupId={id}
-              onMatchClick={(matchId) => navigate(`/groups/${id}/match/${matchId}`)}
+              onMatchClick={(matchId, openDetail) => navigate(`/groups/${id}/match/${matchId}${openDetail ? '/live' : ''}`)}
             />
           )}
           {tab === 'mypicks' && (
             <PicksTab
               groupId={id}
-              onMatchClick={(matchId) => navigate(`/groups/${id}/match/${matchId}`)}
+              onMatchClick={(matchId, openDetail) => navigate(`/groups/${id}/match/${matchId}${openDetail ? '/live' : ''}`)}
             />
           )}
           {tab === 'leaderboard' && <LeaderboardTab groupId={id} />}

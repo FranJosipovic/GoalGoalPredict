@@ -1335,7 +1335,59 @@ input { font-family: inherit; }
 .goal-min { font-family: 'Oswald', sans-serif; font-size: 13px; font-weight: 600; color: var(--accent); width: 40px; }
 .goal-event--away .goal-min { text-align: right; }
 .goal-type-icon { font-size: 14px; }
-.goal-scorer { font-size: 14px; color: var(--text); }
+.goal-scorer { font-size: 14px; color: var(--text); flex: 1; }
+
+/* My prediction */
+.my-pred {
+  margin: 0 16px 16px;
+  padding: 14px;
+  background: var(--accent-glow);
+  border: 1px solid var(--accent-dim);
+  border-radius: var(--radius);
+}
+.my-pred-head { display: flex; align-items: center; justify-content: space-between; }
+.my-pred-head .section-label { padding: 0; }
+.my-pred-pts { font-family: 'Oswald', sans-serif; font-size: 22px; font-weight: 700; color: var(--accent); line-height: 1; }
+.my-pred-pts em { font-size: 9px; font-style: normal; color: var(--text-muted); letter-spacing: 0.06em; text-transform: uppercase; margin-left: 3px; }
+.my-pred-score { display: flex; align-items: center; justify-content: center; gap: 12px; margin: 10px 0; font-size: 13px; color: var(--text-muted); }
+.my-pred-score strong { font-family: 'Oswald', sans-serif; font-size: 24px; color: var(--text); }
+
+/* Picks grouped by team (shared: match detail, Picks tab, player history) */
+/* Two columns: home on the left, away on the right; picks stacked as a list. */
+.picks-teams { display: flex; align-items: flex-start; gap: 12px; }
+.picks-team { flex: 1; min-width: 0; }
+.picks-team-label {
+  display: flex; align-items: center; gap: 6px;
+  font-family: 'Oswald', sans-serif; font-size: 12px; letter-spacing: 0.04em;
+  color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px;
+}
+.picks-team-logo { width: 16px; height: 16px; object-fit: contain; }
+.picks-team-chips { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.picks-team-empty { font-size: 13px; color: var(--text-muted); }
+.picks-team--away .picks-team-label { flex-direction: row-reverse; }
+.picks-team--away .picks-team-chips { align-items: flex-end; }
+.picks-team--away .picks-team-empty { display: block; text-align: right; }
+.pick-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 12px; color: var(--text);
+  padding: 4px 9px; border-radius: 999px;
+  background: var(--surface); border: 1px solid var(--border-solid); border-left-width: 3px;
+}
+.pick-chip strong { font-weight: 700; font-size: 11px; color: var(--accent); }
+.pick-chip--hit { background: var(--accent-glow); }
+
+/* Match events (unified goals / cards / subs) */
+.events-timeline { padding: 0 20px 16px; }
+.ev-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+.ev-row--home { flex-direction: row; text-align: left; }
+.ev-row--away { flex-direction: row-reverse; text-align: right; }
+.ev-min { font-family: 'Oswald', sans-serif; font-size: 13px; font-weight: 600; color: var(--accent); width: 40px; flex-shrink: 0; }
+.ev-icon { font-size: 13px; flex-shrink: 0; }
+.ev-text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.ev-main { font-size: 14px; color: var(--text); }
+.ev-in { font-size: 14px; color: #4caf50; }
+.ev-out { font-size: 13px; color: #ef5350; }
+
 .live-predictions { padding: 0 16px 16px; }
 .live-pred-row {
   display: flex;
@@ -1468,10 +1520,12 @@ input { font-family: inherit; }
 }
 .picks-name { font-size: 13px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .picks-pick { font-family: 'Oswald', sans-serif; font-size: 14px; color: var(--text); font-variant-numeric: tabular-nums; }
-.picks-pts { font-family: 'Oswald', sans-serif; font-size: 16px; font-weight: 600; color: var(--accent); grid-row: span 2; text-align: right; }
+.picks-pts { font-family: 'Oswald', sans-serif; font-size: 16px; font-weight: 600; color: var(--accent); grid-column: 2; grid-row: 1; align-self: start; text-align: right; }
 .picks-pts small { font-size: 9px; color: var(--text-muted); margin-left: 2px; }
 .picks-row-scorers { grid-column: 1; display: flex; flex-wrap: wrap; gap: 6px; padding-left: 32px; }
 .picks-scorer { font-size: 11px; }
+/* Group-picks grouping sits below the player's name + predicted score. */
+.picks-row-picks { grid-column: 1; padding-left: 32px; padding-top: 6px; }
 
 /* Match screen (predict page restructure) */
 .predict-status {

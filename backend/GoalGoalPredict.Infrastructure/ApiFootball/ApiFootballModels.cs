@@ -109,6 +109,7 @@ internal class EventResponse
     [JsonPropertyName("time")] public ApiEventTime Time { get; set; } = null!;
     [JsonPropertyName("team")] public ApiEventTeam Team { get; set; } = null!;
     [JsonPropertyName("player")] public ApiEventPlayer Player { get; set; } = null!;
+    [JsonPropertyName("assist")] public ApiEventPlayer? Assist { get; set; }
     [JsonPropertyName("type")] public string Type { get; set; } = "";
     [JsonPropertyName("detail")] public string Detail { get; set; } = "";
 }
