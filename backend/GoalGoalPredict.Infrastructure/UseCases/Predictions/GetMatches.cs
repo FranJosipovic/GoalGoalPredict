@@ -47,6 +47,7 @@ public class GetMatches(AppDbContext db)
             .Include(m => m.LineupPlayers).ThenInclude(l => l.Player)
             .Include(m => m.Goals).ThenInclude(g => g.Scorer)
             .Include(m => m.Cards).ThenInclude(c => c.Player)
+            .AsSplitQuery()
             .FirstOrDefaultAsync(m => m.Id == matchId, ct);
 
         if (m is null) return null;
