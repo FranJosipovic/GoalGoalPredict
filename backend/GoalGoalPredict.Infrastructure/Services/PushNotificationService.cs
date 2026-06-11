@@ -24,6 +24,31 @@ public class PushNotificationService(AppDbContext db, IConfiguration config, ILo
         await SendToUsersAsync(memberIds, title, body, ct, url);
     }
 
+    // Notify everyone in a group that predicts this real (multi-group) match — once per
+    // user even if they're in several participating groups — deep-linking each to one of
+    // their groups for the match. Mirrors what sim matches send to their single group.
+    public async Task SendToMatchGroupsAsync(int matchId, string title, string body, CancellationToken ct = default)
+    {
+        var groupIds = await db.Predictions
+            .Where(p => p.MatchId == matchId)
+            .Select(p => p.GroupId)
+            .Distinct()
+            .ToListAsync(ct);
+
+        var notified = new HashSet<Guid>();
+        foreach (var gid in groupIds)
+        {
+            var memberIds = await db.GroupMembers
+                .Where(m => m.GroupId == gid)
+                .Select(m => m.UserId)
+                .ToListAsync(ct);
+
+            var fresh = memberIds.Where(id => notified.Add(id)).ToList();
+            if (fresh.Count > 0)
+                await SendToUsersAsync(fresh, title, body, ct, $"/groups/{gid}/match/{matchId}");
+        }
+    }
+
     public async Task SendToUsersAsync(IEnumerable<Guid> userIds, string title, string body, CancellationToken ct = default, string? url = null)
     {
         var subscriptions = await db.PushSubscriptions

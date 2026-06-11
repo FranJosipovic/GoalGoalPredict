@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import Layout from '../components/Layout'
 import NotificationToggle from '../components/NotificationToggle'
+import PredictionPitch, { type PlayerBadge } from '../components/PredictionPitch'
 import { getMatchDetail, getMyPrediction, upsertPrediction } from '../api/matches'
 import { getGroupRules } from '../api/groups'
 import { getTeamSquad } from '../api/teams'
@@ -56,6 +57,7 @@ export default function MatchPredictPage() {
   const [activeTeam, setActiveTeam] = useState<Side>('home')
   const [pickerMode, setPickerMode] = useState<'goal' | 'owngoal'>('goal')
   const [extraCat, setExtraCat] = useState<ExtraCat | null>(null)
+  const [sheetPlayerId, setSheetPlayerId] = useState<number | null>(null)
 
   const countdown = useCountdown(match?.kickoffUtc ?? '')
   const lineupCountdown = useCountdown(match?.lineupRevealUtc ?? '')
@@ -239,6 +241,55 @@ export default function MatchPredictPage() {
   const allSquad = [...homePlayers, ...awayPlayers]
   const nameOf = (id: number) => allSquad.find(p => p.id === id)?.name ?? 'Player'
   const surnameOf = (id: number) => nameOf(id).split(' ').pop()
+  const playerOf = (id: number) => allSquad.find(p => p.id === id)
+
+  // ---- Pitch-based predicting (only once the official XIs are revealed) ----
+  const pitchMode = !isLocked && match.lineupsRevealed && match.lineup.length > 0
+  const homeIdSet = new Set(homePlayers.map(p => p.id))
+  const sideOf = (id: number): Side => homeIdSet.has(id) ? 'home' : 'away'
+  const xiFor = (teamId: number) =>
+    match.lineup.filter(l => l.isStarting && l.teamId === teamId)
+  const activeTeamId = activeTeam === 'home' ? match.homeTeam.id : match.awayTeam.id
+
+  const countGoals = (id: number, t: GoalType) =>
+    scorers.filter(s => s.playerId === id && s.goalType === t).length
+
+  // A normal/penalty goal feeds the scorer's own side; an own goal feeds the opponent.
+  const goalSide = (id: number, t: GoalType): Side => {
+    const owner = sideOf(id)
+    if (t !== 'Own Goal') return owner
+    return owner === 'home' ? 'away' : 'home'
+  }
+
+  // A side is "full" once it has as many named scorers as predicted goals.
+  const sideFull = (side: Side) =>
+    sidePicks(side).length >= (side === 'home' ? homeGoals : awayGoals)
+
+  const addGoal = (id: number, t: GoalType) => {
+    const side = goalSide(id, t)
+    if (sideFull(side)) return   // capped by the predicted scoreline — set the score first
+    setScorers(prev => [...prev, { playerId: id, goalType: t, side }])
+  }
+
+  const removeGoal = (id: number, t: GoalType) => {
+    const side = goalSide(id, t)
+    setScorers(prev => {
+      const idx = prev.findIndex(s => s.playerId === id && s.goalType === t && s.side === side)
+      return idx < 0 ? prev : prev.filter((_, i) => i !== idx)
+    })
+  }
+
+  const badgesForPlayer = (id: number): PlayerBadge[] => {
+    const out: PlayerBadge[] = []
+    const n = countGoals(id, 'Normal Goal')
+    const p = countGoals(id, 'Penalty')
+    const og = countGoals(id, 'Own Goal')
+    if (n) out.push({ icon: '⚽', count: n })
+    if (p) out.push({ icon: '🅿️', count: p })
+    if (og) out.push({ icon: '🥅', count: og })
+    for (const e of extras.filter(e => e.playerId === id)) out.push({ icon: EXTRA_ICONS[e.category] })
+    return out
+  }
 
   // Players to choose from in the picker, by tally + mode.
   const pickFromTeam = pickerMode === 'owngoal'
@@ -470,7 +521,7 @@ export default function MatchPredictPage() {
           </div>
         )}
 
-        {lineupsBlock}
+        {!pitchMode && lineupsBlock}
 
         {/* GOALS & CARDS TIMELINE (locked only) */}
         {isLocked && (
@@ -546,7 +597,42 @@ export default function MatchPredictPage() {
             </div>
             )}
 
-            {anyScorerEnabled && (homeGoals > 0 || awayGoals > 0) && (
+            {/* Cards overview (pitch mode) — kept above the pitch so squads stay at the bottom */}
+            {pitchMode && enabledCats.length > 0 && extras.length > 0 && (
+              <div className="extra-section">
+                <div className="scorer-header">
+                  <span className="scorer-title">CARDS &amp; PENALTIES</span>
+                </div>
+                <div className="extra-chips">
+                  {extras.map((e, i) => (
+                    <span key={i} className="extra-chip" onClick={() => toggleExtra(e.playerId, e.category)}>
+                      {EXTRA_ICONS[e.category]} {surnameOf(e.playerId)} ✕
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {pitchMode && (
+              <div className="pitch-predictor">
+                <div className="picker-team-switch">
+                  <button className={`picker-team-btn ${activeTeam === 'home' ? 'active' : ''}`} onClick={() => setActiveTeam('home')}>
+                    {match.homeTeam.code} ({sidePicks('home').length}/{homeGoals})
+                  </button>
+                  <button className={`picker-team-btn ${activeTeam === 'away' ? 'active' : ''}`} onClick={() => setActiveTeam('away')}>
+                    {match.awayTeam.code} ({sidePicks('away').length}/{awayGoals})
+                  </button>
+                </div>
+                <PredictionPitch
+                  players={xiFor(activeTeamId)}
+                  badgesFor={badgesForPlayer}
+                  onPlayerTap={setSheetPlayerId}
+                />
+                <p className="pitch-predictor-hint">Tap a player to predict their goals &amp; cards</p>
+              </div>
+            )}
+
+            {!pitchMode && anyScorerEnabled && (homeGoals > 0 || awayGoals > 0) && (
               <div className="player-picker">
                 <div className="picker-team-switch">
                   <button className={`picker-team-btn ${activeTeam === 'home' ? 'active' : ''}`} onClick={() => { setActiveTeam('home'); setPickerMode(scorerEnabled ? 'goal' : 'owngoal') }}>
@@ -587,7 +673,7 @@ export default function MatchPredictPage() {
             )}
 
             {/* SPECIAL PICKS (cards / missed pen) */}
-            {enabledCats.length > 0 && (
+            {!pitchMode && enabledCats.length > 0 && (
               <div className="extra-section">
                 <div className="scorer-header">
                   <span className="scorer-title">CARDS &amp; PENALTIES</span>
@@ -658,6 +744,69 @@ export default function MatchPredictPage() {
             </div>
           </>
         )}
+
+        {/* Per-player prediction sheet (pitch mode) */}
+        {pitchMode && sheetPlayerId != null && (() => {
+          const pid = sheetPlayerId
+          const pl = playerOf(pid)
+          const oppCode = sideOf(pid) === 'home' ? match.awayTeam.code : match.homeTeam.code
+          const goalRow = (icon: string, label: string, sub: string, type: GoalType) => {
+            const full = sideFull(goalSide(pid, type))
+            return (
+              <div className="pp-row">
+                <span className="pp-row-icon">{icon}</span>
+                <span className="pp-row-text">
+                  <span className="pp-row-label">{label}</span>
+                  <span className="pp-row-sub">{full && countGoals(pid, type) === 0 ? 'set the score first' : sub}</span>
+                </span>
+                <span className="pp-stepper">
+                  <button className="pp-step-btn" onClick={() => removeGoal(pid, type)} disabled={countGoals(pid, type) === 0}>−</button>
+                  <span className="pp-step-val">{countGoals(pid, type)}</span>
+                  <button className="pp-step-btn pp-step-btn--add" onClick={() => addGoal(pid, type)} disabled={full}>+</button>
+                </span>
+              </div>
+            )
+          }
+          return (
+            <div className="pp-sheet-overlay" onClick={() => setSheetPlayerId(null)}>
+              <div className="pp-sheet" onClick={e => e.stopPropagation()}>
+                <div className="pp-sheet-head">
+                  <span className="pp-sheet-num">#{pl?.shirtNumber}</span>
+                  <span className="pp-sheet-name">{pl?.name}</span>
+                  <span className="player-pos-badge">{(pl?.position ?? '').slice(0, 3).toUpperCase()}</span>
+                  <button className="pp-sheet-close" onClick={() => setSheetPlayerId(null)} aria-label="Close">✕</button>
+                </div>
+
+                {scorerEnabled && goalRow('⚽', 'Goal', `${posPoints(pl?.position ?? '')} pt each`, 'Normal Goal')}
+                {scorerEnabled && goalRow('🅿️', 'Penalty', `${posPoints(pl?.position ?? '')} pt each`, 'Penalty')}
+                {ownEnabled && goalRow('🥅', 'Own goal', `counts for ${oppCode} · ${rules?.ownGoalPoints ?? 0} pt`, 'Own Goal')}
+
+                {enabledCats.length > 0 && (
+                  <div className="pp-cards">
+                    {enabledCats.map(cat => {
+                      const on = extras.some(e => e.category === cat && e.playerId === pid)
+                      const cap = capFor(cat)
+                      const full = extrasOf(cat).length >= cap && !on
+                      return (
+                        <button
+                          key={cat}
+                          className={`pp-card-toggle ${on ? 'pp-card-toggle--on' : ''}`}
+                          disabled={full}
+                          onClick={() => toggleExtra(pid, cat)}
+                        >
+                          {EXTRA_ICONS[cat]} {EXTRA_LABELS[cat]}
+                          <span className="pp-card-count">{extrasOf(cat).length}{cap !== Infinity ? `/${cap}` : ''}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+
+                <button className="pp-sheet-done" onClick={() => setSheetPlayerId(null)}>Done</button>
+              </div>
+            </div>
+          )
+        })()}
       </div>
     </Layout>
   )

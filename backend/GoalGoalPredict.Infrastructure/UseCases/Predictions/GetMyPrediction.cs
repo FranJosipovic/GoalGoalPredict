@@ -11,6 +11,7 @@ public class GetMyPrediction(AppDbContext db)
         var prediction = await db.Predictions
             .Include(p => p.GoalscorerPredictions)
             .Include(p => p.CardPredictions)
+            .AsSplitQuery()
             .FirstOrDefaultAsync(p => p.UserId == userId && p.MatchId == matchId && p.GroupId == groupId, ct);
 
         if (prediction is null) return null;
