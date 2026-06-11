@@ -34,6 +34,15 @@ export const syncMissingPlayers = () =>
 export const syncFixtures = () =>
   client.post('/admin/sync-fixtures').then(r => r.data)
 
+export const getAdminMatches = () =>
+  client.get('/admin/matches').then(r => r.data)
+
+export const syncMatchEvents = (id: number) =>
+  client.post(`/admin/matches/${id}/sync-events`).then(r => r.data)
+
+export const syncMatchLineups = (id: number) =>
+  client.post(`/admin/matches/${id}/sync-lineups`).then(r => r.data)
+
 // ── Compare DB vs API ─────────────────────────────────────────
 export const compareTeams = () =>
   client.get('/admin/compare/teams').then(r => r.data)

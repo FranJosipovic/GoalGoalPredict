@@ -4,7 +4,7 @@ import type { MatchListItem } from '../../types'
 
 interface Props {
   groupId: string
-  onMatchClick: (matchId: number, isLive: boolean) => void
+  onMatchClick: (matchId: number, openDetail: boolean) => void
 }
 
 const LIVE_STATUSES = ['1H', 'HT', '2H', 'ET', 'P']
@@ -186,7 +186,7 @@ export default function MatchesTab({ groupId, onMatchClick }: Props) {
               <MatchCard
                 key={m.id}
                 match={m}
-                onClick={() => onMatchClick(m.id, LIVE_STATUSES.includes(m.status))}
+                onClick={() => onMatchClick(m.id, LIVE_STATUSES.includes(m.status) || FINISHED_STATUSES.includes(m.status))}
               />
             ))}
           </div>

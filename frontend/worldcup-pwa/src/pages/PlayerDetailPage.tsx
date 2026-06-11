@@ -2,22 +2,11 @@ import { useEffect, useState } from 'react'
 import { useParams, useLocation } from 'react-router-dom'
 import Layout from '../components/Layout'
 import { getUserPredictions } from '../api/matches'
+import PicksByTeam from '../components/PicksByTeam'
 import type { MyPredictionItem } from '../types'
 
 const LIVE_STATUSES = ['1H', 'HT', '2H', 'ET', 'P']
 const FINISHED_STATUSES = ['FT', 'AET', 'PEN']
-
-const POS_COLOR: Record<string, string> = {
-  Goalkeeper: '#64b5f6', Defender: '#4db6ac', Midfielder: '#ffd54f', Attacker: '#ef5350',
-}
-
-const CARD_ICON: Record<string, string> = { Yellow: '🟨', Red: '🟥', MissedPenalty: '❌' }
-
-function typeTag(goalType: string) {
-  if (goalType === 'Penalty') return ' (P)'
-  if (goalType === 'Own Goal') return ' (OG)'
-  return ''
-}
 
 function formatKickoff(utc: string) {
   return new Date(utc).toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
@@ -115,28 +104,7 @@ export default function PlayerDetailPage() {
                     </div>
                   </div>
 
-                  {(p.scorers.length > 0 || p.cards.length > 0) && (
-                    <div className="pd-scorers">
-                      {p.scorers.map((s, i) => {
-                        const hit = s.pointsAwarded > 0
-                        return (
-                          <span key={`s${i}`} className={`pd-scorer ${hit ? 'pd-scorer--hit' : ''}`}
-                            style={{ borderColor: hit ? 'var(--accent)' : (POS_COLOR[s.position] ?? '#666') }}>
-                            {s.name.split(' ').pop()}{typeTag(s.goalType)}{hit && <strong> +{s.pointsAwarded}</strong>}
-                          </span>
-                        )
-                      })}
-                      {p.cards.map((c, i) => {
-                        const hit = c.pointsAwarded > 0
-                        return (
-                          <span key={`c${i}`} className={`pd-scorer ${hit ? 'pd-scorer--hit' : ''}`}
-                            style={{ borderColor: hit ? 'var(--accent)' : '#666' }}>
-                            {CARD_ICON[c.kind] ?? '🟨'}{c.name.split(' ').pop()}{c.pointsAwarded !== 0 && <strong> {c.pointsAwarded > 0 ? `+${c.pointsAwarded}` : c.pointsAwarded}</strong>}
-                          </span>
-                        )
-                      })}
-                    </div>
-                  )}
+                  <PicksByTeam scorers={p.scorers} cards={p.cards} home={p.homeTeam} away={p.awayTeam} />
 
                   {b ? (
                     <div className="pd-breakdown">

@@ -49,11 +49,6 @@ export default function LeaderboardTab({ groupId }: { groupId: string }) {
                   {e.firstName} {e.lastName}
                   {isMe && <span className="you-badge">you</span>}
                 </div>
-                <div className="lb-breakdown">
-                  <span title="Exact scores">⚡{e.exactScores}×7</span>
-                  <span title="Correct outcomes">✓{e.correctOutcomes}×2</span>
-                  <span title="Goalscorer points">⚽{e.goalscorerPoints}pts</span>
-                </div>
               </div>
               <div className="lb-pts">{e.totalPoints}<span className="lb-pts-label">pts</span></div>
               <span className="lb-chevron">›</span>

@@ -80,6 +80,26 @@ public class ApiFootballClient(HttpClient http, IConfiguration config, ILogger<A
             )).ToList();
     }
 
+    public async Task<List<ApiSubstitutionEventData>> GetSubstitutionEventsAsync(int fixtureId, CancellationToken ct = default)
+    {
+        var json = await GetAsync($"fixtures/events?fixture={fixtureId}&type=subst", ct);
+        var resp = Deserialize<ApiResponse<EventResponse>>(json);
+        if (resp is null) return [];
+
+        // API-Football substitution events: `assist` is the player coming ON,
+        // `player` is the player going OFF.
+        return resp.Response
+            .Where(e => e.Type == "subst")
+            .Select((e, i) => new ApiSubstitutionEventData(
+                e.Time.Elapsed,
+                e.Time.Extra,
+                e.Team.Id,
+                e.Assist?.Id,
+                e.Player?.Id,
+                i
+            )).ToList();
+    }
+
     public async Task<List<ApiLineupPlayerData>> GetLineupsAsync(int fixtureId, CancellationToken ct = default)
     {
         var json = await GetAsync($"fixtures/lineups?fixture={fixtureId}", ct);
