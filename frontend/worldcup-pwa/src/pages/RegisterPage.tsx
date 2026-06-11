@@ -1,11 +1,18 @@
-import { useState, type FormEvent } from 'react'
+import { useState, useEffect, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { register } from '../api/auth'
 import { useAuthStore } from '../store/authStore'
+import { consumePendingInvite } from '../lib/invite'
 
 export default function RegisterPage() {
   const navigate = useNavigate()
   const setAuth = useAuthStore((s) => s.setAuth)
+
+  // Already authenticated (e.g. navigated back here)? Send them home instead of
+  // showing a registration form that looks like they were logged out.
+  useEffect(() => {
+    if (useAuthStore.getState().token) navigate('/groups', { replace: true })
+  }, [navigate])
 
   const [form, setForm] = useState({ email: '', firstName: '', lastName: '', password: '' })
   const [error, setError] = useState('')
@@ -25,7 +32,8 @@ export default function RegisterPage() {
     try {
       const data = await register(form)
       setAuth(data.token, data.user)
-      navigate('/groups')
+      const groupId = await consumePendingInvite()
+      navigate(groupId ? `/groups/${groupId}/matches` : '/groups')
     } catch (err: any) {
       setError(err.response?.data?.error ?? 'Registration failed. Try again.')
     } finally {

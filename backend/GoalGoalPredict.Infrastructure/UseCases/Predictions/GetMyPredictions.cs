@@ -20,6 +20,7 @@ public class GetMyPredictions(AppDbContext db, EffectiveRulesService effectiveRu
             .Include(p => p.GoalscorerPredictions).ThenInclude(g => g.Player)
             .Include(p => p.CardPredictions).ThenInclude(c => c.Player)
             .Include(p => p.Score)
+            .AsSplitQuery()
             .Where(p => p.UserId == userId && p.GroupId == groupId)
             // When viewing another member, hide picks for matches that haven't kicked off.
             .Where(p => !onlyStarted || p.Match.KickoffUtc <= now)

@@ -1,11 +1,18 @@
-import { useState, type FormEvent } from 'react'
+import { useState, useEffect, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { login } from '../api/auth'
 import { useAuthStore } from '../store/authStore'
+import { consumePendingInvite } from '../lib/invite'
 
 export default function LoginPage() {
   const navigate = useNavigate()
   const setAuth = useAuthStore((s) => s.setAuth)
+
+  // Already authenticated (e.g. navigated back here)? Send them home, not to a
+  // login form that looks like they were logged out.
+  useEffect(() => {
+    if (useAuthStore.getState().token) navigate('/groups', { replace: true })
+  }, [navigate])
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -19,7 +26,8 @@ export default function LoginPage() {
     try {
       const data = await login({ email, password })
       setAuth(data.token, data.user)
-      navigate('/groups')
+      const groupId = await consumePendingInvite()
+      navigate(groupId ? `/groups/${groupId}/matches` : '/groups')
     } catch (err: any) {
       setError(err.response?.data?.error ?? 'Login failed. Check your credentials.')
     } finally {

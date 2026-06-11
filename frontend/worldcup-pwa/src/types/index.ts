@@ -26,6 +26,12 @@ export interface GroupDetail extends Group {
   members: GroupMember[]
 }
 
+export interface GroupPreview {
+  id: string
+  name: string
+  memberCount: number
+}
+
 export interface AuthResponse {
   token: string
   user: User

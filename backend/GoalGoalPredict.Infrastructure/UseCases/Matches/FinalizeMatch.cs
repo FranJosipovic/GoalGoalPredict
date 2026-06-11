@@ -20,6 +20,7 @@ public class FinalizeMatch(AppDbContext db, EffectiveRulesService effectiveRules
         var predictions = await db.Predictions
             .Include(p => p.GoalscorerPredictions).ThenInclude(g => g.Player)
             .Include(p => p.CardPredictions)
+            .AsSplitQuery()
             .Where(p => p.MatchId == matchId && !p.IsScored)
             .ToListAsync(ct);
 

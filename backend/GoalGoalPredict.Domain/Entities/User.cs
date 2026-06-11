@@ -24,4 +24,10 @@ public class User
     }
 
     public void SetAdmin(bool isAdmin) => IsAdmin = isAdmin;
+
+    public void UpdateName(string firstName, string lastName)
+    {
+        FirstName = firstName;
+        LastName = lastName;
+    }
 }

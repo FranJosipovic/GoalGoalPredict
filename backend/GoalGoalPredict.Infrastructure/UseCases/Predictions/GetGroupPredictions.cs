@@ -13,6 +13,7 @@ public class GetGroupPredictions(AppDbContext db, EffectiveRulesService effectiv
         var match = await db.Matches
             .Include(m => m.Goals)
             .Include(m => m.Cards)
+            .AsSplitQuery()
             .FirstOrDefaultAsync(m => m.Id == matchId, ct);
         if (match is null) return null;
         if (match.KickoffUtc > DateTime.UtcNow) return null;
@@ -24,6 +25,7 @@ public class GetGroupPredictions(AppDbContext db, EffectiveRulesService effectiv
             .Include(p => p.GoalscorerPredictions).ThenInclude(g => g.Player)
             .Include(p => p.CardPredictions).ThenInclude(c => c.Player)
             .Include(p => p.Score)
+            .AsSplitQuery()
             .Where(p => p.MatchId == matchId && p.GroupId == groupId)
             .ToListAsync(ct);
 
