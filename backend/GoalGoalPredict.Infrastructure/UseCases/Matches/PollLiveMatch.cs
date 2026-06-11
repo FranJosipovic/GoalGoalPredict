@@ -51,6 +51,32 @@ public class PollLiveMatch(AppDbContext db, IApiFootballClient api, EffectiveRul
         foreach (var e in cardEvents.Where(e => !existingCardOrders.Contains(e.Order)))
             db.MatchCards.Add(MatchCard.Create(matchId, e.PlayerId, e.TeamId, e.Minute, e.ExtraMinute, e.CardType, e.Order));
 
+        var subEvents = await api.GetSubstitutionEventsAsync(matchId, ct);
+        if (subEvents.Count > 0)
+        {
+            var existingSubOrders = await db.MatchSubstitutions
+                .Where(s => s.MatchId == matchId)
+                .Select(s => s.ApiEventOrder)
+                .ToHashSetAsync(ct);
+
+            // Bench players occasionally aren't in our Players table; null out unknown
+            // ids so the FK insert doesn't fail (the name simply shows as "Unknown").
+            var referencedIds = subEvents
+                .SelectMany(e => new[] { e.PlayerInId, e.PlayerOutId })
+                .Where(id => id.HasValue).Select(id => id!.Value).Distinct().ToList();
+            var knownPlayerIds = await db.Players
+                .Where(p => referencedIds.Contains(p.Id))
+                .Select(p => p.Id)
+                .ToHashSetAsync(ct);
+
+            foreach (var e in subEvents.Where(e => !existingSubOrders.Contains(e.Order)))
+            {
+                var inId = e.PlayerInId is int pin && knownPlayerIds.Contains(pin) ? pin : (int?)null;
+                var outId = e.PlayerOutId is int pout && knownPlayerIds.Contains(pout) ? pout : (int?)null;
+                db.MatchSubstitutions.Add(MatchSubstitution.Create(matchId, e.TeamId, e.Minute, e.ExtraMinute, inId, outId, e.Order));
+            }
+        }
+
         match.TouchSyncedAt();
         await db.SaveChangesAsync(ct);
         logger.LogDebug("Polled match {MatchId}: {Status} {Home}-{Away}", matchId, match.Status, match.HomeGoals, match.AwayGoals);
