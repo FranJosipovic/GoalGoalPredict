@@ -19,6 +19,7 @@ public class AdminController(
     PrunePlayers prunePlayers,
     PollLiveMatch pollLiveMatch,
     SyncLineups syncLineups,
+    SyncMatchScoring syncScoring,
     AppDbContext db) : ControllerBase
 {
     private static readonly string[] FinishedStatuses = ["FT", "AET", "PEN"];
@@ -80,6 +81,26 @@ public class AdminController(
             ? $"Lineups already stored — {lineup} player(s), nothing to fetch."
             : lineup > 0 ? $"Lineups synced — {lineup} player(s)." : "No lineups available from the API yet.";
         return Ok(new { message, lineup });
+    }
+
+    // Dry-run: recompute scores from current DB events + per-group rules, diff vs stored.
+    [HttpGet("matches/{id:int}/scoring-compare")]
+    public async Task<IActionResult> CompareScoring(int id, CancellationToken ct)
+    {
+        try { return Ok(await syncScoring.CompareAsync(id, ct)); }
+        catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
+    }
+
+    // Apply the recomputed scores (upsert PredictionScore, mark predictions scored).
+    [HttpPost("matches/{id:int}/sync-scoring")]
+    public async Task<IActionResult> SyncScoring(int id, CancellationToken ct)
+    {
+        try
+        {
+            var result = await syncScoring.ApplyAsync(id, ct);
+            return Ok(new { message = $"Scoring synced — {result.Changed} of {result.Predictions} prediction(s) changed.", result });
+        }
+        catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
     }
 
     [HttpPost("sync-teams-players")]

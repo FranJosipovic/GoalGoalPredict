@@ -24,6 +24,20 @@ export const getMyPrediction = (matchId: number, groupId: string) =>
     .then(r => r.status === 204 ? null : r.data)
     .catch(() => null)
 
+export interface CopyablePrediction {
+  sourceGroupId: string
+  sourceGroupName: string
+  homeGoals: number
+  awayGoals: number
+  scorers: ScorerPickInput[]
+  cards: CardPickInput[]
+}
+
+export const getCopyablePrediction = (matchId: number, groupId: string) =>
+  client.get<CopyablePrediction>(`/predictions/copyable`, { params: { matchId, groupId } })
+    .then(r => r.status === 204 ? null : r.data)
+    .catch(() => null)
+
 export const upsertPrediction = (data: {
   matchId: number
   groupId: string

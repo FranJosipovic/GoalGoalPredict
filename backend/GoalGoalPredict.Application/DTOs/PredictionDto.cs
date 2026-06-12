@@ -21,6 +21,16 @@ public record PredictionResultDto(
     List<CardPickInput> Cards,
     DateTime UpdatedAt);
 
+// A prediction the user already made for this match in another group — offered for copying.
+// Source is the group where they predicted earliest (by CreatedAt).
+public record CopyablePredictionDto(
+    Guid SourceGroupId,
+    string SourceGroupName,
+    int HomeGoals,
+    int AwayGoals,
+    List<ScorerPickInput> Scorers,
+    List<CardPickInput> Cards);
+
 public record LeaderboardEntryDto(
     Guid UserId,
     string FirstName,
