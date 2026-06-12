@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import Layout from '../components/Layout'
 import PredictionPitch, { type PlayerBadge } from '../components/PredictionPitch'
-import { getMatchDetail, getMyPrediction, upsertPrediction } from '../api/matches'
+import { getMatchDetail, getMyPrediction, upsertPrediction, getCopyablePrediction, type CopyablePrediction } from '../api/matches'
 import { getGroupRules } from '../api/groups'
 import { getTeamSquad } from '../api/teams'
 import { useCountdown } from '../hooks/useCountdown'
@@ -34,6 +34,39 @@ const EXTRA_ICONS: Record<ExtraCat, string> = {
 }
 const CARD_KIND: Record<ExtraCat, string> = { Yellow: 'Yellow', Red: 'Red', MissedPenalty: 'MissedPenalty' }
 
+// Builds the editable form state from a stored/copied prediction, mapping each pick to the
+// right side and dropping picks disabled by (or no longer fitting) the current group's rules.
+type PredLike = { homeGoals: number; awayGoals: number; scorers: { playerId: number; goalType: string }[]; cards: { playerId: number; kind: string }[] }
+function buildPredictionForm(pred: PredLike, homePlayers: Player[], rules: GroupScoringRules | null) {
+  const homeIds = new Set(homePlayers.map(p => p.id))
+  const built: ScorerSel[] = pred.scorers.map(s => {
+    const playerIsHome = homeIds.has(s.playerId)
+    if (s.goalType === 'Own Goal') {
+      return { playerId: s.playerId, goalType: 'Own Goal' as const, side: (playerIsHome ? 'away' : 'home') as Side }
+    }
+    return {
+      playerId: s.playerId,
+      goalType: (s.goalType === 'Penalty' ? 'Penalty' : 'Normal Goal') as GoalType,
+      side: (playerIsHome ? 'home' : 'away') as Side,
+    }
+  })
+  const builtEnabled = built.filter(s =>
+    s.goalType === 'Own Goal' ? (rules?.ownGoalEnabled ?? true) : (rules?.goalscorerEnabled ?? true))
+  let hLeft = pred.homeGoals, aLeft = pred.awayGoals
+  const scorers = builtEnabled.filter(s => {
+    if (s.side === 'home') { if (hLeft > 0) { hLeft--; return true } return false }
+    if (aLeft > 0) { aLeft--; return true } return false
+  })
+  const cardEnabled = (cat: ExtraCat) =>
+    cat === 'Yellow' ? (rules?.yellowCardEnabled ?? true)
+    : cat === 'Red' ? (rules?.redCardEnabled ?? true)
+    : (rules?.missedPenaltyEnabled ?? true)
+  const extras: ExtraSel[] = pred.cards
+    .map(c => ({ playerId: c.playerId, category: (c.kind === 'MissedPenalty' ? 'MissedPenalty' : c.kind) as ExtraCat }))
+    .filter(e => cardEnabled(e.category))
+  return { home: pred.homeGoals, away: pred.awayGoals, scorers, extras }
+}
+
 export default function MatchPredictPage() {
   const { groupId, matchId } = useParams<{ groupId: string; matchId: string }>()
   const navigate = useNavigate()
@@ -51,6 +84,7 @@ export default function MatchPredictPage() {
   const [scorers, setScorers] = useState<ScorerSel[]>([])
   const [extras, setExtras] = useState<ExtraSel[]>([])
   const [saved, setSaved] = useState<{ home: number; away: number; scorers: ScorerSel[]; extras: ExtraSel[] } | null>(null)
+  const [copyable, setCopyable] = useState<CopyablePrediction | null>(null)
 
   const [search, setSearch] = useState('')
   const [activeTeam, setActiveTeam] = useState<Side>('home')
@@ -80,43 +114,16 @@ export default function MatchPredictPage() {
       setRules(r)
 
       if (existing) {
-        const homeIds = new Set(homeSquad.players.map(p => p.id))
-        const built: ScorerSel[] = existing.scorers.map(s => {
-          const playerIsHome = homeIds.has(s.playerId)
-          if (s.goalType === 'Own Goal') {
-            // own goal feeds the opponent's tally
-            return { playerId: s.playerId, goalType: 'Own Goal' as const, side: (playerIsHome ? 'away' : 'home') as Side }
-          }
-          return {
-            playerId: s.playerId,
-            goalType: (s.goalType === 'Penalty' ? 'Penalty' : 'Normal Goal') as GoalType,
-            side: (playerIsHome ? 'home' : 'away') as Side,
-          }
-        })
-        // Drop picks whose category has since been disabled in the group rules.
-        const builtEnabled = built.filter(s =>
-          s.goalType === 'Own Goal' ? (r?.ownGoalEnabled ?? true) : (r?.goalscorerEnabled ?? true))
-        // Clamp each tally to the predicted goal count (drops stale picks that no longer fit).
-        let hLeft = existing.homeGoals, aLeft = existing.awayGoals
-        const sc = builtEnabled.filter(s => {
-          if (s.side === 'home') { if (hLeft > 0) { hLeft--; return true } return false }
-          if (aLeft > 0) { aLeft--; return true } return false
-        })
-        const cardEnabled = (cat: ExtraCat) =>
-          cat === 'Yellow' ? (r?.yellowCardEnabled ?? true)
-          : cat === 'Red' ? (r?.redCardEnabled ?? true)
-          : (r?.missedPenaltyEnabled ?? true)
-        const ex: ExtraSel[] = existing.cards
-          .map(c => ({
-            playerId: c.playerId,
-            category: (c.kind === 'MissedPenalty' ? 'MissedPenalty' : c.kind) as ExtraCat,
-          }))
-          .filter(e => cardEnabled(e.category))
-        setHomeGoals(existing.homeGoals)
-        setAwayGoals(existing.awayGoals)
-        setScorers(sc)
-        setExtras(ex)
-        setSaved({ home: existing.homeGoals, away: existing.awayGoals, scorers: sc, extras: ex })
+        const f = buildPredictionForm(existing, homeSquad.players, r)
+        setHomeGoals(f.home)
+        setAwayGoals(f.away)
+        setScorers(f.scorers)
+        setExtras(f.extras)
+        setSaved({ home: f.home, away: f.away, scorers: f.scorers, extras: f.extras })
+      } else if (new Date(m.kickoffUtc) > new Date()) {
+        // No prediction in this group yet — offer to copy from the earliest group where they did.
+        const copy = await getCopyablePrediction(Number(matchId), groupId)
+        if (copy) setCopyable(copy)
       }
     }).finally(() => setLoading(false))
   }, [matchId, groupId])
@@ -209,6 +216,18 @@ export default function MatchPredictPage() {
     rules.redCardEnabled && 'Red',
     rules.missedPenaltyEnabled && 'MissedPenalty',
   ].filter(Boolean) as ExtraCat[]) : []
+
+  // Prefill the form from the copyable prediction (rules-filtered); leaves it unsaved so the
+  // user reviews and taps Save. Dismisses the prompt either way.
+  const applyCopy = () => {
+    if (!copyable) return
+    const f = buildPredictionForm(copyable, homePlayers, rules)
+    setHomeGoals(f.home)
+    setAwayGoals(f.away)
+    setScorers(f.scorers)
+    setExtras(f.extras)
+    setCopyable(null)
+  }
 
   const handleSave = async () => {
     if (!match || !groupId || isLocked) return
@@ -474,6 +493,18 @@ export default function MatchPredictPage() {
           </div>
         )}
         {isFinished && <div className="predict-status predict-status--ft">🏁 Match finished</div>}
+
+        {!isLocked && copyable && (
+          <div className="copy-pred">
+            <div className="copy-pred-text">
+              You already predicted this match in <strong>{copyable.sourceGroupName}</strong>. Copy those picks here?
+            </div>
+            <div className="copy-pred-actions">
+              <button className="copy-pred-btn copy-pred-btn--no" onClick={() => setCopyable(null)}>No</button>
+              <button className="copy-pred-btn copy-pred-btn--yes" onClick={applyCopy}>Copy picks</button>
+            </div>
+          </div>
+        )}
 
         {/* SCORE */}
         {isLocked ? (

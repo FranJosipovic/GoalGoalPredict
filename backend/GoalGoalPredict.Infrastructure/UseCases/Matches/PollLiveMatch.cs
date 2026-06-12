@@ -175,7 +175,7 @@ public class PollLiveMatch(AppDbContext db, IApiFootballClient api, EffectiveRul
         await db.SaveChangesAsync(ct);
         logger.LogDebug("Polled match {MatchId}: {Status} {Home}-{Away}", matchId, match.Status, match.HomeGoals, match.AwayGoals);
 
-        await SendNotificationsAsync(match, prevStatus, newGoalEvents, ct);
+        await SendNotificationsAsync(match, prevStatus, newGoalEvents, newCardEvents, newVarEvents, ct);
     }
 
     // Ensures every referenced (playerId, teamId) exists in our Players table, fetching the
@@ -197,7 +197,7 @@ public class PollLiveMatch(AppDbContext db, IApiFootballClient api, EffectiveRul
 
         foreach (var teamId in teamsToFetch)
         {
-            List<Application.Interfaces.ApiSquadPlayerData> squad;
+            List<ApiSquadPlayerData> squad;
             try { squad = await api.GetSquadAsync(teamId, ct); }
             catch (Exception ex)
             {
@@ -232,8 +232,9 @@ public class PollLiveMatch(AppDbContext db, IApiFootballClient api, EffectiveRul
 
     // Mirror the simulation match notifications (goals + status changes) for real matches,
     // fanned out to every group predicting this fixture.
-    private async Task SendNotificationsAsync(Domain.Entities.Match match, string prevStatus,
-        List<Application.Interfaces.ApiGoalEventData> newGoalEvents, CancellationToken ct)
+    private async Task SendNotificationsAsync(Match match, string prevStatus,
+        List<ApiGoalEventData> newGoalEvents, List<ApiCardEventData> newCardEvents,
+        List<ApiVarEventData> newVarEvents, CancellationToken ct)
     {
         var home = await db.Teams.FindAsync([match.HomeTeamId], ct);
         var away = await db.Teams.FindAsync([match.AwayTeamId], ct);
@@ -245,6 +246,26 @@ public class PollLiveMatch(AppDbContext db, IApiFootballClient api, EffectiveRul
             var scorer = await db.Players.FindAsync([e.ScorerPlayerId], ct);
             await push.SendToMatchGroupsAsync(match.Id,
                 $"⚽ GOAL! {scorer?.Name ?? "Goal"} {e.Minute}'", scoreline, ct);
+        }
+
+        // Cards — yellow and red.
+        foreach (var e in newCardEvents.Where(e => e.CardType is "Yellow Card" or "Red Card"))
+        {
+            var player = e.PlayerId is int pid ? await db.Players.FindAsync([pid], ct) : null;
+            var icon = e.CardType == "Red Card" ? "🟥" : "🟨";
+            await push.SendToMatchGroupsAsync(match.Id,
+                $"{icon} {e.CardType} — {player?.Name ?? "Player"} {e.Minute}'", scoreline, ct);
+        }
+
+        // VAR decisions — ❌ for an overturned/disallowed goal, 📺 for other reviews.
+        foreach (var e in newVarEvents)
+        {
+            var disallowed = e.Detail.Contains("disallow", StringComparison.OrdinalIgnoreCase)
+                || e.Detail.Contains("cancel", StringComparison.OrdinalIgnoreCase);
+            var player = e.PlayerId is int pid ? await db.Players.FindAsync([pid], ct) : null;
+            var who = player?.Name is string n ? $" — {n}" : "";
+            await push.SendToMatchGroupsAsync(match.Id,
+                $"{(disallowed ? "❌" : "📺")} VAR: {e.Detail}{who} {e.Minute}'", scoreline, ct);
         }
 
         // Status transitions — kickoff / half time / second half / extra time / full time.

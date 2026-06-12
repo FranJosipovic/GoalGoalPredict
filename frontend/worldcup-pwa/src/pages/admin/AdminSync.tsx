@@ -6,6 +6,7 @@ import {
   syncTeamsPlayers, syncMissingPlayers, syncFixtures, prunePlayers,
   setPlayerActive, deletePlayer,
   getAdminMatches, syncMatchEvents, syncMatchLineups, compareMatchEvents,
+  compareMatchScoring, syncMatchScoring,
 } from '../../api/admin'
 
 interface FieldDiff { field: string; db: string | null; api: string | null }
@@ -26,6 +27,9 @@ interface EventRow {
 }
 interface EventGroup { dbCount: number; apiCount: number; rows: EventRow[] }
 interface MatchEventsCompare { match: string; goals: EventGroup; cards: EventGroup; subs: EventGroup; var: EventGroup }
+interface CategoryDiff { category: string; current: number; new: number }
+interface ScoreDiff { predictionId: string; user: string; group: string; currentTotal: number | null; newTotal: number; changed: boolean; categories: CategoryDiff[] }
+interface ScoringResult { matchId: number; match: string; applied: boolean; predictions: number; changed: number; diffs: ScoreDiff[] }
 
 const stateLabel: Record<string, string> = {
   mismatch: 'Mismatch', missing_in_db: 'Missing in DB', extra_in_db: 'Extra in DB',
@@ -130,6 +134,48 @@ function EventsCompareView({ c }: { c: MatchEventsCompare }) {
   )
 }
 
+function ScoringCompareView({ r }: { r: ScoringResult }) {
+  return (
+    <div className="admin-events-compare">
+      <p className="admin-hint">
+        Recomputed from current DB events using each group's frozen rules for <strong>{r.match}</strong>.
+        {' '}{r.changed} of {r.predictions} prediction(s) {r.applied ? 'changed and were saved' : 'would change'}.
+        {!r.applied && ' Use “Sync scoring” to apply.'}
+      </p>
+      {r.diffs.length === 0
+        ? <p className="admin-empty">No predictions for this match.</p>
+        : (
+          <table className="admin-table admin-table--compact">
+            <thead><tr><th>User</th><th>Group</th><th>Now</th><th>→</th><th>Should be</th><th>Breakdown</th></tr></thead>
+            <tbody>
+              {r.diffs.map(d => (
+                <tr key={d.predictionId} className={d.changed ? 'admin-row-changed' : ''}>
+                  <td>{d.user}</td>
+                  <td>{d.group}</td>
+                  <td>{d.currentTotal ?? '—'}</td>
+                  <td>{d.changed ? '→' : '='}</td>
+                  <td><strong>{d.newTotal}</strong></td>
+                  <td>
+                    {d.categories.length === 0
+                      ? <span className="admin-dim">0</span>
+                      : d.categories.map(c => (
+                          <span key={c.category} className="admin-field-diff" style={{ display: 'inline-flex', marginRight: 10 }}>
+                            <span className="admin-field-name">{c.category}</span>
+                            {c.current === c.new
+                              ? <span>{c.new}</span>
+                              : <><span className="admin-field-db">{c.current}</span><span className="admin-field-arrow">→</span><span className="admin-field-api">{c.new}</span></>}
+                          </span>
+                        ))}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+    </div>
+  )
+}
+
 export default function AdminSync() {
   const [busy, setBusy] = useState<string | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
@@ -140,6 +186,7 @@ export default function AdminSync() {
   const [players, setPlayers] = useState<TeamPlayersCompare[] | null>(null)
   const [matches, setMatches] = useState<AdminMatch[] | null>(null)
   const [eventsCompare, setEventsCompare] = useState<Record<number, MatchEventsCompare>>({})
+  const [scoringCompare, setScoringCompare] = useState<Record<number, ScoringResult>>({})
 
   const run = async (key: string, fn: () => Promise<any>, after?: (d: any) => void) => {
     setBusy(key); setErr(null); setMsg(null)
@@ -241,6 +288,33 @@ export default function AdminSync() {
     } finally { setBusy(null) }
   }
 
+  const toggleScoringCompare = async (id: number) => {
+    if (scoringCompare[id]) {
+      setScoringCompare(prev => { const next = { ...prev }; delete next[id]; return next })
+      return
+    }
+    setBusy(`cmp-score-${id}`); setErr(null); setMsg(null)
+    try {
+      const r: ScoringResult = await compareMatchScoring(id)
+      setScoringCompare(prev => ({ ...prev, [id]: r }))
+    } catch (e: any) {
+      setErr(e?.response?.data?.message ?? e?.message ?? 'Compare failed')
+    } finally { setBusy(null) }
+  }
+
+  const applyScoring = async (id: number) => {
+    const cmp = scoringCompare[id]
+    if (!confirm(`Apply recomputed scoring for this match?${cmp ? ` ${cmp.changed} of ${cmp.predictions} prediction(s) will change.` : ''}`)) return
+    setBusy(`score-${id}`); setErr(null); setMsg(null)
+    try {
+      const r = await syncMatchScoring(id)
+      if (r?.message) setMsg(r.message)
+      if (r?.result) setScoringCompare(prev => ({ ...prev, [id]: r.result }))
+    } catch (e: any) {
+      setErr(e?.response?.data?.message ?? e?.message ?? 'Sync failed')
+    } finally { setBusy(null) }
+  }
+
   const playersWithDiffs = players?.filter(p =>
     p.result.mismatched + p.result.missingInDb + p.result.extraInDb > 0) ?? []
 
@@ -328,12 +402,27 @@ export default function AdminSync() {
                           onClick={() => syncMatch(`lu-${m.id}`, m.id, () => syncMatchLineups(m.id))}>
                           {busy === `lu-${m.id}` ? 'Syncing…' : 'Sync lineups'}
                         </button>
+                        <button className="admin-btn admin-btn--ghost admin-btn--xs" disabled={!!busy}
+                          onClick={() => toggleScoringCompare(m.id)}>
+                          {busy === `cmp-score-${m.id}` ? 'Loading…' : scoringCompare[m.id] ? 'Hide scoring' : 'Compare scoring'}
+                        </button>
+                        <button className="admin-btn admin-btn--primary admin-btn--xs" disabled={!!busy}
+                          onClick={() => applyScoring(m.id)}>
+                          {busy === `score-${m.id}` ? 'Syncing…' : 'Sync scoring'}
+                        </button>
                       </td>
                     </tr>
                     {eventsCompare[m.id] && (
                       <tr>
                         <td colSpan={7} className="admin-events-diff-cell">
                           <EventsCompareView c={eventsCompare[m.id]} />
+                        </td>
+                      </tr>
+                    )}
+                    {scoringCompare[m.id] && (
+                      <tr>
+                        <td colSpan={7} className="admin-events-diff-cell">
+                          <ScoringCompareView r={scoringCompare[m.id]} />
                         </td>
                       </tr>
                     )}
