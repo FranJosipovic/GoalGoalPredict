@@ -100,6 +100,26 @@ public class ApiFootballClient(HttpClient http, IConfiguration config, ILogger<A
             )).ToList();
     }
 
+    public async Task<List<ApiVarEventData>> GetVarEventsAsync(int fixtureId, CancellationToken ct = default)
+    {
+        // API-Football's `type` filter only accepts goal/card/subst — VAR events come back
+        // in the unfiltered events list, so fetch everything and pick out the "Var" ones.
+        var json = await GetAsync($"fixtures/events?fixture={fixtureId}", ct);
+        var resp = Deserialize<ApiResponse<EventResponse>>(json);
+        if (resp is null) return [];
+
+        return resp.Response
+            .Where(e => e.Type == "Var")
+            .Select((e, i) => new ApiVarEventData(
+                e.Time.Elapsed,
+                e.Time.Extra,
+                e.Team.Id,
+                e.Player?.Id,
+                e.Detail,
+                i
+            )).ToList();
+    }
+
     public async Task<List<ApiLineupPlayerData>> GetLineupsAsync(int fixtureId, CancellationToken ct = default)
     {
         var json = await GetAsync($"fixtures/lineups?fixture={fixtureId}", ct);

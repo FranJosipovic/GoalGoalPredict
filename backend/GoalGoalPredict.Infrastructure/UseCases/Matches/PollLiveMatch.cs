@@ -32,24 +32,103 @@ public class PollLiveMatch(AppDbContext db, IApiFootballClient api, EffectiveRul
                 fixture.EtHomeGoals, fixture.EtAwayGoals,
                 fixture.PenHomeGoals, fixture.PenAwayGoals);
 
+        // Goals/cards are reconciled (not just appended) against the current API feed:
+        // when VAR overturns an event, API-Football drops it from the feed, so we must
+        // delete the now-stale row too — otherwise a disallowed goal lingers forever.
+        // Identity is the event's natural key (team/player/minute/type), since the
+        // positional Order shifts whenever an earlier event is added or removed.
         var goalEvents = await api.GetGoalEventsAsync(matchId, ct);
-        var existingOrders = await db.MatchGoals
-            .Where(g => g.MatchId == matchId)
-            .Select(g => g.ApiEventOrder)
-            .ToHashSetAsync(ct);
+        var existingGoals = await db.MatchGoals.Where(g => g.MatchId == matchId).ToListAsync(ct);
 
-        var newGoalEvents = goalEvents.Where(e => !existingOrders.Contains(e.Order)).ToList();
-        foreach (var e in newGoalEvents)
-            db.MatchGoals.Add(MatchGoal.Create(matchId, e.ScorerPlayerId, e.TeamId, e.Minute, e.ExtraMinute, e.GoalType, e.Order));
+        static (int, int?, int, int?, string) GoalKey(int teamId, int? player, int minute, int? extra, string type)
+            => (teamId, player, minute, extra, type);
+        var apiGoalKeys = goalEvents
+            .Select(e => GoalKey(e.TeamId, e.ScorerPlayerId, e.Minute, e.ExtraMinute, e.GoalType))
+            .ToHashSet();
+        var dbGoalKeys = existingGoals
+            .Select(g => GoalKey(g.TeamId, g.ScorerPlayerId, g.Minute, g.ExtraMinute, g.GoalType))
+            .ToHashSet();
+
+        var staleGoals = existingGoals
+            .Where(g => !apiGoalKeys.Contains(GoalKey(g.TeamId, g.ScorerPlayerId, g.Minute, g.ExtraMinute, g.GoalType)))
+            .ToList();
+        if (staleGoals.Count > 0)
+        {
+            db.MatchGoals.RemoveRange(staleGoals);
+            logger.LogInformation("Match {MatchId}: removed {Count} stale goal(s) no longer in API feed (e.g. VAR-disallowed)", matchId, staleGoals.Count);
+        }
+
+        var newGoalEvents = goalEvents
+            .Where(e => !dbGoalKeys.Contains(GoalKey(e.TeamId, e.ScorerPlayerId, e.Minute, e.ExtraMinute, e.GoalType)))
+            .ToList();
 
         var cardEvents = await api.GetCardEventsAsync(matchId, ct);
-        var existingCardOrders = await db.MatchCards
-            .Where(c => c.MatchId == matchId)
-            .Select(c => c.ApiEventOrder)
-            .ToHashSetAsync(ct);
+        var existingCards = await db.MatchCards.Where(c => c.MatchId == matchId).ToListAsync(ct);
 
-        foreach (var e in cardEvents.Where(e => !existingCardOrders.Contains(e.Order)))
-            db.MatchCards.Add(MatchCard.Create(matchId, e.PlayerId, e.TeamId, e.Minute, e.ExtraMinute, e.CardType, e.Order));
+        static (int, int?, int, int?, string) CardKey(int teamId, int? player, int minute, int? extra, string type)
+            => (teamId, player, minute, extra, type);
+        var apiCardKeys = cardEvents
+            .Select(e => CardKey(e.TeamId, e.PlayerId, e.Minute, e.ExtraMinute, e.CardType))
+            .ToHashSet();
+        var dbCardKeys = existingCards
+            .Select(c => CardKey(c.TeamId, c.PlayerId, c.Minute, c.ExtraMinute, c.CardType))
+            .ToHashSet();
+
+        var staleCards = existingCards
+            .Where(c => !apiCardKeys.Contains(CardKey(c.TeamId, c.PlayerId, c.Minute, c.ExtraMinute, c.CardType)))
+            .ToList();
+        if (staleCards.Count > 0)
+        {
+            db.MatchCards.RemoveRange(staleCards);
+            logger.LogInformation("Match {MatchId}: removed {Count} stale card(s) no longer in API feed", matchId, staleCards.Count);
+        }
+
+        // ApiEventOrder is only an identity/uniqueness artifact now (the timeline orders by
+        // minute). Under reconcile it must stay unique per match, so hand new rows a value
+        // strictly above any existing one rather than the API's positional index — which can
+        // collide with a kept row when the feed shifts.
+        var nextGoalOrder = existingGoals.Count == 0 ? 0 : existingGoals.Max(g => g.ApiEventOrder) + 1;
+        foreach (var e in newGoalEvents)
+            db.MatchGoals.Add(MatchGoal.Create(matchId, e.ScorerPlayerId, e.TeamId, e.Minute, e.ExtraMinute, e.GoalType, nextGoalOrder++));
+
+        var newCardEvents = cardEvents
+            .Where(e => !dbCardKeys.Contains(CardKey(e.TeamId, e.PlayerId, e.Minute, e.ExtraMinute, e.CardType)))
+            .ToList();
+        var nextCardOrder = existingCards.Count == 0 ? 0 : existingCards.Max(c => c.ApiEventOrder) + 1;
+        foreach (var e in newCardEvents)
+            db.MatchCards.Add(MatchCard.Create(matchId, e.PlayerId, e.TeamId, e.Minute, e.ExtraMinute, e.CardType, nextCardOrder++));
+
+        // VAR decisions (type "Var", e.g. "Goal Disallowed - offside", "Penalty confirmed").
+        // Reconciled like goals/cards but keyed without the player — the player id can be
+        // nulled below when unknown, and team+minute+detail already identifies the decision.
+        var varEvents = await api.GetVarEventsAsync(matchId, ct);
+        var existingVars = await db.MatchVarDecisions.Where(v => v.MatchId == matchId).ToListAsync(ct);
+
+        static (int, int, int?, string) VarKey(int teamId, int minute, int? extra, string detail)
+            => (teamId, minute, extra, detail);
+        var apiVarKeys = varEvents.Select(e => VarKey(e.TeamId, e.Minute, e.ExtraMinute, e.Detail)).ToHashSet();
+        var dbVarKeys = existingVars.Select(v => VarKey(v.TeamId, v.Minute, v.ExtraMinute, v.Detail)).ToHashSet();
+
+        var staleVars = existingVars
+            .Where(v => !apiVarKeys.Contains(VarKey(v.TeamId, v.Minute, v.ExtraMinute, v.Detail)))
+            .ToList();
+        if (staleVars.Count > 0)
+            db.MatchVarDecisions.RemoveRange(staleVars);
+
+        var newVarEvents = varEvents
+            .Where(e => !dbVarKeys.Contains(VarKey(e.TeamId, e.Minute, e.ExtraMinute, e.Detail)))
+            .ToList();
+        if (newVarEvents.Count > 0)
+        {
+            var varPlayerIds = newVarEvents.Where(e => e.PlayerId.HasValue).Select(e => e.PlayerId!.Value).Distinct().ToList();
+            var knownVarPlayers = await db.Players.Where(p => varPlayerIds.Contains(p.Id)).Select(p => p.Id).ToHashSetAsync(ct);
+            var nextVarOrder = existingVars.Count == 0 ? 0 : existingVars.Max(v => v.ApiEventOrder) + 1;
+            foreach (var e in newVarEvents)
+            {
+                var pid = e.PlayerId is int vp && knownVarPlayers.Contains(vp) ? vp : (int?)null;
+                db.MatchVarDecisions.Add(MatchVarDecision.Create(matchId, e.TeamId, pid, e.Minute, e.ExtraMinute, e.Detail, nextVarOrder++));
+            }
+        }
 
         var subEvents = await api.GetSubstitutionEventsAsync(matchId, ct);
         if (subEvents.Count > 0)

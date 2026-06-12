@@ -49,6 +49,7 @@ public class GetMatches(AppDbContext db)
             .Include(m => m.Cards).ThenInclude(c => c.Player)
             .Include(m => m.Substitutions).ThenInclude(s => s.PlayerIn)
             .Include(m => m.Substitutions).ThenInclude(s => s.PlayerOut)
+            .Include(m => m.VarDecisions).ThenInclude(v => v.Player)
             .AsSplitQuery()
             .FirstOrDefaultAsync(m => m.Id == matchId, ct);
 
@@ -83,10 +84,15 @@ public class GetMatches(AppDbContext db)
                 s.PlayerOutId, s.PlayerOut?.Name))
             .ToList();
 
+        var varDecisions = m.VarDecisions
+            .OrderBy(v => v.Minute).ThenBy(v => v.ExtraMinute)
+            .Select(v => new VarDecisionEventDto(v.Minute, v.ExtraMinute, v.TeamId, v.PlayerId, v.Player?.Name, v.Detail))
+            .ToList();
+
         return new MatchDetailDto(
             m.Id, m.Round, m.KickoffUtc, m.Status, m.ElapsedMinutes,
             new TeamSummaryDto(m.HomeTeam.Id, m.HomeTeam.Name, m.HomeTeam.Code, m.HomeTeam.LogoUrl),
             new TeamSummaryDto(m.AwayTeam.Id, m.AwayTeam.Name, m.AwayTeam.Code, m.AwayTeam.LogoUrl),
-            m.HomeGoals, m.AwayGoals, lineup, goals, cards, substitutions, lineupsRevealed, revealUtc);
+            m.HomeGoals, m.AwayGoals, lineup, goals, cards, substitutions, varDecisions, lineupsRevealed, revealUtc);
     }
 }

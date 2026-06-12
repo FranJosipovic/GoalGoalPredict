@@ -65,9 +65,10 @@ export default function MatchLivePage() {
     minute: number;
     extraMinute: number | null;
     teamId: number;
-    kind: "goal" | "card" | "sub";
+    kind: "goal" | "card" | "sub" | "var";
     goalType?: string;
     cardType?: string;
+    detail?: string;
     main?: string | null;
     inName?: string | null;
     outName?: string | null;
@@ -96,6 +97,14 @@ export default function MatchLivePage() {
       kind: "sub" as const,
       inName: s.playerInName,
       outName: s.playerOutName,
+    })),
+    ...(match.varDecisions ?? []).map((v) => ({
+      minute: v.minute,
+      extraMinute: v.extraMinute,
+      teamId: v.teamId,
+      kind: "var" as const,
+      detail: v.detail,
+      main: v.playerName,
     })),
   ].sort(
     (a, b) =>
@@ -196,7 +205,11 @@ export default function MatchLivePage() {
                         ? e.cardType === "Red Card"
                           ? "🟥"
                           : "🟨"
-                        : ""}
+                        : e.kind === "var"
+                          ? /disallow|cancel/i.test(e.detail ?? "")
+                            ? "❌"
+                            : "📺"
+                          : ""}
                   </span>
                   <div className="ev-text">
                     {e.kind === "sub" ? (
@@ -205,6 +218,11 @@ export default function MatchLivePage() {
                         <span className="ev-out">
                           ▼ {e.outName ?? "Unknown"}
                         </span>
+                      </>
+                    ) : e.kind === "var" ? (
+                      <>
+                        <span className="ev-main">VAR: {e.detail}</span>
+                        {e.main && <span className="ev-out">{e.main}</span>}
                       </>
                     ) : (
                       <span className="ev-main">{e.main ?? "Unknown"}</span>
