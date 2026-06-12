@@ -43,6 +43,9 @@ export const syncMatchEvents = (id: number) =>
 export const syncMatchLineups = (id: number) =>
   client.post(`/admin/matches/${id}/sync-lineups`).then(r => r.data)
 
+export const compareMatchEvents = (id: number) =>
+  client.get(`/admin/compare/matches/${id}/events`).then(r => r.data)
+
 // ── Compare DB vs API ─────────────────────────────────────────
 export const compareTeams = () =>
   client.get('/admin/compare/teams').then(r => r.data)

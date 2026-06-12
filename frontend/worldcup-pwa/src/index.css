@@ -2203,6 +2203,13 @@ input { font-family: inherit; }
 .admin-diff-state--mismatch { color: #ffb74d; background: rgba(255,183,77,0.12); }
 .admin-diff-state--missing_in_db { color: #64b5f6; background: rgba(100,181,246,0.12); }
 .admin-diff-state--extra_in_db { color: rgba(232,232,240,0.6); background: rgba(255,255,255,0.06); }
+.admin-diff-state--db_only { color: #ef9a9a; background: rgba(239,154,154,0.12); }
+
+/* Match events DB ↔ API diff */
+.admin-events-diff-cell { background: rgba(255,255,255,0.02); padding: 12px 16px; }
+.admin-events-compare { display: flex; flex-direction: column; gap: 16px; }
+.admin-events-group-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 13px; }
+.admin-table--compact td, .admin-table--compact th { padding: 4px 8px; font-size: 12px; }
 
 .admin-field-diff { display: flex; align-items: center; gap: 8px; font-size: 12px; margin: 2px 0; }
 .admin-field-name { font-family: 'Oswald', sans-serif; letter-spacing: 0.04em; color: rgba(232,232,240,0.4); min-width: 70px; }

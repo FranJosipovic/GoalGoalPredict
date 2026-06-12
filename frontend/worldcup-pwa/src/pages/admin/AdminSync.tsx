@@ -1,11 +1,11 @@
-import { useState } from 'react'
+import { useState, Fragment } from 'react'
 import AdminLayout from '../../components/admin/AdminLayout'
 import type { ReactNode } from 'react'
 import {
   compareTeams, compareFixtures, comparePlayers,
   syncTeamsPlayers, syncMissingPlayers, syncFixtures, prunePlayers,
   setPlayerActive, deletePlayer,
-  getAdminMatches, syncMatchEvents, syncMatchLineups,
+  getAdminMatches, syncMatchEvents, syncMatchLineups, compareMatchEvents,
 } from '../../api/admin'
 
 interface FieldDiff { field: string; db: string | null; api: string | null }
@@ -18,8 +18,14 @@ interface TeamPlayersCompare { teamId: number; teamName: string; result: Compare
 interface AdminMatch {
   id: number; kickoffUtc: string; status: string
   homeGoals: number | null; awayGoals: number | null; lastSyncedAt: string
-  home: string; away: string; goals: number; cards: number; subs: number; lineup: number
+  home: string; away: string; goals: number; cards: number; subs: number; var: number; lineup: number
 }
+interface EventRow {
+  minute: number; extra: number | null; type: string
+  player: string | null; playerOut: string | null; team: string; inApi: boolean; inDb: boolean
+}
+interface EventGroup { dbCount: number; apiCount: number; rows: EventRow[] }
+interface MatchEventsCompare { match: string; goals: EventGroup; cards: EventGroup; subs: EventGroup; var: EventGroup }
 
 const stateLabel: Record<string, string> = {
   mismatch: 'Mismatch', missing_in_db: 'Missing in DB', extra_in_db: 'Extra in DB',
@@ -71,6 +77,59 @@ function DiffTable({ diffs, renderActions }: { diffs: EntityDiff[]; renderAction
   )
 }
 
+function rowStatus(r: EventRow): { label: string; cls: string } {
+  if (r.inDb && r.inApi) return { label: 'in sync', cls: 'admin-diff-state' }
+  if (r.inDb && !r.inApi) return { label: 'DB only — not in API (disallowed?)', cls: 'admin-diff-state admin-diff-state--db_only' }
+  return { label: 'API only — missing in DB', cls: 'admin-diff-state admin-diff-state--missing_in_db' }
+}
+
+function EventGroupTable({ title, g }: { title: string; g: EventGroup }) {
+  return (
+    <div className="admin-events-group">
+      <div className="admin-events-group-head">
+        <strong>{title}</strong>
+        <span className="admin-chip">DB: {g.dbCount}</span>
+        <span className="admin-chip">API: {g.apiCount}</span>
+      </div>
+      {g.rows.length === 0
+        ? <p className="admin-empty">No events.</p>
+        : (
+          <table className="admin-table admin-table--compact">
+            <thead><tr><th>Min</th><th>Team</th><th>Detail</th><th>Status</th></tr></thead>
+            <tbody>
+              {g.rows.map((r, i) => {
+                const s = rowStatus(r)
+                const detail = r.playerOut
+                  ? `${r.player} ⬆ / ${r.playerOut} ⬇`
+                  : `${r.player ?? '—'} · ${r.type}`
+                return (
+                  <tr key={i}>
+                    <td>{r.minute}{r.extra ? `+${r.extra}` : ''}'</td>
+                    <td>{r.team}</td>
+                    <td>{detail}</td>
+                    <td><span className={s.cls}>{s.label}</span></td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        )}
+    </div>
+  )
+}
+
+function EventsCompareView({ c }: { c: MatchEventsCompare }) {
+  return (
+    <div className="admin-events-compare">
+      <p className="admin-hint">Comparing stored events against the live API feed for <strong>{c.match}</strong>. Rows flagged “DB only” exist in our database but are no longer returned by the API — typically VAR-disallowed goals/cards. “Sync events” will reconcile (add missing + remove these).</p>
+      <EventGroupTable title="Goals" g={c.goals} />
+      <EventGroupTable title="Cards" g={c.cards} />
+      <EventGroupTable title="Substitutions" g={c.subs} />
+      <EventGroupTable title="VAR decisions" g={c.var} />
+    </div>
+  )
+}
+
 export default function AdminSync() {
   const [busy, setBusy] = useState<string | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
@@ -80,6 +139,7 @@ export default function AdminSync() {
   const [fixtures, setFixtures] = useState<CompareResult | null>(null)
   const [players, setPlayers] = useState<TeamPlayersCompare[] | null>(null)
   const [matches, setMatches] = useState<AdminMatch[] | null>(null)
+  const [eventsCompare, setEventsCompare] = useState<Record<number, MatchEventsCompare>>({})
 
   const run = async (key: string, fn: () => Promise<any>, after?: (d: any) => void) => {
     setBusy(key); setErr(null); setMsg(null)
@@ -150,15 +210,34 @@ export default function AdminSync() {
     )
   }
 
-  const syncMatch = async (key: string, fn: () => Promise<any>) => {
+  const syncMatch = async (key: string, id: number, fn: () => Promise<any>) => {
     setBusy(key); setErr(null); setMsg(null)
     try {
       const r = await fn()
       if (r?.message) setMsg(r.message)
       const fresh: AdminMatch[] = await getAdminMatches()
       setMatches(fresh)
+      // If this match's event diff is open, refresh it so the result is visible.
+      if (eventsCompare[id]) {
+        const cmp: MatchEventsCompare = await compareMatchEvents(id)
+        setEventsCompare(prev => ({ ...prev, [id]: cmp }))
+      }
     } catch (e: any) {
       setErr(e?.response?.data?.message ?? e?.message ?? 'Sync failed')
+    } finally { setBusy(null) }
+  }
+
+  const toggleEventsCompare = async (id: number) => {
+    if (eventsCompare[id]) {
+      setEventsCompare(prev => { const next = { ...prev }; delete next[id]; return next })
+      return
+    }
+    setBusy(`cmp-evt-${id}`); setErr(null); setMsg(null)
+    try {
+      const cmp: MatchEventsCompare = await compareMatchEvents(id)
+      setEventsCompare(prev => ({ ...prev, [id]: cmp }))
+    } catch (e: any) {
+      setErr(e?.response?.data?.message ?? e?.message ?? 'Compare failed')
     } finally { setBusy(null) }
   }
 
@@ -224,28 +303,41 @@ export default function AdminSync() {
             : (
               <table className="admin-table">
                 <thead>
-                  <tr><th>Match</th><th>Kickoff</th><th>Status</th><th>Score</th><th>Events (G/C/S)</th><th>Lineup</th><th></th></tr>
+                  <tr><th>Match</th><th>Kickoff</th><th>Status</th><th>Score</th><th>Events (G/C/S/V)</th><th>Lineup</th><th></th></tr>
                 </thead>
                 <tbody>
                   {matches.map(m => (
-                    <tr key={m.id}>
+                    <Fragment key={m.id}>
+                    <tr>
                       <td>{m.home} vs {m.away} <span className="admin-dim">#{m.id}</span></td>
                       <td>{new Date(m.kickoffUtc).toLocaleString()}</td>
                       <td><span className="admin-diff-state">{m.status}</span></td>
                       <td>{m.homeGoals ?? '—'} : {m.awayGoals ?? '—'}</td>
-                      <td>{m.goals} / {m.cards} / {m.subs}</td>
+                      <td>{m.goals} / {m.cards} / {m.subs} / {m.var}</td>
                       <td>{m.lineup}</td>
                       <td className="admin-row-actions">
+                        <button className="admin-btn admin-btn--ghost admin-btn--xs" disabled={!!busy}
+                          onClick={() => toggleEventsCompare(m.id)}>
+                          {busy === `cmp-evt-${m.id}` ? 'Loading…' : eventsCompare[m.id] ? 'Hide diff' : 'Compare events'}
+                        </button>
                         <button className="admin-btn admin-btn--primary admin-btn--xs" disabled={!!busy}
-                          onClick={() => syncMatch(`evt-${m.id}`, () => syncMatchEvents(m.id))}>
+                          onClick={() => syncMatch(`evt-${m.id}`, m.id, () => syncMatchEvents(m.id))}>
                           {busy === `evt-${m.id}` ? 'Syncing…' : 'Sync events'}
                         </button>
                         <button className="admin-btn admin-btn--secondary admin-btn--xs" disabled={!!busy}
-                          onClick={() => syncMatch(`lu-${m.id}`, () => syncMatchLineups(m.id))}>
+                          onClick={() => syncMatch(`lu-${m.id}`, m.id, () => syncMatchLineups(m.id))}>
                           {busy === `lu-${m.id}` ? 'Syncing…' : 'Sync lineups'}
                         </button>
                       </td>
                     </tr>
+                    {eventsCompare[m.id] && (
+                      <tr>
+                        <td colSpan={7} className="admin-events-diff-cell">
+                          <EventsCompareView c={eventsCompare[m.id]} />
+                        </td>
+                      </tr>
+                    )}
+                    </Fragment>
                   ))}
                 </tbody>
               </table>
