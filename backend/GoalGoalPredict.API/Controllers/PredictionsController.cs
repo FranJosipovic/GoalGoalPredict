@@ -21,6 +21,15 @@ public class PredictionsController(UpsertPrediction upsert, GetGroupLeaderboard 
         return Ok(result);
     }
 
+    // Prediction made for this match in another group (earliest one), offered for copying.
+    [HttpGet("copyable")]
+    public async Task<IActionResult> GetCopyable([FromQuery] int matchId, [FromQuery] Guid groupId, CancellationToken ct)
+    {
+        var result = await getMyPrediction.GetCopyableAsync(UserId, matchId, groupId, ct);
+        if (result is null) return NoContent();
+        return Ok(result);
+    }
+
     [HttpGet("mine")]
     public async Task<IActionResult> GetMine([FromQuery] Guid groupId, CancellationToken ct)
     {

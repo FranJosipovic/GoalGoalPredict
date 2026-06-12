@@ -1,7 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import Layout from "../components/Layout";
-import NotificationToggle from "../components/NotificationToggle";
 import { getMatchDetail, getMatchPredictions } from "../api/matches";
 import { useAuthStore } from "../store/authStore";
 import PicksByTeam from "../components/PicksByTeam";
@@ -146,11 +145,6 @@ export default function MatchLivePage() {
             />
             <span className="live-team-name">{match.awayTeam.name}</span>
           </div>
-        </div>
-
-        {/* Match alerts */}
-        <div className="live-notif">
-          <NotificationToggle />
         </div>
 
         {/* My prediction */}

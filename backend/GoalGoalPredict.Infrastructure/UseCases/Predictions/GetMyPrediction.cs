@@ -26,4 +26,29 @@ public class GetMyPrediction(AppDbContext db)
             prediction.CardPredictions.Select(c => new CardPickInput(c.PlayerId, c.Kind.ToString())).ToList(),
             prediction.UpdatedAt);
     }
+
+    // The user's prediction for this match in another group, to offer for copying when they
+    // haven't predicted in the current group. Picks the group they predicted in FIRST (earliest
+    // CreatedAt), so with 3+ groups it always reflects the original.
+    public async Task<CopyablePredictionDto?> GetCopyableAsync(Guid userId, int matchId, Guid currentGroupId, CancellationToken ct = default)
+    {
+        var source = await db.Predictions
+            .Include(p => p.GoalscorerPredictions)
+            .Include(p => p.CardPredictions)
+            .Include(p => p.Group)
+            .AsSplitQuery()
+            .Where(p => p.UserId == userId && p.MatchId == matchId && p.GroupId != currentGroupId)
+            .OrderBy(p => p.CreatedAt)
+            .FirstOrDefaultAsync(ct);
+
+        if (source is null) return null;
+
+        return new CopyablePredictionDto(
+            source.GroupId,
+            source.Group.Name,
+            source.HomeGoals,
+            source.AwayGoals,
+            source.GoalscorerPredictions.Select(g => new ScorerPickInput(g.PlayerId, g.GoalType)).ToList(),
+            source.CardPredictions.Select(c => new CardPickInput(c.PlayerId, c.Kind.ToString())).ToList());
+    }
 }

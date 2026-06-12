@@ -70,6 +70,7 @@ builder.Services.AddScoped<PushNotificationService>();
 builder.Services.AddScoped<EffectiveRulesService>();
 builder.Services.AddScoped<PollLiveMatch>();
 builder.Services.AddScoped<FinalizeMatch>();
+builder.Services.AddScoped<GoalGoalPredict.Infrastructure.UseCases.Admin.SyncMatchScoring>();
 builder.Services.AddScoped<UpsertPrediction>();
 builder.Services.AddScoped<GetMyPrediction>();
 builder.Services.AddScoped<GetMyPredictions>();
