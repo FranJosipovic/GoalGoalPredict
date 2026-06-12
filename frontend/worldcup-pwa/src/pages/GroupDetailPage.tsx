@@ -7,7 +7,6 @@ import PicksTab from '../components/tabs/PicksTab'
 import LeaderboardTab from '../components/tabs/LeaderboardTab'
 import MembersTab from '../components/tabs/MembersTab'
 import RulesTab from '../components/tabs/RulesTab'
-import NotificationToggle from '../components/NotificationToggle'
 import type { GroupDetail } from '../types'
 
 type Tab = 'matches' | 'mypicks' | 'leaderboard' | 'members' | 'rules'
@@ -89,10 +88,6 @@ export default function GroupDetailPage() {
             </button>
           ))}
           <div className="hub-tab-indicator" style={{ left: `calc(${tabIndex} * ${100 / TABS.length}%)`, width: `${100 / TABS.length}%` }} />
-        </div>
-
-        <div className="hub-notif">
-          <NotificationToggle />
         </div>
 
         <div className="hub-content" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>

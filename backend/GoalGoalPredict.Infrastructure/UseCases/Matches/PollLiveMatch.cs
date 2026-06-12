@@ -83,20 +83,35 @@ public class PollLiveMatch(AppDbContext db, IApiFootballClient api, EffectiveRul
             logger.LogInformation("Match {MatchId}: removed {Count} stale card(s) no longer in API feed", matchId, staleCards.Count);
         }
 
+        var newCardEvents = cardEvents
+            .Where(e => !dbCardKeys.Contains(CardKey(e.TeamId, e.PlayerId, e.Minute, e.ExtraMinute, e.CardType)))
+            .ToList();
+
+        // A scorer/booked player may not be in our squad yet (e.g. a sub who just came on and
+        // scored). The Scorer/Player FKs would fail the whole SaveChanges and silently drop the
+        // event — fetch their team squad on demand first so the id resolves. Anything the squad
+        // still doesn't list is stored as null rather than lost.
+        var knownEventPlayers = await EnsurePlayersExistAsync(
+            newGoalEvents.Select(e => (e.ScorerPlayerId, e.TeamId))
+                .Concat(newCardEvents.Select(e => (e.PlayerId, e.TeamId))), ct);
+
         // ApiEventOrder is only an identity/uniqueness artifact now (the timeline orders by
         // minute). Under reconcile it must stay unique per match, so hand new rows a value
         // strictly above any existing one rather than the API's positional index — which can
         // collide with a kept row when the feed shifts.
         var nextGoalOrder = existingGoals.Count == 0 ? 0 : existingGoals.Max(g => g.ApiEventOrder) + 1;
         foreach (var e in newGoalEvents)
-            db.MatchGoals.Add(MatchGoal.Create(matchId, e.ScorerPlayerId, e.TeamId, e.Minute, e.ExtraMinute, e.GoalType, nextGoalOrder++));
+        {
+            var scorer = e.ScorerPlayerId is int sid && knownEventPlayers.Contains(sid) ? sid : (int?)null;
+            db.MatchGoals.Add(MatchGoal.Create(matchId, scorer, e.TeamId, e.Minute, e.ExtraMinute, e.GoalType, nextGoalOrder++));
+        }
 
-        var newCardEvents = cardEvents
-            .Where(e => !dbCardKeys.Contains(CardKey(e.TeamId, e.PlayerId, e.Minute, e.ExtraMinute, e.CardType)))
-            .ToList();
         var nextCardOrder = existingCards.Count == 0 ? 0 : existingCards.Max(c => c.ApiEventOrder) + 1;
         foreach (var e in newCardEvents)
-            db.MatchCards.Add(MatchCard.Create(matchId, e.PlayerId, e.TeamId, e.Minute, e.ExtraMinute, e.CardType, nextCardOrder++));
+        {
+            var player = e.PlayerId is int pid && knownEventPlayers.Contains(pid) ? pid : (int?)null;
+            db.MatchCards.Add(MatchCard.Create(matchId, player, e.TeamId, e.Minute, e.ExtraMinute, e.CardType, nextCardOrder++));
+        }
 
         // VAR decisions (type "Var", e.g. "Goal Disallowed - offside", "Penalty confirmed").
         // Reconciled like goals/cards but keyed without the player — the player id can be
@@ -162,6 +177,58 @@ public class PollLiveMatch(AppDbContext db, IApiFootballClient api, EffectiveRul
 
         await SendNotificationsAsync(match, prevStatus, newGoalEvents, ct);
     }
+
+    // Ensures every referenced (playerId, teamId) exists in our Players table, fetching the
+    // team squad on demand for anything missing. Returns the ids that exist afterwards so the
+    // caller can null-out whatever the squad still doesn't list. Runs its own SaveChanges, so
+    // call it BEFORE staging the events that reference these players.
+    private async Task<HashSet<int>> EnsurePlayersExistAsync(IEnumerable<(int? playerId, int teamId)> refs, CancellationToken ct)
+    {
+        var wanted = refs.Where(r => r.playerId.HasValue)
+            .Select(r => (PlayerId: r.playerId!.Value, r.teamId))
+            .Distinct().ToList();
+        if (wanted.Count == 0) return [];
+
+        var ids = wanted.Select(r => r.PlayerId).ToHashSet();
+        var known = await db.Players.Where(p => ids.Contains(p.Id)).Select(p => p.Id).ToHashSetAsync(ct);
+
+        var teamsToFetch = wanted.Where(r => !known.Contains(r.PlayerId)).Select(r => r.teamId).Distinct().ToList();
+        if (teamsToFetch.Count == 0) return known;
+
+        foreach (var teamId in teamsToFetch)
+        {
+            List<Application.Interfaces.ApiSquadPlayerData> squad;
+            try { squad = await api.GetSquadAsync(teamId, ct); }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Squad fetch failed for team {TeamId} while resolving event players", teamId);
+                continue;
+            }
+
+            foreach (var sp in squad)
+            {
+                var pos = MapPosition(sp.Position);
+                var existing = await db.Players.FindAsync([sp.Id], ct);
+                if (existing is null)
+                    db.Players.Add(Player.FromApi(sp.Id, teamId, sp.Name, sp.Age, sp.Number, pos, sp.PhotoUrl));
+                else
+                    existing.Update(sp.Name, sp.Age, sp.Number, pos, sp.PhotoUrl);
+            }
+            logger.LogInformation("Fetched squad for team {TeamId} to resolve a missing event player", teamId);
+        }
+
+        await db.SaveChangesAsync(ct);
+        return await db.Players.Where(p => ids.Contains(p.Id)).Select(p => p.Id).ToHashSetAsync(ct);
+    }
+
+    private static PlayerPosition MapPosition(string pos) => pos switch
+    {
+        "Goalkeeper" => PlayerPosition.Goalkeeper,
+        "Defender" => PlayerPosition.Defender,
+        "Midfielder" => PlayerPosition.Midfielder,
+        "Attacker" => PlayerPosition.Attacker,
+        _ => PlayerPosition.Midfielder
+    };
 
     // Mirror the simulation match notifications (goals + status changes) for real matches,
     // fanned out to every group predicting this fixture.

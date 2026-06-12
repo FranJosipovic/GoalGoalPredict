@@ -1,7 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import Layout from '../components/Layout'
-import NotificationToggle from '../components/NotificationToggle'
 import PredictionPitch, { type PlayerBadge } from '../components/PredictionPitch'
 import { getMatchDetail, getMyPrediction, upsertPrediction } from '../api/matches'
 import { getGroupRules } from '../api/groups'
@@ -475,10 +474,6 @@ export default function MatchPredictPage() {
           </div>
         )}
         {isFinished && <div className="predict-status predict-status--ft">🏁 Match finished</div>}
-
-        <div className="predict-notif">
-          <NotificationToggle />
-        </div>
 
         {/* SCORE */}
         {isLocked ? (
