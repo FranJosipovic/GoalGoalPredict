@@ -23,4 +23,11 @@ public class AdminCompareController(AdminCompareService compare) : ControllerBas
     [HttpGet("players")]
     public async Task<IActionResult> Players([FromQuery] int? teamId, CancellationToken ct)
         => Ok(await compare.ComparePlayersAsync(teamId, ct));
+
+    // Per-match event diff (goals / cards / subs): what's stored in our DB vs what the
+    // API currently returns. Rows flagged InDb/InApi so disallowed (extra-in-DB) events
+    // and missing (in-API-only) events are obvious at a glance.
+    [HttpGet("matches/{id:int}/events")]
+    public async Task<IActionResult> MatchEvents(int id, CancellationToken ct)
+        => Ok(await compare.CompareMatchEventsAsync(id, ct));
 }

@@ -103,11 +103,21 @@ export interface SubstitutionEvent {
   playerOutName: string | null
 }
 
+export interface VarDecisionEvent {
+  minute: number
+  extraMinute: number | null
+  teamId: number
+  playerId: number | null
+  playerName: string | null
+  detail: string
+}
+
 export interface MatchDetail extends MatchListItem {
   lineup: LineupPlayer[]
   goals: GoalEvent[]
   cards: CardEvent[]
   substitutions: SubstitutionEvent[]
+  varDecisions: VarDecisionEvent[]
   lineupsRevealed: boolean
   lineupRevealUtc: string
 }

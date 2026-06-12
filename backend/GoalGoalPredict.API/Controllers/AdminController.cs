@@ -38,7 +38,7 @@ public class AdminController(
                 m.Id, m.KickoffUtc, m.Status, m.HomeGoals, m.AwayGoals, m.LastSyncedAt,
                 Home = m.HomeTeam.Name, Away = m.AwayTeam.Name,
                 Goals = m.Goals.Count, Cards = m.Cards.Count, Subs = m.Substitutions.Count,
-                Lineup = m.LineupPlayers.Count
+                Var = m.VarDecisions.Count, Lineup = m.LineupPlayers.Count
             })
             .ToListAsync(ct);
         return Ok(matches);

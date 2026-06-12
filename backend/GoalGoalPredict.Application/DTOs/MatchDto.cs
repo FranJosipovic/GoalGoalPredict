@@ -35,8 +35,17 @@ public record MatchDetailDto(
     List<GoalEventDto> Goals,
     List<CardEventDto> Cards,
     List<SubstitutionEventDto> Substitutions,
+    List<VarDecisionEventDto> VarDecisions,
     bool LineupsRevealed,
     DateTime LineupRevealUtc);
+
+public record VarDecisionEventDto(
+    int Minute,
+    int? ExtraMinute,
+    int TeamId,
+    int? PlayerId,
+    string? PlayerName,
+    string Detail);
 
 public record SubstitutionEventDto(
     int Minute,

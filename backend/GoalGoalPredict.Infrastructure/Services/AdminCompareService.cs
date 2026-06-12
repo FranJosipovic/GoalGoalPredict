@@ -109,6 +109,103 @@ public class AdminCompareService(AppDbContext db, IApiFootballClient api, ILogge
         return new CompareResult(dbMatches.Count, apiFixtures.Count, matched, mismatched, missing, extra, diffs);
     }
 
+    // ── Match events: stored-in-DB vs currently-in-API (goals / cards / subs) ──────
+    // Diagnostic view so the admin can see exactly which events differ — e.g. a goal
+    // that is in our DB but no longer in the API (VAR-disallowed) shows as "extra in DB".
+    public record EventRow(int Minute, int? Extra, string Type, string? Player, string? PlayerOut, string Team, bool InApi, bool InDb);
+    public record EventGroup(int DbCount, int ApiCount, List<EventRow> Rows);
+    public record MatchEventsCompare(string Match, EventGroup Goals, EventGroup Cards, EventGroup Subs, EventGroup Var);
+
+    public async Task<MatchEventsCompare> CompareMatchEventsAsync(int matchId, CancellationToken ct = default)
+    {
+        var match = await db.Matches.AsNoTracking()
+            .Include(m => m.HomeTeam).Include(m => m.AwayTeam)
+            .FirstOrDefaultAsync(m => m.Id == matchId, ct)
+            ?? throw new InvalidOperationException($"Match {matchId} not found.");
+
+        var teamName = new Dictionary<int, string>
+        {
+            [match.HomeTeamId] = match.HomeTeam.Name,
+            [match.AwayTeamId] = match.AwayTeam.Name,
+        };
+        string Team(int id) => teamName.TryGetValue(id, out var n) ? n : $"#{id}";
+
+        var dbGoals = await db.MatchGoals.AsNoTracking().Where(g => g.MatchId == matchId).ToListAsync(ct);
+        var dbCards = await db.MatchCards.AsNoTracking().Where(c => c.MatchId == matchId).ToListAsync(ct);
+        var dbSubs = await db.MatchSubstitutions.AsNoTracking().Where(s => s.MatchId == matchId).ToListAsync(ct);
+        var dbVars = await db.MatchVarDecisions.AsNoTracking().Where(v => v.MatchId == matchId).ToListAsync(ct);
+
+        var apiGoals = await api.GetGoalEventsAsync(matchId, ct);
+        var apiCards = await api.GetCardEventsAsync(matchId, ct);
+        var apiSubs = await api.GetSubstitutionEventsAsync(matchId, ct);
+        var apiVars = await api.GetVarEventsAsync(matchId, ct);
+
+        // Resolve player names for everything referenced on either side.
+        var ids = new HashSet<int>();
+        foreach (var g in dbGoals) if (g.ScorerPlayerId is int x) ids.Add(x);
+        foreach (var c in dbCards) if (c.PlayerId is int x) ids.Add(x);
+        foreach (var s in dbSubs) { if (s.PlayerInId is int i) ids.Add(i); if (s.PlayerOutId is int o) ids.Add(o); }
+        foreach (var v in dbVars) if (v.PlayerId is int x) ids.Add(x);
+        foreach (var g in apiGoals) if (g.ScorerPlayerId is int x) ids.Add(x);
+        foreach (var c in apiCards) if (c.PlayerId is int x) ids.Add(x);
+        foreach (var s in apiSubs) { if (s.PlayerInId is int i) ids.Add(i); if (s.PlayerOutId is int o) ids.Add(o); }
+        foreach (var v in apiVars) if (v.PlayerId is int x) ids.Add(x);
+        var names = await db.Players.AsNoTracking()
+            .Where(p => ids.Contains(p.Id))
+            .ToDictionaryAsync(p => p.Id, p => p.Name, ct);
+        string Name(int? id) => id is int x ? (names.TryGetValue(x, out var n) ? n : $"#{x}") : "—";
+
+        // Goals
+        var goalKeys = new HashSet<(int, int?, int, int?, string)>();
+        var dbGoalKeys = dbGoals.Select(g => (g.TeamId, g.ScorerPlayerId, g.Minute, g.ExtraMinute, g.GoalType)).ToHashSet();
+        var apiGoalKeys = apiGoals.Select(g => (g.TeamId, g.ScorerPlayerId, g.Minute, g.ExtraMinute, g.GoalType)).ToHashSet();
+        var goalRows = new List<EventRow>();
+        foreach (var g in dbGoals)
+            goalRows.Add(new EventRow(g.Minute, g.ExtraMinute, g.GoalType, Name(g.ScorerPlayerId), null, Team(g.TeamId),
+                apiGoalKeys.Contains((g.TeamId, g.ScorerPlayerId, g.Minute, g.ExtraMinute, g.GoalType)), true));
+        foreach (var g in apiGoals.Where(g => !dbGoalKeys.Contains((g.TeamId, g.ScorerPlayerId, g.Minute, g.ExtraMinute, g.GoalType))))
+            goalRows.Add(new EventRow(g.Minute, g.ExtraMinute, g.GoalType, Name(g.ScorerPlayerId), null, Team(g.TeamId), true, false));
+
+        // Cards
+        var dbCardKeys = dbCards.Select(c => (c.TeamId, c.PlayerId, c.Minute, c.ExtraMinute, c.CardType)).ToHashSet();
+        var apiCardKeys = apiCards.Select(c => (c.TeamId, c.PlayerId, c.Minute, c.ExtraMinute, c.CardType)).ToHashSet();
+        var cardRows = new List<EventRow>();
+        foreach (var c in dbCards)
+            cardRows.Add(new EventRow(c.Minute, c.ExtraMinute, c.CardType, Name(c.PlayerId), null, Team(c.TeamId),
+                apiCardKeys.Contains((c.TeamId, c.PlayerId, c.Minute, c.ExtraMinute, c.CardType)), true));
+        foreach (var c in apiCards.Where(c => !dbCardKeys.Contains((c.TeamId, c.PlayerId, c.Minute, c.ExtraMinute, c.CardType))))
+            cardRows.Add(new EventRow(c.Minute, c.ExtraMinute, c.CardType, Name(c.PlayerId), null, Team(c.TeamId), true, false));
+
+        // Substitutions (in = Player, out = PlayerOut)
+        var dbSubKeys = dbSubs.Select(s => (s.TeamId, s.PlayerInId, s.PlayerOutId, s.Minute, s.ExtraMinute)).ToHashSet();
+        var apiSubKeys = apiSubs.Select(s => (s.TeamId, s.PlayerInId, s.PlayerOutId, s.Minute, s.ExtraMinute)).ToHashSet();
+        var subRows = new List<EventRow>();
+        foreach (var s in dbSubs)
+            subRows.Add(new EventRow(s.Minute, s.ExtraMinute, "Substitution", Name(s.PlayerInId), Name(s.PlayerOutId), Team(s.TeamId),
+                apiSubKeys.Contains((s.TeamId, s.PlayerInId, s.PlayerOutId, s.Minute, s.ExtraMinute)), true));
+        foreach (var s in apiSubs.Where(s => !dbSubKeys.Contains((s.TeamId, s.PlayerInId, s.PlayerOutId, s.Minute, s.ExtraMinute))))
+            subRows.Add(new EventRow(s.Minute, s.ExtraMinute, "Substitution", Name(s.PlayerInId), Name(s.PlayerOutId), Team(s.TeamId), true, false));
+
+        // VAR decisions (keyed on team/minute/extra/detail — player is incidental)
+        var dbVarKeys = dbVars.Select(v => (v.TeamId, v.Minute, v.ExtraMinute, v.Detail)).ToHashSet();
+        var apiVarKeys = apiVars.Select(v => (v.TeamId, v.Minute, v.ExtraMinute, v.Detail)).ToHashSet();
+        var varRows = new List<EventRow>();
+        foreach (var v in dbVars)
+            varRows.Add(new EventRow(v.Minute, v.ExtraMinute, v.Detail, Name(v.PlayerId), null, Team(v.TeamId),
+                apiVarKeys.Contains((v.TeamId, v.Minute, v.ExtraMinute, v.Detail)), true));
+        foreach (var v in apiVars.Where(v => !dbVarKeys.Contains((v.TeamId, v.Minute, v.ExtraMinute, v.Detail))))
+            varRows.Add(new EventRow(v.Minute, v.ExtraMinute, v.Detail, Name(v.PlayerId), null, Team(v.TeamId), true, false));
+
+        static List<EventRow> Sorted(List<EventRow> rows) => rows.OrderBy(r => r.Minute).ThenBy(r => r.Extra ?? 0).ToList();
+
+        return new MatchEventsCompare(
+            $"{match.HomeTeam.Name} vs {match.AwayTeam.Name}",
+            new EventGroup(dbGoals.Count, apiGoals.Count, Sorted(goalRows)),
+            new EventGroup(dbCards.Count, apiCards.Count, Sorted(cardRows)),
+            new EventGroup(dbSubs.Count, apiSubs.Count, Sorted(subRows)),
+            new EventGroup(dbVars.Count, apiVars.Count, Sorted(varRows)));
+    }
+
     public record TeamPlayersCompare(int TeamId, string TeamName, CompareResult Result);
 
     // Per-team squad diff. When teamId is null, walks every team (throttled to respect API rate limits).
