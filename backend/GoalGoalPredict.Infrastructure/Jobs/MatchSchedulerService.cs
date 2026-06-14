@@ -153,5 +153,24 @@ public class MatchSchedulerService(IServiceScopeFactory scopeFactory, ILogger<Ma
             var finalize = scope.ServiceProvider.GetRequiredService<FinalizeMatch>();
             await finalize.ExecuteAsync(match.Id, ct);
         }
+
+        // 5. After any real match finishes, refresh tournament standings + the two teams'
+        // statistics (a match changes both). One standings call + two stats calls per match.
+        if (toFinalize.Count > 0)
+        {
+            var syncStandings = scope.ServiceProvider.GetRequiredService<UseCases.Tournament.SyncStandings>();
+            await syncStandings.ExecuteAsync(ct);
+
+            var syncTopScorers = scope.ServiceProvider.GetRequiredService<UseCases.Tournament.SyncTopScorers>();
+            await syncTopScorers.ExecuteAsync(ct);
+
+            var syncStats = scope.ServiceProvider.GetRequiredService<UseCases.Tournament.SyncTeamStatistics>();
+            var teamIds = toFinalize.SelectMany(m => new[] { m.HomeTeamId, m.AwayTeamId }).Distinct();
+            foreach (var teamId in teamIds)
+            {
+                await syncStats.ExecuteAsync(teamId, ct);
+                await Task.Delay(300, ct);
+            }
+        }
     }
 }

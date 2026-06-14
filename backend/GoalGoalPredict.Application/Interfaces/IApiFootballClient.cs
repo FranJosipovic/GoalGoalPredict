@@ -14,6 +14,18 @@ public record ApiCardEventData(int Minute, int? ExtraMinute, int TeamId, int? Pl
 public record ApiSubstitutionEventData(int Minute, int? ExtraMinute, int TeamId, int? PlayerInId, int? PlayerOutId, int Order);
 public record ApiVarEventData(int Minute, int? ExtraMinute, int TeamId, int? PlayerId, string Detail, int Order);
 public record ApiLineupPlayerData(int PlayerId, int TeamId, bool IsStarting, string Position, int ShirtNumber);
+public record ApiStandingData(
+    int TeamId, string GroupName, int Rank, int Points, int GoalsDiff,
+    int Played, int Win, int Draw, int Lose, int GoalsFor, int GoalsAgainst,
+    string Form, string Description);
+public record ApiTeamStatsData(
+    string Form, int Played, int Wins, int Draws, int Loses,
+    int? GoalsFor, int? GoalsAgainst, int CleanSheets, int FailedToScore,
+    int PenaltyScored, int PenaltyMissed, int YellowCards, int RedCards, string? Formation);
+public record ApiTopScorerData(
+    int PlayerId, string Name, string PhotoUrl, string Nationality,
+    int TeamId, string TeamName, string TeamLogo,
+    int Goals, int Assists, int Appearances, int Minutes, int PenaltiesScored, int Rank);
 
 public interface IApiFootballClient
 {
@@ -26,4 +38,7 @@ public interface IApiFootballClient
     Task<List<ApiSubstitutionEventData>> GetSubstitutionEventsAsync(int fixtureId, CancellationToken ct = default);
     Task<List<ApiVarEventData>> GetVarEventsAsync(int fixtureId, CancellationToken ct = default);
     Task<List<ApiLineupPlayerData>> GetLineupsAsync(int fixtureId, CancellationToken ct = default);
+    Task<List<ApiStandingData>> GetStandingsAsync(CancellationToken ct = default);
+    Task<ApiTeamStatsData?> GetTeamStatisticsAsync(int teamId, CancellationToken ct = default);
+    Task<List<ApiTopScorerData>> GetTopScorersAsync(CancellationToken ct = default);
 }

@@ -14,16 +14,44 @@ export interface PlayerBadge {
 
 interface Props {
   players: LineupPlayer[]                         // one team's starting XI
+  bench?: LineupPlayer[]                           // substitutes (optional)
   badgesFor: (playerId: number) => PlayerBadge[]
   onPlayerTap: (playerId: number) => void
 }
 
 // Renders a single team's XI on a pitch. Players are grouped into G/D/M/F rows
-// straight from their positions, so any formation lays out correctly.
-export default function PredictionPitch({ players, badgesFor, onPlayerTap }: Props) {
+// straight from their positions, so any formation lays out correctly. Substitutes,
+// if provided, are shown as a tappable bench strip below the pitch so they can be
+// picked for scorer/card predictions too.
+export default function PredictionPitch({ players, bench = [], badgesFor, onPlayerTap }: Props) {
   const rows = ROW_ORDER
     .map(code => players.filter(p => POS_LETTER(p.position) === code))
     .filter(r => r.length > 0)
+
+  const token = (p: LineupPlayer) => {
+    const badges = badgesFor(p.playerId)
+    const picked = badges.length > 0
+    return (
+      <button
+        key={p.playerId}
+        type="button"
+        className={`pitch-slot pp-token ${picked ? 'pp-token--picked' : ''}`}
+        onClick={() => onPlayerTap(p.playerId)}
+      >
+        <div className="slot-shirt">#{p.shirtNumber}</div>
+        <div className="slot-player-name">{p.name.split(' ').pop()}</div>
+        {picked && (
+          <div className="pp-badges">
+            {badges.map((b, i) => (
+              <span key={i} className="pp-badge">
+                {b.icon}{b.count && b.count > 1 ? b.count : ''}
+              </span>
+            ))}
+          </div>
+        )}
+      </button>
+    )
+  }
 
   return (
     <div className="pitch-container">
@@ -34,33 +62,19 @@ export default function PredictionPitch({ players, badgesFor, onPlayerTap }: Pro
         {/* GK row at the bottom, attackers at the top */}
         {[...rows].reverse().map((row, ri) => (
           <div key={ri} className="pitch-row">
-            {row.map(p => {
-              const badges = badgesFor(p.playerId)
-              const picked = badges.length > 0
-              return (
-                <button
-                  key={p.playerId}
-                  type="button"
-                  className={`pitch-slot pp-token ${picked ? 'pp-token--picked' : ''}`}
-                  onClick={() => onPlayerTap(p.playerId)}
-                >
-                  <div className="slot-shirt">#{p.shirtNumber}</div>
-                  <div className="slot-player-name">{p.name.split(' ').pop()}</div>
-                  {picked && (
-                    <div className="pp-badges">
-                      {badges.map((b, i) => (
-                        <span key={i} className="pp-badge">
-                          {b.icon}{b.count && b.count > 1 ? b.count : ''}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </button>
-              )
-            })}
+            {row.map(token)}
           </div>
         ))}
       </div>
+
+      {bench.length > 0 && (
+        <div className="pitch-bench">
+          <span className="pitch-bench-label">SUBS</span>
+          <div className="pitch-bench-row">
+            {bench.map(token)}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

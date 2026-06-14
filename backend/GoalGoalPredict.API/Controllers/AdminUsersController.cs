@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using GoalGoalPredict.API.Filters;
+using GoalGoalPredict.Application.Interfaces;
 using GoalGoalPredict.Infrastructure.Data;
 using GoalGoalPredict.Infrastructure.UseCases.Admin;
 using Microsoft.AspNetCore.Authorization;
@@ -12,7 +13,7 @@ namespace GoalGoalPredict.API.Controllers;
 [Route("api/admin/users")]
 [Authorize]
 [AdminOnly]
-public class AdminUsersController(AppDbContext db, DeleteUser deleteUser) : ControllerBase
+public class AdminUsersController(AppDbContext db, DeleteUser deleteUser, IPasswordHasher hasher) : ControllerBase
 {
     private Guid CurrentUserId => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
@@ -81,6 +82,20 @@ public class AdminUsersController(AppDbContext db, DeleteUser deleteUser) : Cont
         return Ok(new { user.Id, user.IsAdmin });
     }
 
+    [HttpPost("{id:guid}/password")]
+    public async Task<IActionResult> SetPassword(Guid id, [FromBody] SetPasswordBody body, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(body.Password) || body.Password.Length < 6)
+            return BadRequest(new { message = "Password must be at least 6 characters" });
+
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Id == id, ct);
+        if (user is null) return NotFound();
+
+        user.SetPasswordHash(hasher.Hash(body.Password));
+        await db.SaveChangesAsync(ct);
+        return Ok(new { message = $"Password updated for {user.Email}" });
+    }
+
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
@@ -93,3 +108,4 @@ public class AdminUsersController(AppDbContext db, DeleteUser deleteUser) : Cont
 }
 
 public record SetAdminBody(bool IsAdmin);
+public record SetPasswordBody(string Password);

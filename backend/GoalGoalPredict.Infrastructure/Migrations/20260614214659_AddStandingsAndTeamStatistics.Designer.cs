@@ -3,6 +3,7 @@ using System;
 using GoalGoalPredict.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace GoalGoalPredict.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260614214659_AddStandingsAndTeamStatistics")]
+    partial class AddStandingsAndTeamStatistics
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -967,9 +970,7 @@ namespace GoalGoalPredict.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("TeamId");
-
-                    b.HasIndex("GroupName", "TeamId")
+                    b.HasIndex("TeamId")
                         .IsUnique();
 
                     b.ToTable("standings", (string)null);
@@ -1086,79 +1087,6 @@ namespace GoalGoalPredict.Infrastructure.Migrations
                     b.HasKey("TeamId");
 
                     b.ToTable("team_statistics", (string)null);
-                });
-
-            modelBuilder.Entity("GoalGoalPredict.Domain.Entities.TopScorer", b =>
-                {
-                    b.Property<int>("PlayerId")
-                        .HasColumnType("integer")
-                        .HasColumnName("player_id");
-
-                    b.Property<int>("Appearances")
-                        .HasColumnType("integer")
-                        .HasColumnName("appearances");
-
-                    b.Property<int>("Assists")
-                        .HasColumnType("integer")
-                        .HasColumnName("assists");
-
-                    b.Property<int>("Goals")
-                        .HasColumnType("integer")
-                        .HasColumnName("goals");
-
-                    b.Property<int>("Minutes")
-                        .HasColumnType("integer")
-                        .HasColumnName("minutes");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(150)
-                        .HasColumnType("character varying(150)")
-                        .HasColumnName("name");
-
-                    b.Property<string>("Nationality")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("nationality");
-
-                    b.Property<int>("PenaltiesScored")
-                        .HasColumnType("integer")
-                        .HasColumnName("penalties_scored");
-
-                    b.Property<string>("PhotoUrl")
-                        .IsRequired()
-                        .HasMaxLength(300)
-                        .HasColumnType("character varying(300)")
-                        .HasColumnName("photo_url");
-
-                    b.Property<int>("Rank")
-                        .HasColumnType("integer")
-                        .HasColumnName("rank");
-
-                    b.Property<int>("TeamId")
-                        .HasColumnType("integer")
-                        .HasColumnName("team_id");
-
-                    b.Property<string>("TeamLogo")
-                        .IsRequired()
-                        .HasMaxLength(300)
-                        .HasColumnType("character varying(300)")
-                        .HasColumnName("team_logo");
-
-                    b.Property<string>("TeamName")
-                        .IsRequired()
-                        .HasMaxLength(150)
-                        .HasColumnType("character varying(150)")
-                        .HasColumnName("team_name");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.HasKey("PlayerId");
-
-                    b.ToTable("top_scorers", (string)null);
                 });
 
             modelBuilder.Entity("GoalGoalPredict.Domain.Entities.User", b =>

@@ -240,14 +240,23 @@ export default function PicksTab({ groupId, onMatchClick }: Props) {
   const { user } = useAuthStore();
   const [items, setItems] = useState<MyPredictionItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [finishedLimit, setFinishedLimit] = useState(3);
+  const [stats, setStats] = useState({ finishedTotal: 0, totalPicks: 0, totalPoints: 0, exactCount: 0 });
 
   const load = useCallback(async () => {
     try {
-      setItems(await getMyPredictions(groupId));
+      const data = await getMyPredictions(groupId, finishedLimit);
+      setItems(data.items);
+      setStats({
+        finishedTotal: data.finishedTotal,
+        totalPicks: data.totalPicks,
+        totalPoints: data.totalPoints,
+        exactCount: data.exactCount,
+      });
     } finally {
       setLoading(false);
     }
-  }, [groupId]);
+  }, [groupId, finishedLimit]);
 
   useEffect(() => {
     load();
@@ -266,7 +275,7 @@ export default function PicksTab({ groupId, onMatchClick }: Props) {
       </div>
     );
 
-  if (items.length === 0) {
+  if (stats.totalPicks === 0) {
     return (
       <div className="empty-state">
         <span className="empty-icon">🎯</span>
@@ -276,12 +285,6 @@ export default function PicksTab({ groupId, onMatchClick }: Props) {
     );
   }
 
-  const scored = items.filter((i) => i.isScored);
-  const totalPoints = scored.reduce((sum, i) => sum + (i.points ?? 0), 0);
-  const exactCount = scored.filter(
-    (i) => i.predHome === i.actualHome && i.predAway === i.actualAway,
-  ).length;
-
   const order: Bucket[] = ["live", "upcoming", "finished"];
   const labels: Record<Bucket, string> = {
     live: "Live now",
@@ -289,52 +292,73 @@ export default function PicksTab({ groupId, onMatchClick }: Props) {
     finished: "Finished",
   };
   const grouped = order
-    .map((b) => ({
-      bucket: b,
-      list: items.filter((i) => bucketOf(i.status) === b),
-    }))
+    .map((b) => {
+      let list = items.filter((i) => bucketOf(i.status) === b);
+      // Played matches read best most-recent-first.
+      if (b === "finished")
+        list = [...list].sort(
+          (a, c) => new Date(c.kickoffUtc).getTime() - new Date(a.kickoffUtc).getTime(),
+        );
+      return { bucket: b, list };
+    })
     .filter((g) => g.list.length > 0);
 
   return (
     <div className="mypred-tab">
       <div className="mypred-summary">
         <div className="mypred-stat">
-          <span className="mypred-stat-num">{totalPoints}</span>
+          <span className="mypred-stat-num">{stats.totalPoints}</span>
           <span className="mypred-stat-label">Points</span>
         </div>
         <div className="mypred-stat">
-          <span className="mypred-stat-num">{items.length}</span>
+          <span className="mypred-stat-num">{stats.totalPicks}</span>
           <span className="mypred-stat-label">Picks</span>
         </div>
         <div className="mypred-stat">
-          <span className="mypred-stat-num">{exactCount}</span>
+          <span className="mypred-stat-num">{stats.exactCount}</span>
           <span className="mypred-stat-label">Exact</span>
         </div>
       </div>
 
-      {grouped.map(({ bucket, list }) => (
-        <div key={bucket} className="mypred-group">
-          <div className="mypred-group-label">
-            {labels[bucket]}{" "}
-            <span className="mypred-group-count">{list.length}</span>
+      {grouped.map(({ bucket, list }) => {
+        const isFinished = bucket === "finished";
+        // Finished picks are paged server-side; the bucket already holds just this page.
+        const visible = list;
+        const hasMore = isFinished && stats.finishedTotal > list.length;
+        return (
+          <div key={bucket} className="mypred-group">
+            <div className="mypred-group-label">
+              {labels[bucket]}{" "}
+              <span className="mypred-group-count">
+                {isFinished ? stats.finishedTotal : list.length}
+              </span>
+            </div>
+            {visible.map((p) => (
+              <PredictionCard
+                key={p.matchId}
+                p={p}
+                groupId={groupId}
+                meId={user?.id}
+                onClick={() =>
+                  onMatchClick(
+                    p.matchId,
+                    LIVE_STATUSES.includes(p.status) ||
+                      FINISHED_STATUSES.includes(p.status),
+                  )
+                }
+              />
+            ))}
+            {hasMore && (
+              <button
+                className="load-more-btn"
+                onClick={() => setFinishedLimit((n) => n + 3)}
+              >
+                Load more
+              </button>
+            )}
           </div>
-          {list.map((p) => (
-            <PredictionCard
-              key={p.matchId}
-              p={p}
-              groupId={groupId}
-              meId={user?.id}
-              onClick={() =>
-                onMatchClick(
-                  p.matchId,
-                  LIVE_STATUSES.includes(p.status) ||
-                    FINISHED_STATUSES.includes(p.status),
-                )
-              }
-            />
-          ))}
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

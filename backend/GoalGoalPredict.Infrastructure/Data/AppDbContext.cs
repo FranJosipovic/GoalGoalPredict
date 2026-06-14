@@ -23,6 +23,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<PredictionScore> PredictionScores => Set<PredictionScore>();
     public DbSet<SimulationEvent> SimulationEvents => Set<SimulationEvent>();
     public DbSet<PushSubscription> PushSubscriptions => Set<PushSubscription>();
+    public DbSet<Standing> Standings => Set<Standing>();
+    public DbSet<TeamStatistics> TeamStatistics => Set<TeamStatistics>();
+    public DbSet<TopScorer> TopScorers => Set<TopScorer>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -337,6 +340,74 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             b.Property(p => p.Auth).HasColumnName("auth").IsRequired();
             b.Property(p => p.CreatedAt).HasColumnName("created_at");
             b.HasIndex(p => new { p.UserId, p.Endpoint }).IsUnique();
+        });
+
+        modelBuilder.Entity<Standing>(b =>
+        {
+            b.ToTable("standings");
+            b.HasKey(s => s.Id);
+            b.Property(s => s.Id).HasColumnName("id");
+            b.Property(s => s.TeamId).HasColumnName("team_id");
+            b.Property(s => s.GroupName).HasColumnName("group_name").HasMaxLength(50);
+            b.Property(s => s.Rank).HasColumnName("rank");
+            b.Property(s => s.Points).HasColumnName("points");
+            b.Property(s => s.GoalsDiff).HasColumnName("goals_diff");
+            b.Property(s => s.Played).HasColumnName("played");
+            b.Property(s => s.Win).HasColumnName("win");
+            b.Property(s => s.Draw).HasColumnName("draw");
+            b.Property(s => s.Lose).HasColumnName("lose");
+            b.Property(s => s.GoalsFor).HasColumnName("goals_for");
+            b.Property(s => s.GoalsAgainst).HasColumnName("goals_against");
+            b.Property(s => s.Form).HasColumnName("form").HasMaxLength(30);
+            b.Property(s => s.Description).HasColumnName("description").HasMaxLength(80);
+            b.Property(s => s.UpdatedAt).HasColumnName("updated_at");
+            b.HasOne(s => s.Team).WithMany().HasForeignKey(s => s.TeamId);
+            // A team can appear in more than one standings table (e.g. its own group AND
+            // the best-third-placed "Group Stage" ranking), so key by group + team.
+            b.HasIndex(s => new { s.GroupName, s.TeamId }).IsUnique();
+        });
+
+        modelBuilder.Entity<TeamStatistics>(b =>
+        {
+            b.ToTable("team_statistics");
+            b.HasKey(s => s.TeamId);
+            b.Property(s => s.TeamId).HasColumnName("team_id").ValueGeneratedNever();
+            b.Property(s => s.Form).HasColumnName("form").HasMaxLength(60);
+            b.Property(s => s.Played).HasColumnName("played");
+            b.Property(s => s.Wins).HasColumnName("wins");
+            b.Property(s => s.Draws).HasColumnName("draws");
+            b.Property(s => s.Loses).HasColumnName("loses");
+            b.Property(s => s.GoalsFor).HasColumnName("goals_for");
+            b.Property(s => s.GoalsAgainst).HasColumnName("goals_against");
+            b.Property(s => s.CleanSheets).HasColumnName("clean_sheets");
+            b.Property(s => s.FailedToScore).HasColumnName("failed_to_score");
+            b.Property(s => s.PenaltyScored).HasColumnName("penalty_scored");
+            b.Property(s => s.PenaltyMissed).HasColumnName("penalty_missed");
+            b.Property(s => s.YellowCards).HasColumnName("yellow_cards");
+            b.Property(s => s.RedCards).HasColumnName("red_cards");
+            b.Property(s => s.Formation).HasColumnName("formation").HasMaxLength(20);
+            b.Property(s => s.UpdatedAt).HasColumnName("updated_at");
+            b.HasOne(s => s.Team).WithMany().HasForeignKey(s => s.TeamId);
+        });
+
+        modelBuilder.Entity<TopScorer>(b =>
+        {
+            b.ToTable("top_scorers");
+            b.HasKey(s => s.PlayerId);
+            b.Property(s => s.PlayerId).HasColumnName("player_id").ValueGeneratedNever();
+            b.Property(s => s.Name).HasColumnName("name").HasMaxLength(150);
+            b.Property(s => s.PhotoUrl).HasColumnName("photo_url").HasMaxLength(300);
+            b.Property(s => s.Nationality).HasColumnName("nationality").HasMaxLength(100);
+            b.Property(s => s.TeamId).HasColumnName("team_id");
+            b.Property(s => s.TeamName).HasColumnName("team_name").HasMaxLength(150);
+            b.Property(s => s.TeamLogo).HasColumnName("team_logo").HasMaxLength(300);
+            b.Property(s => s.Goals).HasColumnName("goals");
+            b.Property(s => s.Assists).HasColumnName("assists");
+            b.Property(s => s.Appearances).HasColumnName("appearances");
+            b.Property(s => s.Minutes).HasColumnName("minutes");
+            b.Property(s => s.PenaltiesScored).HasColumnName("penalties_scored");
+            b.Property(s => s.Rank).HasColumnName("rank");
+            b.Property(s => s.UpdatedAt).HasColumnName("updated_at");
         });
     }
 }
