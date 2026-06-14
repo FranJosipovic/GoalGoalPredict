@@ -25,6 +25,8 @@ public class User
 
     public void SetAdmin(bool isAdmin) => IsAdmin = isAdmin;
 
+    public void SetPasswordHash(string passwordHash) => PasswordHash = passwordHash;
+
     public void UpdateName(string firstName, string lastName)
     {
         FirstName = firstName;

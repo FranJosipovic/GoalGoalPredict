@@ -17,7 +17,8 @@ public class GroupsController(
     GetGroupDetail getGroupDetail,
     GetGroupPreview getGroupPreview,
     ResetInviteCode resetInviteCode,
-    GroupRulesUseCase groupRules) : ControllerBase
+    GroupRulesUseCase groupRules,
+    KickGroupMember kickMember) : ControllerBase
 {
     private Guid CurrentUserId =>
         Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub")!);
@@ -93,6 +94,13 @@ public class GroupsController(
         {
             return Forbid();
         }
+    }
+
+    [HttpDelete("{id:guid}/members/{userId:guid}")]
+    public async Task<IActionResult> RemoveMember(Guid id, Guid userId, CancellationToken ct)
+    {
+        var result = await kickMember.ExecuteAsync(id, CurrentUserId, userId, ct);
+        return result.Success ? Ok(new { result.Message }) : BadRequest(new { error = result.Message });
     }
 
     [HttpGet("{id:guid}/rules")]

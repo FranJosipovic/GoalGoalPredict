@@ -81,6 +81,9 @@ export const getAdminUser = (id: string) =>
 export const setUserAdmin = (id: string, isAdmin: boolean) =>
   client.post(`/admin/users/${id}/admin`, { isAdmin }).then(r => r.data)
 
+export const setUserPassword = (id: string, password: string) =>
+  client.post(`/admin/users/${id}/password`, { password }).then(r => r.data)
+
 export const deleteUser = (id: string) =>
   client.delete(`/admin/users/${id}`).then(r => r.data)
 

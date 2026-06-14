@@ -30,10 +30,16 @@ public class PredictionsController(UpsertPrediction upsert, GetGroupLeaderboard 
         return Ok(result);
     }
 
+    // finishedTake pages finished picks (null = all). Active picks always returned in full.
     [HttpGet("mine")]
-    public async Task<IActionResult> GetMine([FromQuery] Guid groupId, CancellationToken ct)
+    public async Task<IActionResult> GetMine([FromQuery] Guid groupId, [FromQuery] int? finishedTake, CancellationToken ct)
     {
-        var result = await getMyPredictions.ExecuteAsync(UserId, groupId, onlyStarted: false, ct);
+        if (finishedTake is null)
+        {
+            var all = await getMyPredictions.ExecuteAsync(UserId, groupId, onlyStarted: false, ct);
+            return Ok(all);
+        }
+        var result = await getMyPredictions.ExecutePagedAsync(UserId, groupId, finishedTake.Value, ct);
         return Ok(result);
     }
 

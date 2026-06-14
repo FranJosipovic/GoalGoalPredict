@@ -20,6 +20,10 @@ export const getGroupPreview = (code: string) =>
 export const resetInviteCode = (id: string) =>
   client.post<Group>(`/groups/${id}/invite/reset`).then((r) => r.data)
 
+// Group owner removes a member from their group.
+export const kickGroupMember = (groupId: string, userId: string) =>
+  client.delete(`/groups/${groupId}/members/${userId}`).then((r) => r.data)
+
 export const getGroupRules = (id: string) =>
   client.get<GroupScoringRules>(`/groups/${id}/rules`).then((r) => r.data)
 

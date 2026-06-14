@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import AdminLayout from '../../components/admin/AdminLayout'
-import { getAdminUser } from '../../api/admin'
+import { getAdminUser, setUserPassword } from '../../api/admin'
 
 interface UserGroup {
   id: string; name: string; isSimulation: boolean; role: string
@@ -19,9 +19,28 @@ export default function AdminUserDetail() {
   const [u, setU] = useState<UserDetail | null>(null)
   const [err, setErr] = useState<string | null>(null)
 
+  const [newPassword, setNewPassword] = useState('')
+  const [pwSaving, setPwSaving] = useState(false)
+  const [pwMsg, setPwMsg] = useState<string | null>(null)
+
   useEffect(() => {
     if (id) getAdminUser(id).then(setU).catch(() => setErr('Failed to load user'))
   }, [id])
+
+  const handleSetPassword = async () => {
+    if (!id || newPassword.length < 6) return
+    setPwSaving(true)
+    setPwMsg(null)
+    try {
+      const res = await setUserPassword(id, newPassword)
+      setPwMsg(res?.message ?? 'Password updated')
+      setNewPassword('')
+    } catch (e: any) {
+      setPwMsg(e.response?.data?.message ?? 'Failed to update password')
+    } finally {
+      setPwSaving(false)
+    }
+  }
 
   if (err) return <AdminLayout title="User"><div className="admin-error">{err}</div></AdminLayout>
   if (!u) return <AdminLayout title="User"><p className="admin-empty">Loading…</p></AdminLayout>
@@ -46,6 +65,29 @@ export default function AdminUserDetail() {
           <div className="admin-review-item"><span>JOINED</span><strong>{new Date(u.createdAt).toLocaleString()}</strong></div>
           <div className="admin-review-item"><span>PUSH DEVICES</span><strong>{u.pushCount}</strong></div>
         </div>
+      </div>
+
+      <div className="admin-section">
+        <h2 className="admin-section-title">Reset Password</h2>
+        <p className="admin-empty" style={{ marginTop: 0 }}>Set a new password for this user. Tell them the new password directly.</p>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <input
+            type="text"
+            className="field-input"
+            placeholder="New password (min 6 chars)"
+            value={newPassword}
+            onChange={e => setNewPassword(e.target.value)}
+            style={{ flex: 1, minWidth: 200 }}
+          />
+          <button
+            className="btn-primary"
+            onClick={handleSetPassword}
+            disabled={pwSaving || newPassword.length < 6}
+          >
+            {pwSaving ? 'Saving…' : 'Set password'}
+          </button>
+        </div>
+        {pwMsg && <p className="admin-empty" style={{ marginBottom: 0 }}>{pwMsg}</p>}
       </div>
 
       <div className="admin-section">

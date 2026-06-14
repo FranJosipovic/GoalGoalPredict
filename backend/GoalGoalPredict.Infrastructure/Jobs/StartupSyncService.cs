@@ -41,6 +41,13 @@ public class StartupSyncService(IServiceScopeFactory scopeFactory, ILogger<Start
             {
                 logger.LogInformation("Fixtures up to date (last sync: {LastSync:u})", lastSync);
             }
+
+            // Standings + top scorers are cheap (one API call each) — refresh every startup.
+            var syncStandings = scope.ServiceProvider.GetRequiredService<UseCases.Tournament.SyncStandings>();
+            await syncStandings.ExecuteAsync(ct);
+
+            var syncTopScorers = scope.ServiceProvider.GetRequiredService<UseCases.Tournament.SyncTopScorers>();
+            await syncTopScorers.ExecuteAsync(ct);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

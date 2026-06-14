@@ -212,6 +212,84 @@ export interface TeamSquad {
   players: Player[]
 }
 
+// ── Tournament (standings + team detail) ──────────────────────
+export interface StandingRow {
+  teamId: number
+  teamName: string
+  teamCode: string
+  logoUrl: string
+  groupName: string
+  rank: number
+  points: number
+  goalsDiff: number
+  played: number
+  win: number
+  draw: number
+  lose: number
+  goalsFor: number
+  goalsAgainst: number
+  form: string
+  description: string
+}
+
+export interface StandingGroup {
+  groupName: string
+  rows: StandingRow[]
+}
+
+export interface TeamStats {
+  form: string
+  played: number
+  wins: number
+  draws: number
+  loses: number
+  goalsFor: number | null
+  goalsAgainst: number | null
+  cleanSheets: number
+  failedToScore: number
+  penaltyScored: number
+  penaltyMissed: number
+  yellowCards: number
+  redCards: number
+  formation: string | null
+  updatedAt: string
+}
+
+export interface TeamMatch {
+  id: number
+  kickoffUtc: string
+  status: string
+  round: string
+  opponent: TeamSummary
+  isHome: boolean
+  teamGoals: number | null
+  opponentGoals: number | null
+}
+
+export interface TeamDetail {
+  team: TeamSummary
+  country: string | null
+  standing: StandingRow | null
+  stats: TeamStats | null
+  matches: TeamMatch[]
+}
+
+export interface TopScorer {
+  playerId: number
+  name: string
+  photoUrl: string
+  nationality: string
+  teamId: number
+  teamName: string
+  teamLogo: string
+  goals: number
+  assists: number
+  appearances: number
+  minutes: number
+  penaltiesScored: number
+  rank: number
+}
+
 // Scoring rules
 export type CardPredictionMode = 'Limited' | 'Single' | 'Net'
 

@@ -137,6 +137,66 @@ public class ApiFootballClient(HttpClient http, IConfiguration config, ILogger<A
         return result;
     }
 
+    public async Task<List<ApiStandingData>> GetStandingsAsync(CancellationToken ct = default)
+    {
+        var json = await GetAsync($"standings?league={LeagueId}&season={Season}", ct);
+        var resp = Deserialize<ApiResponse<StandingsLeagueWrapper>>(json);
+        var league = resp?.Response.FirstOrDefault()?.League;
+        if (league is null) return [];
+
+        var rows = new List<ApiStandingData>();
+        foreach (var group in league.Standings)
+            foreach (var r in group)
+                rows.Add(new ApiStandingData(
+                    r.Team.Id, r.Group ?? "", r.Rank, r.Points, r.GoalsDiff,
+                    r.All.Played, r.All.Win, r.All.Draw, r.All.Lose,
+                    r.All.Goals.For, r.All.Goals.Against,
+                    r.Form ?? "", r.Description ?? ""));
+        return rows;
+    }
+
+    public async Task<ApiTeamStatsData?> GetTeamStatisticsAsync(int teamId, CancellationToken ct = default)
+    {
+        var json = await GetAsync($"teams/statistics?league={LeagueId}&season={Season}&team={teamId}", ct);
+        var env = Deserialize<StatsEnvelope>(json);
+        var s = env?.Response;
+        if (s is null) return null;
+
+        return new ApiTeamStatsData(
+            s.Form ?? "",
+            s.Fixtures?.Played?.Total ?? 0,
+            s.Fixtures?.Wins?.Total ?? 0,
+            s.Fixtures?.Draws?.Total ?? 0,
+            s.Fixtures?.Loses?.Total ?? 0,
+            s.Goals?.For?.Total?.Total,
+            s.Goals?.Against?.Total?.Total,
+            s.CleanSheet?.Total ?? 0,
+            s.FailedToScore?.Total ?? 0,
+            s.Penalty?.Scored?.Total ?? 0,
+            s.Penalty?.Missed?.Total ?? 0,
+            s.Cards?.Yellow?.Values.Sum(v => v.Total ?? 0) ?? 0,
+            s.Cards?.Red?.Values.Sum(v => v.Total ?? 0) ?? 0,
+            s.Lineups?.OrderByDescending(l => l.Played ?? 0).FirstOrDefault()?.Formation);
+    }
+
+    public async Task<List<ApiTopScorerData>> GetTopScorersAsync(CancellationToken ct = default)
+    {
+        var json = await GetAsync($"players/topscorers?league={LeagueId}&season={Season}", ct);
+        var resp = Deserialize<ApiResponse<TopScorerResponse>>(json);
+        if (resp is null) return [];
+
+        return resp.Response.Select((s, i) =>
+        {
+            var stat = s.Statistics.FirstOrDefault();
+            return new ApiTopScorerData(
+                s.Player.Id, s.Player.Name, s.Player.Photo ?? "", s.Player.Nationality ?? "",
+                stat?.Team?.Id ?? 0, stat?.Team?.Name ?? "", stat?.Team?.Logo ?? "",
+                stat?.Goals?.Total ?? 0, stat?.Goals?.Assists ?? 0,
+                stat?.Games?.Appearences ?? 0, stat?.Games?.Minutes ?? 0,
+                stat?.Penalty?.Scored ?? 0, i + 1);
+        }).ToList();
+    }
+
     private async Task<string> GetAsync(string path, CancellationToken ct)
     {
         var key = config["ApiFootball:ApiKey"];

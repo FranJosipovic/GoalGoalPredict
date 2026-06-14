@@ -99,15 +99,18 @@ export default function MatchesTab({ groupId, onMatchClick }: Props) {
   const [filter, setFilter] = useState<'today' | 'upcoming' | 'finished' | 'all'>(() => {
     return (sessionStorage.getItem(`matches_filter_${groupId}`) as 'today' | 'upcoming' | 'finished' | 'all') ?? 'upcoming'
   })
+  const [finishedLimit, setFinishedLimit] = useState(3)
+  const [finishedTotal, setFinishedTotal] = useState(0)
 
   const load = useCallback(async () => {
     try {
-      const data = await getMatches(groupId)
-      setMatches(data)
+      const data = await getMatches(groupId, finishedLimit)
+      setMatches(data.matches)
+      setFinishedTotal(data.finishedTotal)
     } finally {
       setLoading(false)
     }
-  }, [groupId])
+  }, [groupId, finishedLimit])
 
   useEffect(() => { load() }, [load])
 
@@ -126,11 +129,29 @@ export default function MatchesTab({ groupId, onMatchClick }: Props) {
     return true
   })
 
-  // Finished matches read best most-recent-first
-  if (filter === 'finished') filtered.reverse()
+  // Most-recent-first ordering for Today & Finished, with live matches always on top.
+  // (getMatches returns ascending kickoff; Upcoming/All keep that chronological order.)
+  const byKickoffDesc = (a: MatchListItem, b: MatchListItem) =>
+    new Date(b.kickoffUtc).getTime() - new Date(a.kickoffUtc).getTime()
+  const ordered = [...filtered]
+  if (filter === 'today') {
+    ordered.sort((a, b) => {
+      const al = LIVE_STATUSES.includes(a.status) ? 1 : 0
+      const bl = LIVE_STATUSES.includes(b.status) ? 1 : 0
+      if (al !== bl) return bl - al           // live first
+      return byKickoffDesc(a, b)              // then nearest-played on top, earliest at bottom
+    })
+  } else if (filter === 'finished') {
+    ordered.sort(byKickoffDesc)
+  }
+
+  // Finished history is paged server-side (live + upcoming always returned in full).
+  // Offer "load more" wherever finished matches are shown.
+  const loadedFinished = matches.filter(m => FINISHED_STATUSES.includes(m.status)).length
+  const hasMoreFinished = (filter === 'finished' || filter === 'all') && finishedTotal > loadedFinished
 
   // Group by date
-  const grouped = filtered.reduce<Record<string, MatchListItem[]>>((acc, m) => {
+  const grouped = ordered.reduce<Record<string, MatchListItem[]>>((acc, m) => {
     const key = formatDate(m.kickoffUtc)
     if (!acc[key]) acc[key] = []
     acc[key].push(m)
@@ -191,6 +212,12 @@ export default function MatchesTab({ groupId, onMatchClick }: Props) {
             ))}
           </div>
         ))
+      )}
+
+      {hasMoreFinished && (
+        <button className="load-more-btn" onClick={() => setFinishedLimit(n => n + 3)}>
+          Load more
+        </button>
       )}
     </div>
   )

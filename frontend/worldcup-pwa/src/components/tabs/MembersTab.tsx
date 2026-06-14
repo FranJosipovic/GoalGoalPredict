@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useAuthStore } from '../../store/authStore'
-import { resetInviteCode } from '../../api/groups'
+import { resetInviteCode, kickGroupMember } from '../../api/groups'
 import type { GroupDetail } from '../../types'
 
 export default function MembersTab({ group }: { group: GroupDetail }) {
@@ -10,10 +10,12 @@ export default function MembersTab({ group }: { group: GroupDetail }) {
   const [inviteCode, setInviteCode] = useState(group.inviteCode)
   const [feedback, setFeedback] = useState('')
   const [resetting, setResetting] = useState(false)
+  const [members, setMembers] = useState(group.members)
+  const [kicking, setKicking] = useState<string | null>(null)
 
   const inviteLink = `${window.location.origin}/invite/${inviteCode}`
 
-  const sorted = [...group.members].sort((a, b) =>
+  const sorted = [...members].sort((a, b) =>
     a.role === 'Owner' ? -1 : b.role === 'Owner' ? 1 : 0
   )
 
@@ -43,6 +45,20 @@ export default function MembersTab({ group }: { group: GroupDetail }) {
   const handleCopyCode = async () => {
     await navigator.clipboard.writeText(inviteCode)
     flash('Code copied!')
+  }
+
+  const handleKick = async (userId: string, name: string) => {
+    if (!confirm(`Remove ${name} from the group? Their predictions and points here will be deleted.`)) return
+    setKicking(userId)
+    try {
+      await kickGroupMember(group.id, userId)
+      setMembers(prev => prev.filter(m => m.userId !== userId))
+      flash(`${name} removed.`)
+    } catch (e: any) {
+      flash(e.response?.data?.error ?? 'Could not remove member.')
+    } finally {
+      setKicking(null)
+    }
   }
 
   const handleReset = async () => {
@@ -85,7 +101,7 @@ export default function MembersTab({ group }: { group: GroupDetail }) {
 
       <div className="members-header">
         <span className="members-title">MEMBERS</span>
-        <span className="members-count">{group.members.length}</span>
+        <span className="members-count">{members.length}</span>
       </div>
 
       <div className="members-list">
@@ -102,6 +118,16 @@ export default function MembersTab({ group }: { group: GroupDetail }) {
               <div className="member-email">{m.email}</div>
             </div>
             {m.role === 'Owner' && <span className="member-role-badge">OWNER</span>}
+            {isOwner && m.role !== 'Owner' && m.userId !== user?.id && (
+              <button
+                className="member-kick-btn"
+                onClick={() => handleKick(m.userId, `${m.firstName} ${m.lastName}`)}
+                disabled={kicking === m.userId}
+                aria-label={`Remove ${m.firstName} ${m.lastName}`}
+              >
+                {kicking === m.userId ? '…' : '✕'}
+              </button>
+            )}
           </div>
         ))}
       </div>

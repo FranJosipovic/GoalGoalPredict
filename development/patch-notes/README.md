@@ -6,5 +6,6 @@ with a separate **Technical** list for backend/schema/internal details.
 
 ## Releases
 
+- [2026-06-15](2026-06-15.md) — Tournament hub (standings, scorers, team pages); tabbed match detail with graphical lineups; sub predictions; matches/picks sorting + load-more; server-side pagination; group-owner kick; admin password reset & live-match sync.
 - [2026-06-12](2026-06-12.md) — Predictions grouped by team everywhere; match detail shows only your prediction; goals/cards/subs in one events list.
 - [2026-06-11](2026-06-11.md) — Match detail (your prediction + substitutions), Board cleanup, swipe tabs, admin match-event/lineup sync.

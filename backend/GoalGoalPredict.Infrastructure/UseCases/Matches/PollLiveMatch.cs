@@ -145,37 +145,70 @@ public class PollLiveMatch(AppDbContext db, IApiFootballClient api, EffectiveRul
             }
         }
 
+        // Substitutions — reconcile against the feed (insert new + delete stale) like the other
+        // events, so a settled minute or a removed sub doesn't leave a stale/duplicate row.
         var subEvents = await api.GetSubstitutionEventsAsync(matchId, ct);
-        if (subEvents.Count > 0)
-        {
-            var existingSubOrders = await db.MatchSubstitutions
-                .Where(s => s.MatchId == matchId)
-                .Select(s => s.ApiEventOrder)
-                .ToHashSetAsync(ct);
+        var existingSubs = await db.MatchSubstitutions.Where(s => s.MatchId == matchId).ToListAsync(ct);
 
-            // Bench players occasionally aren't in our Players table; null out unknown
-            // ids so the FK insert doesn't fail (the name simply shows as "Unknown").
-            var referencedIds = subEvents
-                .SelectMany(e => new[] { e.PlayerInId, e.PlayerOutId })
-                .Where(id => id.HasValue).Select(id => id!.Value).Distinct().ToList();
-            var knownPlayerIds = await db.Players
-                .Where(p => referencedIds.Contains(p.Id))
-                .Select(p => p.Id)
-                .ToHashSetAsync(ct);
+        // Resolve player ids first so the FK holds and the reconcile keys line up with the API
+        // (bench players are often missing from our squad data).
+        var subKnown = await EnsurePlayersExistAsync(
+            subEvents.SelectMany(e => new[] { (e.PlayerInId, e.TeamId), (e.PlayerOutId, e.TeamId) }), ct);
+        int? ResolveSub(int? id) => id is int x && subKnown.Contains(x) ? x : (int?)null;
 
-            foreach (var e in subEvents.Where(e => !existingSubOrders.Contains(e.Order)))
-            {
-                var inId = e.PlayerInId is int pin && knownPlayerIds.Contains(pin) ? pin : (int?)null;
-                var outId = e.PlayerOutId is int pout && knownPlayerIds.Contains(pout) ? pout : (int?)null;
-                db.MatchSubstitutions.Add(MatchSubstitution.Create(matchId, e.TeamId, e.Minute, e.ExtraMinute, inId, outId, e.Order));
-            }
-        }
+        static (int, int?, int?, int, int?) SubKey(int team, int? inId, int? outId, int minute, int? extra)
+            => (team, inId, outId, minute, extra);
+        var apiSubKeys = subEvents
+            .Select(e => SubKey(e.TeamId, ResolveSub(e.PlayerInId), ResolveSub(e.PlayerOutId), e.Minute, e.ExtraMinute))
+            .ToHashSet();
+        var dbSubKeys = existingSubs
+            .Select(s => SubKey(s.TeamId, s.PlayerInId, s.PlayerOutId, s.Minute, s.ExtraMinute))
+            .ToHashSet();
+
+        var staleSubs = existingSubs
+            .Where(s => !apiSubKeys.Contains(SubKey(s.TeamId, s.PlayerInId, s.PlayerOutId, s.Minute, s.ExtraMinute)))
+            .ToList();
+        if (staleSubs.Count > 0)
+            db.MatchSubstitutions.RemoveRange(staleSubs);
+
+        var newSubEvents = subEvents
+            .Where(e => !dbSubKeys.Contains(SubKey(e.TeamId, ResolveSub(e.PlayerInId), ResolveSub(e.PlayerOutId), e.Minute, e.ExtraMinute)))
+            .ToList();
+        var nextSubOrder = existingSubs.Count == 0 ? 0 : existingSubs.Max(s => s.ApiEventOrder) + 1;
+        foreach (var e in newSubEvents)
+            db.MatchSubstitutions.Add(MatchSubstitution.Create(matchId, e.TeamId, e.Minute, e.ExtraMinute, ResolveSub(e.PlayerInId), ResolveSub(e.PlayerOutId), nextSubOrder++));
 
         match.TouchSyncedAt();
         await db.SaveChangesAsync(ct);
         logger.LogDebug("Polled match {MatchId}: {Status} {Home}-{Away}", matchId, match.Status, match.HomeGoals, match.AwayGoals);
 
-        await SendNotificationsAsync(match, prevStatus, newGoalEvents, newCardEvents, newVarEvents, ct);
+        // A corrected minute surfaces as a stale row removed + a "new" row added for the same
+        // (team, player, type). Those aren't real new events — drop them so we don't re-notify
+        // a goal/card the users already heard about.
+        var goalsToNotify = SuppressMoved(newGoalEvents, staleGoals,
+            e => (e.TeamId, e.ScorerPlayerId, e.GoalType), g => (g.TeamId, g.ScorerPlayerId, g.GoalType));
+        var cardsToNotify = SuppressMoved(newCardEvents, staleCards,
+            e => (e.TeamId, e.PlayerId, e.CardType), c => (c.TeamId, c.PlayerId, c.CardType));
+
+        await SendNotificationsAsync(match, prevStatus, goalsToNotify, cardsToNotify, newVarEvents, ct);
+    }
+
+    // Drops events that merely moved (same identity minus the minute) from a row removed this
+    // poll, so a corrected minute doesn't re-trigger a notification. Each stale row cancels one
+    // matching new event; a genuine extra goal/card by the same player still gets through.
+    private static List<TEvent> SuppressMoved<TEvent, TRow, TKey>(
+        List<TEvent> newEvents, List<TRow> staleRows,
+        Func<TEvent, TKey> eventKey, Func<TRow, TKey> rowKey) where TKey : notnull
+    {
+        var moved = staleRows.GroupBy(rowKey).ToDictionary(g => g.Key, g => g.Count());
+        var result = new List<TEvent>();
+        foreach (var e in newEvents)
+        {
+            var k = eventKey(e);
+            if (moved.TryGetValue(k, out var n) && n > 0) { moved[k] = n - 1; continue; }
+            result.Add(e);
+        }
+        return result;
     }
 
     // Ensures every referenced (playerId, teamId) exists in our Players table, fetching the

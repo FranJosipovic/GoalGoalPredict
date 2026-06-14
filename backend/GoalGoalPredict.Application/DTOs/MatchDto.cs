@@ -14,6 +14,21 @@ public record MatchListItemDto(
     int? AwayGoals,
     MyPredictionDto? MyPrediction);
 
+// Paged match list: all active (live + upcoming) matches plus a most-recent window of
+// finished matches. FinishedTotal lets the client show a "load more" control.
+public record PagedMatchesDto(
+    List<MatchListItemDto> Matches,
+    int FinishedTotal);
+
+// Paged "my picks": all active picks + a most-recent window of finished ones, with
+// aggregate stats computed over ALL the user's picks (not just the returned page).
+public record PagedMyPredictionsDto(
+    List<MyPredictionItemDto> Items,
+    int FinishedTotal,
+    int TotalPicks,
+    int TotalPoints,
+    int ExactCount);
+
 public record MyPredictionDto(
     Guid Id,
     int HomeGoals,
