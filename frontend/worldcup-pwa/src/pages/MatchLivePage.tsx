@@ -1,10 +1,14 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import Layout from "../components/Layout";
+import PredictionPitch, { type PlayerBadge } from "../components/PredictionPitch";
 import { getMatchDetail, getMatchPredictions } from "../api/matches";
 import { useAuthStore } from "../store/authStore";
 import PicksByTeam from "../components/PicksByTeam";
 import type { MatchDetail, GroupPredictions } from "../types";
+
+type Tab = "events" | "lineups" | "mypred";
+type Side = "home" | "away";
 
 export default function MatchLivePage() {
   const { groupId, matchId } = useParams<{
@@ -15,6 +19,8 @@ export default function MatchLivePage() {
   const [match, setMatch] = useState<MatchDetail | null>(null);
   const [preds, setPreds] = useState<GroupPredictions | null>(null);
   const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState<Tab>("events");
+  const [lineupSide, setLineupSide] = useState<Side>("home");
 
   const load = useCallback(async () => {
     if (!matchId || !groupId) return;
@@ -110,17 +116,55 @@ export default function MatchLivePage() {
       a.minute - b.minute || (a.extraMinute ?? 0) - (b.extraMinute ?? 0),
   );
 
+  // ---- Lineup tab: graphical pitch with goal/card/sub markers ----
+  const hasLineup = match.lineup.length > 0;
+  const goalsByPlayer = new Map<number, number>();
+  const ownGoalsByPlayer = new Map<number, number>();
+  for (const g of match.goals) {
+    if (g.scorerPlayerId == null) continue;
+    const map = g.goalType === "Own Goal" ? ownGoalsByPlayer : goalsByPlayer;
+    if (["Normal Goal", "Penalty", "Own Goal"].includes(g.goalType))
+      map.set(g.scorerPlayerId, (map.get(g.scorerPlayerId) ?? 0) + 1);
+  }
+  const yellowIds = new Set(
+    match.cards.filter((c) => c.cardType === "Yellow Card" && c.playerId != null).map((c) => c.playerId!),
+  );
+  const redIds = new Set(
+    match.cards.filter((c) => c.cardType === "Red Card" && c.playerId != null).map((c) => c.playerId!),
+  );
+  const subInIds = new Set(
+    match.substitutions.filter((s) => s.playerInId != null).map((s) => s.playerInId!),
+  );
+  const subOutIds = new Set(
+    match.substitutions.filter((s) => s.playerOutId != null).map((s) => s.playerOutId!),
+  );
+
+  const lineupBadges = (playerId: number): PlayerBadge[] => {
+    const out: PlayerBadge[] = [];
+    const g = goalsByPlayer.get(playerId) ?? 0;
+    const og = ownGoalsByPlayer.get(playerId) ?? 0;
+    if (g) out.push({ icon: "⚽", count: g });
+    if (og) out.push({ icon: "🥅", count: og });
+    if (yellowIds.has(playerId)) out.push({ icon: "🟨" });
+    if (redIds.has(playerId)) out.push({ icon: "🟥" });
+    if (subOutIds.has(playerId)) out.push({ icon: "🔻" });
+    if (subInIds.has(playerId)) out.push({ icon: "🔺" });
+    return out;
+  };
+
+  const lineupTeam = lineupSide === "home" ? match.homeTeam : match.awayTeam;
+  const xiFor = (teamId: number) =>
+    match.lineup.filter((l) => l.teamId === teamId && l.isStarting);
+  const benchFor = (teamId: number) =>
+    match.lineup.filter((l) => l.teamId === teamId && !l.isStarting);
+
   return (
     <Layout title="Match" showBack>
       <div className="live-page">
         {/* Score header */}
         <div className="live-scoreboard">
           <div className="live-team">
-            <img
-              src={match.homeTeam.logoUrl}
-              className="live-team-logo"
-              alt=""
-            />
+            <img src={match.homeTeam.logoUrl} className="live-team-logo" alt="" />
             <span className="live-team-name">{match.homeTeam.name}</span>
           </div>
           <div className="live-score-block">
@@ -138,117 +182,152 @@ export default function MatchLivePage() {
             {isFinished && <div className="ft-label">FULL TIME</div>}
           </div>
           <div className="live-team live-team--right">
-            <img
-              src={match.awayTeam.logoUrl}
-              className="live-team-logo"
-              alt=""
-            />
+            <img src={match.awayTeam.logoUrl} className="live-team-logo" alt="" />
             <span className="live-team-name">{match.awayTeam.name}</span>
           </div>
         </div>
 
-        {/* My prediction */}
-        {myPred && (
-          <div className="my-pred">
-            <div className="my-pred-head">
-              <span className="section-label">YOUR PREDICTION</span>
-              <span className="my-pred-pts">
-                {myPred.projectedPoints}
-                <em>{isFinished ? "pts" : "proj"}</em>
-              </span>
-            </div>
-            <div className="my-pred-score">
-              <span>{match.homeTeam.code || match.homeTeam.name}</span>
-              <strong>
-                {myPred.predHome} : {myPred.predAway}
-              </strong>
-              <span>{match.awayTeam.code || match.awayTeam.name}</span>
-            </div>
-            <PicksByTeam
-              scorers={myPred.scorers}
-              cards={myPred.cards}
-              home={match.homeTeam}
-              away={match.awayTeam}
-            />
-          </div>
-        )}
+        {/* Tabs */}
+        <div className="match-tabs">
+          {([
+            ["events", "📋 Events"],
+            ["lineups", "👕 Lineups"],
+            ["mypred", "🎯 My Pick"],
+          ] as [Tab, string][]).map(([t, label]) => (
+            <button
+              key={t}
+              className={`match-tab ${tab === t ? "match-tab--active" : ""}`}
+              onClick={() => setTab(t)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
 
-        {/* Match events — goals, cards and subs in one timeline */}
-        {events.length > 0 && (
-          <div className="events-timeline">
-            <div className="section-label">MATCH EVENTS</div>
-            {events.map((e, i) => {
-              const home = e.teamId === match.homeTeam.id;
-              return (
-                <div
-                  key={i}
-                  className={`ev-row ${home ? "ev-row--home" : "ev-row--away"}`}
-                >
-                  <span className="ev-min">
-                    {e.minute}
-                    {e.extraMinute ? `+${e.extraMinute}` : ""}'
-                  </span>
-                  <span className="ev-icon">
-                    {e.kind === "goal"
-                      ? e.goalType === "Penalty"
-                        ? "⚽(P)"
-                        : e.goalType === "Own Goal"
-                          ? "⚽(OG)"
-                          : "⚽"
-                      : e.kind === "card"
-                        ? e.cardType === "Red Card"
-                          ? "🟥"
-                          : "🟨"
-                        : e.kind === "var"
-                          ? /disallow|cancel/i.test(e.detail ?? "")
-                            ? "❌"
-                            : "📺"
-                          : ""}
-                  </span>
-                  <div className="ev-text">
-                    {e.kind === "sub" ? (
-                      <>
-                        <span className="ev-in">▲ {e.inName ?? "Unknown"}</span>
-                        <span className="ev-out">
-                          ▼ {e.outName ?? "Unknown"}
-                        </span>
-                      </>
-                    ) : e.kind === "var" ? (
-                      <>
-                        <span className="ev-main">VAR: {e.detail}</span>
-                        {e.main && <span className="ev-out">{e.main}</span>}
-                      </>
-                    ) : (
-                      <span className="ev-main">{e.main ?? "Unknown"}</span>
-                    )}
+        {/* TAB: Match events */}
+        {tab === "events" && (
+          events.length === 0 ? (
+            <div className="empty-state"><p>No events yet</p></div>
+          ) : (
+            <div className="events-timeline">
+              {events.map((e, i) => {
+                const home = e.teamId === match.homeTeam.id;
+                return (
+                  <div
+                    key={i}
+                    className={`ev-row ${home ? "ev-row--home" : "ev-row--away"}`}
+                  >
+                    <span className="ev-min">
+                      {e.minute}
+                      {e.extraMinute ? `+${e.extraMinute}` : ""}'
+                    </span>
+                    <span className="ev-icon">
+                      {e.kind === "goal"
+                        ? e.goalType === "Penalty"
+                          ? "⚽(P)"
+                          : e.goalType === "Own Goal"
+                            ? "⚽(OG)"
+                            : "⚽"
+                        : e.kind === "card"
+                          ? e.cardType === "Red Card"
+                            ? "🟥"
+                            : "🟨"
+                          : e.kind === "var"
+                            ? /disallow|cancel/i.test(e.detail ?? "")
+                              ? "❌"
+                              : "📺"
+                            : e.kind === "sub"
+                              ? "🔄"
+                              : ""}
+                    </span>
+                    <div className="ev-text">
+                      {e.kind === "sub" ? (
+                        <>
+                          <span className="ev-in">▲ {e.inName ?? "Unknown"}</span>
+                          <span className="ev-out">▼ {e.outName ?? "Unknown"}</span>
+                        </>
+                      ) : e.kind === "var" ? (
+                        <>
+                          <span className="ev-main">VAR: {e.detail}</span>
+                          {e.main && <span className="ev-out">{e.main}</span>}
+                        </>
+                      ) : (
+                        <span className="ev-main">{e.main ?? "Unknown"}</span>
+                      )}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )
         )}
 
-        {/* Lineups */}
-        {match.lineup.length > 0 && (
-          <div className="lineup-section">
-            <div className="section-label">LINEUPS</div>
-            <div className="lineup-cols">
-              {[match.homeTeam, match.awayTeam].map((team) => (
-                <div key={team.id} className="lineup-col">
-                  <div className="lineup-team-name">{team.name}</div>
-                  {match.lineup
-                    .filter((l) => l.teamId === team.id && l.isStarting)
-                    .map((l) => (
-                      <div key={l.playerId} className="lineup-player">
-                        <span className="lineup-num">#{l.shirtNumber}</span>
-                        <span className="lineup-name">{l.name}</span>
-                        <span className="lineup-pos">{l.position}</span>
-                      </div>
-                    ))}
-                </div>
-              ))}
+        {/* TAB: Lineups (graphical) */}
+        {tab === "lineups" && (
+          !hasLineup ? (
+            <div className="empty-state"><p>Lineups not available yet</p></div>
+          ) : (
+            <div className="lineup-tab">
+              <div className="picker-team-switch">
+                <button
+                  className={`picker-team-btn ${lineupSide === "home" ? "active" : ""}`}
+                  onClick={() => setLineupSide("home")}
+                >
+                  {match.homeTeam.code || match.homeTeam.name}
+                </button>
+                <button
+                  className={`picker-team-btn ${lineupSide === "away" ? "active" : ""}`}
+                  onClick={() => setLineupSide("away")}
+                >
+                  {match.awayTeam.code || match.awayTeam.name}
+                </button>
+              </div>
+
+              <PredictionPitch
+                players={xiFor(lineupTeam.id)}
+                bench={benchFor(lineupTeam.id)}
+                badgesFor={lineupBadges}
+                onPlayerTap={() => {}}
+              />
+
+              <div className="lineup-legend">
+                <span>⚽ goal</span>
+                <span>🟨 / 🟥 card</span>
+                <span>🔻 subbed off</span>
+                <span>🔺 subbed on</span>
+              </div>
             </div>
-          </div>
+          )
+        )}
+
+        {/* TAB: My prediction */}
+        {tab === "mypred" && (
+          !myPred ? (
+            <div className="empty-state"><p>You didn't predict this match</p></div>
+          ) : (
+            <div className="my-pred">
+              <div className="my-pred-head">
+                <span className="section-label">YOUR PREDICTION</span>
+                <span className="my-pred-pts">
+                  {myPred.projectedPoints}
+                  <em>{isFinished ? "pts" : "proj"}</em>
+                </span>
+              </div>
+              <div className="my-pred-score">
+                <span>{match.homeTeam.code || match.homeTeam.name}</span>
+                <strong>
+                  {myPred.predHome} : {myPred.predAway}
+                </strong>
+                <span>{match.awayTeam.code || match.awayTeam.name}</span>
+              </div>
+              <PicksByTeam
+                scorers={myPred.scorers}
+                cards={myPred.cards}
+                home={match.homeTeam}
+                away={match.awayTeam}
+              />
+            </div>
+          )
         )}
       </div>
     </Layout>

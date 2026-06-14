@@ -57,6 +57,7 @@ builder.Services.AddScoped<GetGroupDetail>();
 builder.Services.AddScoped<GetGroupPreview>();
 builder.Services.AddScoped<ResetInviteCode>();
 builder.Services.AddScoped<GoalGoalPredict.Infrastructure.UseCases.Groups.GroupRulesUseCase>();
+builder.Services.AddScoped<GoalGoalPredict.Infrastructure.UseCases.Groups.KickGroupMember>();
 
 // Use cases — Matches & Predictions
 builder.Services.AddScoped<SyncTeamsAndPlayers>();
@@ -85,6 +86,9 @@ builder.Services.AddScoped<DeleteUser>();
 builder.Services.AddScoped<RemoveGroupMember>();
 builder.Services.AddScoped<TransferGroupOwner>();
 builder.Services.AddScoped<PrunePlayers>();
+builder.Services.AddScoped<GoalGoalPredict.Infrastructure.UseCases.Tournament.SyncStandings>();
+builder.Services.AddScoped<GoalGoalPredict.Infrastructure.UseCases.Tournament.SyncTeamStatistics>();
+builder.Services.AddScoped<GoalGoalPredict.Infrastructure.UseCases.Tournament.SyncTopScorers>();
 
 // API Football HTTP client
 builder.Services.AddHttpClient<IApiFootballClient, ApiFootballClient>(client =>

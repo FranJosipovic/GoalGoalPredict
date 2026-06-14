@@ -23,24 +23,30 @@ public class AdminController(
     AppDbContext db) : ControllerBase
 {
     private static readonly string[] FinishedStatuses = ["FT", "AET", "PEN"];
+    private static readonly string[] LiveStatuses = ["1H", "HT", "2H", "ET", "BT", "P", "SUSP", "INT", "LIVE"];
 
-    // Finished (API-Football) matches with their stored event + lineup counts, for the
-    // admin "Match Events" sync panel. Most-recent kickoff first. Only finished matches
-    // are listed — those are the ones with complete data worth backfilling.
+    // Live + finished (API-Football) matches with their stored event + lineup counts, for the
+    // admin "Match Events & Lineups" sync panel. Live matches come first (most relevant to act
+    // on), then finished by most-recent kickoff. These are the matches with data worth
+    // backfilling/reconciling; far-future NS fixtures are omitted as there's nothing to sync yet.
     [HttpGet("matches")]
     public async Task<IActionResult> Matches(CancellationToken ct)
     {
         var matches = await db.Matches
             .Include(m => m.HomeTeam)
             .Include(m => m.AwayTeam)
-            .Where(m => m.Source == "ApiFootball" && FinishedStatuses.Contains(m.Status))
-            .OrderByDescending(m => m.KickoffUtc)
+            .Where(m => m.Source == "ApiFootball"
+                && (FinishedStatuses.Contains(m.Status) || LiveStatuses.Contains(m.Status)))
             .Select(m => new {
                 m.Id, m.KickoffUtc, m.Status, m.HomeGoals, m.AwayGoals, m.LastSyncedAt,
+                m.ElapsedMinutes,
+                IsLive = LiveStatuses.Contains(m.Status),
                 Home = m.HomeTeam.Name, Away = m.AwayTeam.Name,
                 Goals = m.Goals.Count, Cards = m.Cards.Count, Subs = m.Substitutions.Count,
                 Var = m.VarDecisions.Count, Lineup = m.LineupPlayers.Count
             })
+            .OrderByDescending(m => m.IsLive)
+            .ThenByDescending(m => m.KickoffUtc)
             .ToListAsync(ct);
         return Ok(matches);
     }

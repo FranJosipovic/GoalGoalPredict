@@ -267,6 +267,8 @@ export default function MatchPredictPage() {
   const sideOf = (id: number): Side => homeIdSet.has(id) ? 'home' : 'away'
   const xiFor = (teamId: number) =>
     match.lineup.filter(l => l.isStarting && l.teamId === teamId)
+  const benchFor = (teamId: number) =>
+    match.lineup.filter(l => !l.isStarting && l.teamId === teamId)
   const activeTeamId = activeTeam === 'home' ? match.homeTeam.id : match.awayTeam.id
 
   const countGoals = (id: number, t: GoalType) =>
@@ -577,6 +579,20 @@ export default function MatchPredictPage() {
                 ))}
               </div>
             )}
+            {match.substitutions.length > 0 && (
+              <div className="subs-timeline">
+                <span className="section-label">SUBSTITUTIONS</span>
+                {[...match.substitutions]
+                  .sort((a, b) => a.minute - b.minute || (a.extraMinute ?? 0) - (b.extraMinute ?? 0))
+                  .map((s, i) => (
+                    <div key={i} className="sub-event">
+                      <span className="goal-min">{s.minute}{s.extraMinute ? `+${s.extraMinute}` : ''}&apos;</span>
+                      <span className="sub-in">🟢 {s.playerInName ?? 'Unknown'}</span>
+                      <span className="sub-out">🔴 {s.playerOutName ?? 'Unknown'}</span>
+                    </div>
+                  ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -651,10 +667,11 @@ export default function MatchPredictPage() {
                 </div>
                 <PredictionPitch
                   players={xiFor(activeTeamId)}
+                  bench={benchFor(activeTeamId)}
                   badgesFor={badgesForPlayer}
                   onPlayerTap={setSheetPlayerId}
                 />
-                <p className="pitch-predictor-hint">Tap a player to predict their goals &amp; cards</p>
+                <p className="pitch-predictor-hint">Tap any player (including subs) to predict their goals &amp; cards</p>
               </div>
             )}
 

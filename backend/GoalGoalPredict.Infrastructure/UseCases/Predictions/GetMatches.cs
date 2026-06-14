@@ -6,15 +6,35 @@ namespace GoalGoalPredict.Infrastructure.UseCases.Predictions;
 
 public class GetMatches(AppDbContext db)
 {
-    public async Task<List<MatchListItemDto>> ExecuteAsync(Guid userId, Guid groupId, CancellationToken ct = default)
+    private static readonly string[] FinishedStatuses = ["FT", "AET", "PEN"];
+
+    // Returns every active (live + upcoming) match for the group, plus the most-recent
+    // `finishedTake` finished matches. Finished history grows unbounded over a tournament,
+    // so it's paged; active matches stay small and are always returned in full.
+    // `finishedTake = null` returns all finished matches (no paging).
+    public async Task<PagedMatchesDto> ExecuteAsync(Guid userId, Guid groupId, int? finishedTake = null, CancellationToken ct = default)
     {
-        var matches = await db.Matches
+        var baseQuery = db.Matches
             .Include(m => m.HomeTeam)
             .Include(m => m.AwayTeam)
             .Where(m => m.Source == "ApiFootball"
-                || (m.Source == "Simulation" && m.SimulationGroupId == groupId))
+                || (m.Source == "Simulation" && m.SimulationGroupId == groupId));
+
+        var active = await baseQuery
+            .Where(m => !FinishedStatuses.Contains(m.Status))
             .OrderBy(m => m.KickoffUtc)
             .ToListAsync(ct);
+
+        var finishedQuery = baseQuery.Where(m => FinishedStatuses.Contains(m.Status));
+        var finishedTotal = await finishedQuery.CountAsync(ct);
+
+        var finishedOrdered = finishedQuery.OrderByDescending(m => m.KickoffUtc);
+        var finished = finishedTake.HasValue
+            ? await finishedOrdered.Take(finishedTake.Value).ToListAsync(ct)
+            : await finishedOrdered.ToListAsync(ct);
+
+        // Combine and present chronologically (the client re-sorts per tab as needed).
+        var matches = active.Concat(finished).OrderBy(m => m.KickoffUtc).ToList();
 
         var matchIds = matches.Select(m => m.Id).ToList();
         var predictions = await db.Predictions
@@ -23,7 +43,7 @@ public class GetMatches(AppDbContext db)
             .Where(p => p.UserId == userId && p.GroupId == groupId && matchIds.Contains(p.MatchId))
             .ToDictionaryAsync(p => p.MatchId, ct);
 
-        return matches.Select(m =>
+        var items = matches.Select(m =>
         {
             predictions.TryGetValue(m.Id, out var pred);
             MyPredictionDto? myPred = pred is null ? null : new MyPredictionDto(
@@ -37,6 +57,8 @@ public class GetMatches(AppDbContext db)
                 new TeamSummaryDto(m.AwayTeam.Id, m.AwayTeam.Name, m.AwayTeam.Code, m.AwayTeam.LogoUrl),
                 m.HomeGoals, m.AwayGoals, myPred);
         }).ToList();
+
+        return new PagedMatchesDto(items, finishedTotal);
     }
 
     public async Task<MatchDetailDto?> GetDetailAsync(int matchId, CancellationToken ct = default)

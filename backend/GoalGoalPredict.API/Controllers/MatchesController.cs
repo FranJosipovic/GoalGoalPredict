@@ -12,10 +12,12 @@ public class MatchesController(GetMatches getMatches, GetGroupPredictions getGro
 {
     private Guid UserId => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
+    // finishedTake pages the finished-match history (null = all). Live + upcoming
+    // matches are always returned in full.
     [HttpGet]
-    public async Task<IActionResult> GetAll([FromQuery] Guid groupId, CancellationToken ct)
+    public async Task<IActionResult> GetAll([FromQuery] Guid groupId, [FromQuery] int? finishedTake, CancellationToken ct)
     {
-        var result = await getMatches.ExecuteAsync(UserId, groupId, ct);
+        var result = await getMatches.ExecuteAsync(UserId, groupId, finishedTake, ct);
         return Ok(result);
     }
 

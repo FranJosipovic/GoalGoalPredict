@@ -9,23 +9,61 @@ namespace GoalGoalPredict.Infrastructure.UseCases.Predictions;
 
 public class GetMyPredictions(AppDbContext db, EffectiveRulesService effectiveRules)
 {
+    private static readonly string[] FinishedStatuses = ["FT", "AET", "PEN"];
+
+    private IQueryable<Prediction> BaseQuery(Guid userId, Guid groupId) => db.Predictions
+        .Include(p => p.Match).ThenInclude(m => m.HomeTeam)
+        .Include(p => p.Match).ThenInclude(m => m.AwayTeam)
+        .Include(p => p.Match).ThenInclude(m => m.Goals)
+        .Include(p => p.Match).ThenInclude(m => m.Cards)
+        .Include(p => p.GoalscorerPredictions).ThenInclude(g => g.Player)
+        .Include(p => p.CardPredictions).ThenInclude(c => c.Player)
+        .Include(p => p.Score)
+        .AsSplitQuery()
+        .Where(p => p.UserId == userId && p.GroupId == groupId);
+
     public async Task<List<MyPredictionItemDto>> ExecuteAsync(Guid userId, Guid groupId, bool onlyStarted = false, CancellationToken ct = default)
     {
         var now = DateTime.UtcNow;
-        var predictions = await db.Predictions
-            .Include(p => p.Match).ThenInclude(m => m.HomeTeam)
-            .Include(p => p.Match).ThenInclude(m => m.AwayTeam)
-            .Include(p => p.Match).ThenInclude(m => m.Goals)
-            .Include(p => p.Match).ThenInclude(m => m.Cards)
-            .Include(p => p.GoalscorerPredictions).ThenInclude(g => g.Player)
-            .Include(p => p.CardPredictions).ThenInclude(c => c.Player)
-            .Include(p => p.Score)
-            .AsSplitQuery()
-            .Where(p => p.UserId == userId && p.GroupId == groupId)
+        var predictions = await BaseQuery(userId, groupId)
             // When viewing another member, hide picks for matches that haven't kicked off.
             .Where(p => !onlyStarted || p.Match.KickoffUtc <= now)
             .ToListAsync(ct);
 
+        return await BuildAsync(groupId, predictions, ct);
+    }
+
+    // Active (live + upcoming) picks in full, plus the most-recent `finishedTake` finished
+    // picks. Aggregate stats are computed over ALL of the user's picks, so the Picks-tab
+    // summary stays correct regardless of how many finished picks are loaded.
+    public async Task<PagedMyPredictionsDto> ExecutePagedAsync(Guid userId, Guid groupId, int finishedTake, CancellationToken ct = default)
+    {
+        var active = await BaseQuery(userId, groupId)
+            .Where(p => !FinishedStatuses.Contains(p.Match.Status))
+            .ToListAsync(ct);
+
+        var finishedQuery = BaseQuery(userId, groupId).Where(p => FinishedStatuses.Contains(p.Match.Status));
+        var finishedTotal = await finishedQuery.CountAsync(ct);
+        var finished = await finishedQuery
+            .OrderByDescending(p => p.Match.KickoffUtc)
+            .Take(finishedTake)
+            .ToListAsync(ct);
+
+        var items = await BuildAsync(groupId, active.Concat(finished).ToList(), ct);
+
+        var totalPicks = await db.Predictions.CountAsync(p => p.UserId == userId && p.GroupId == groupId, ct);
+        var totalPoints = await db.PredictionScores
+            .Where(s => s.UserId == userId && s.GroupId == groupId)
+            .SumAsync(s => (int?)s.TotalPoints, ct) ?? 0;
+        var exactCount = await db.Predictions.CountAsync(p =>
+            p.UserId == userId && p.GroupId == groupId && p.Score != null
+            && p.Match.HomeGoals == p.HomeGoals && p.Match.AwayGoals == p.AwayGoals, ct);
+
+        return new PagedMyPredictionsDto(items, finishedTotal, totalPicks, totalPoints, exactCount);
+    }
+
+    private async Task<List<MyPredictionItemDto>> BuildAsync(Guid groupId, List<Prediction> predictions, CancellationToken ct)
+    {
         // Per-match rules: started matches use their frozen kickoff snapshot, upcoming use live.
         var rulesByMatch = new Dictionary<int, GroupScoringRules>();
         foreach (var m in predictions.Select(p => p.Match).DistinctBy(m => m.Id))

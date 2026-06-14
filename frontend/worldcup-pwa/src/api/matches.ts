@@ -1,8 +1,14 @@
 import client from './client'
 import type { MatchListItem, MatchDetail, GroupPredictions, LeaderboardEntry, MyPredictionItem, PredictionResult, ScorerPickInput, CardPickInput } from '../types'
 
-export const getMatches = (groupId: string) =>
-  client.get<MatchListItem[]>('/matches', { params: { groupId } }).then(r => r.data)
+export interface PagedMatches {
+  matches: MatchListItem[]
+  finishedTotal: number
+}
+
+// finishedTake pages the finished-match history; live + upcoming are always returned in full.
+export const getMatches = (groupId: string, finishedTake?: number) =>
+  client.get<PagedMatches>('/matches', { params: { groupId, finishedTake } }).then(r => r.data)
 
 export const getMatchDetail = (id: number) =>
   client.get<MatchDetail>(`/matches/${id}`).then(r => r.data)
@@ -13,8 +19,17 @@ export const getMatchPredictions = (id: number, groupId: string) =>
 export const getLeaderboard = (groupId: string) =>
   client.get<LeaderboardEntry[]>('/predictions/leaderboard', { params: { groupId } }).then(r => r.data)
 
-export const getMyPredictions = (groupId: string) =>
-  client.get<MyPredictionItem[]>('/predictions/mine', { params: { groupId } }).then(r => r.data)
+export interface PagedMyPredictions {
+  items: MyPredictionItem[]
+  finishedTotal: number
+  totalPicks: number
+  totalPoints: number
+  exactCount: number
+}
+
+// finishedTake pages finished picks; active picks always returned in full.
+export const getMyPredictions = (groupId: string, finishedTake: number) =>
+  client.get<PagedMyPredictions>('/predictions/mine', { params: { groupId, finishedTake } }).then(r => r.data)
 
 export const getUserPredictions = (userId: string, groupId: string) =>
   client.get<MyPredictionItem[]>(`/predictions/user/${userId}`, { params: { groupId } }).then(r => r.data)

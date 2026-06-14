@@ -19,6 +19,7 @@ interface TeamPlayersCompare { teamId: number; teamName: string; result: Compare
 interface AdminMatch {
   id: number; kickoffUtc: string; status: string
   homeGoals: number | null; awayGoals: number | null; lastSyncedAt: string
+  elapsedMinutes: number | null; isLive: boolean
   home: string; away: string; goals: number; cards: number; subs: number; var: number; lineup: number
 }
 interface EventRow {
@@ -370,10 +371,10 @@ export default function AdminSync() {
             </button>
           </div>
         </div>
-        <p className="admin-hint">Finished matches only. Pulls status + goals/cards/subs (events) or starting XI + bench (lineups) from the API and upserts only what's missing. Safe to run repeatedly.</p>
+        <p className="admin-hint">Live &amp; finished matches (live shown first). Pulls status + goals/cards/subs (events) or starting XI + bench (lineups) from the API and upserts only what's missing. Safe to run repeatedly — useful for forcing a live match's lineups/events to refresh now.</p>
         {matches && (
           matches.length === 0
-            ? <p className="admin-empty">No finished matches.</p>
+            ? <p className="admin-empty">No live or finished matches.</p>
             : (
               <table className="admin-table">
                 <thead>
@@ -382,10 +383,14 @@ export default function AdminSync() {
                 <tbody>
                   {matches.map(m => (
                     <Fragment key={m.id}>
-                    <tr>
+                    <tr className={m.isLive ? 'admin-row-live' : ''}>
                       <td>{m.home} vs {m.away} <span className="admin-dim">#{m.id}</span></td>
                       <td>{new Date(m.kickoffUtc).toLocaleString()}</td>
-                      <td><span className="admin-diff-state">{m.status}</span></td>
+                      <td>
+                        {m.isLive
+                          ? <span className="admin-diff-state admin-diff-state--live">● {m.status}{m.elapsedMinutes != null ? ` ${m.elapsedMinutes}'` : ''}</span>
+                          : <span className="admin-diff-state">{m.status}</span>}
+                      </td>
                       <td>{m.homeGoals ?? '—'} : {m.awayGoals ?? '—'}</td>
                       <td>{m.goals} / {m.cards} / {m.subs} / {m.var}</td>
                       <td>{m.lineup}</td>

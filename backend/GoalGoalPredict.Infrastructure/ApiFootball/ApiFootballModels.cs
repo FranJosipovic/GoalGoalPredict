@@ -149,3 +149,156 @@ internal class ApiLineupPlayer
     [JsonPropertyName("number")] public int Number { get; set; }
     [JsonPropertyName("pos")] public string Pos { get; set; } = "";
 }
+
+// ── Standings ──────────────────────────────────────────────────
+internal class StandingsLeagueWrapper
+{
+    [JsonPropertyName("league")] public StandingsLeague League { get; set; } = null!;
+}
+
+internal class StandingsLeague
+{
+    // standings is an array of groups, each group an array of team rows.
+    [JsonPropertyName("standings")] public List<List<ApiStandingRow>> Standings { get; set; } = [];
+}
+
+internal class ApiStandingRow
+{
+    [JsonPropertyName("rank")] public int Rank { get; set; }
+    [JsonPropertyName("team")] public ApiTeamBrief Team { get; set; } = null!;
+    [JsonPropertyName("points")] public int Points { get; set; }
+    [JsonPropertyName("goalsDiff")] public int GoalsDiff { get; set; }
+    [JsonPropertyName("group")] public string? Group { get; set; }
+    [JsonPropertyName("form")] public string? Form { get; set; }
+    [JsonPropertyName("description")] public string? Description { get; set; }
+    [JsonPropertyName("all")] public ApiStandingAll All { get; set; } = new();
+}
+
+internal class ApiStandingAll
+{
+    [JsonPropertyName("played")] public int Played { get; set; }
+    [JsonPropertyName("win")] public int Win { get; set; }
+    [JsonPropertyName("draw")] public int Draw { get; set; }
+    [JsonPropertyName("lose")] public int Lose { get; set; }
+    [JsonPropertyName("goals")] public ApiStandingGoals Goals { get; set; } = new();
+}
+
+internal class ApiStandingGoals
+{
+    [JsonPropertyName("for")] public int For { get; set; }
+    [JsonPropertyName("against")] public int Against { get; set; }
+}
+
+// ── Team statistics ────────────────────────────────────────────
+// The statistics endpoint returns `response` as a single object (not an array),
+// so it needs its own envelope rather than the shared ApiResponse<T>.
+internal class StatsEnvelope
+{
+    [JsonPropertyName("response")] public StatsResponse? Response { get; set; }
+}
+
+internal class StatsResponse
+{
+    [JsonPropertyName("form")] public string? Form { get; set; }
+    [JsonPropertyName("fixtures")] public ApiStatsFixtures? Fixtures { get; set; }
+    [JsonPropertyName("goals")] public ApiStatsGoals? Goals { get; set; }
+    [JsonPropertyName("clean_sheet")] public ApiStatsHomeAwayTotal? CleanSheet { get; set; }
+    [JsonPropertyName("failed_to_score")] public ApiStatsHomeAwayTotal? FailedToScore { get; set; }
+    [JsonPropertyName("penalty")] public ApiStatsPenalty? Penalty { get; set; }
+    [JsonPropertyName("lineups")] public List<ApiStatsLineup>? Lineups { get; set; }
+    [JsonPropertyName("cards")] public ApiStatsCards? Cards { get; set; }
+}
+
+internal class ApiStatsFixtures
+{
+    [JsonPropertyName("played")] public ApiStatsHomeAwayTotal? Played { get; set; }
+    [JsonPropertyName("wins")] public ApiStatsHomeAwayTotal? Wins { get; set; }
+    [JsonPropertyName("draws")] public ApiStatsHomeAwayTotal? Draws { get; set; }
+    [JsonPropertyName("loses")] public ApiStatsHomeAwayTotal? Loses { get; set; }
+}
+
+internal class ApiStatsHomeAwayTotal
+{
+    [JsonPropertyName("total")] public int? Total { get; set; }
+}
+
+internal class ApiStatsGoals
+{
+    [JsonPropertyName("for")] public ApiStatsGoalSide? For { get; set; }
+    [JsonPropertyName("against")] public ApiStatsGoalSide? Against { get; set; }
+}
+
+internal class ApiStatsGoalSide
+{
+    [JsonPropertyName("total")] public ApiStatsHomeAwayTotal? Total { get; set; }
+}
+
+internal class ApiStatsPenalty
+{
+    [JsonPropertyName("scored")] public ApiStatsHomeAwayTotal? Scored { get; set; }
+    [JsonPropertyName("missed")] public ApiStatsHomeAwayTotal? Missed { get; set; }
+}
+
+internal class ApiStatsLineup
+{
+    [JsonPropertyName("formation")] public string? Formation { get; set; }
+    [JsonPropertyName("played")] public int? Played { get; set; }
+}
+
+internal class ApiStatsCards
+{
+    [JsonPropertyName("yellow")] public Dictionary<string, ApiStatsCardInterval>? Yellow { get; set; }
+    [JsonPropertyName("red")] public Dictionary<string, ApiStatsCardInterval>? Red { get; set; }
+}
+
+internal class ApiStatsCardInterval
+{
+    [JsonPropertyName("total")] public int? Total { get; set; }
+}
+
+// ── Top scorers ────────────────────────────────────────────────
+internal class TopScorerResponse
+{
+    [JsonPropertyName("player")] public ApiScorerPlayer Player { get; set; } = null!;
+    [JsonPropertyName("statistics")] public List<ApiScorerStatistics> Statistics { get; set; } = [];
+}
+
+internal class ApiScorerPlayer
+{
+    [JsonPropertyName("id")] public int Id { get; set; }
+    [JsonPropertyName("name")] public string Name { get; set; } = "";
+    [JsonPropertyName("nationality")] public string? Nationality { get; set; }
+    [JsonPropertyName("photo")] public string? Photo { get; set; }
+}
+
+internal class ApiScorerStatistics
+{
+    [JsonPropertyName("team")] public ApiScorerTeam? Team { get; set; }
+    [JsonPropertyName("games")] public ApiScorerGames? Games { get; set; }
+    [JsonPropertyName("goals")] public ApiScorerGoals? Goals { get; set; }
+    [JsonPropertyName("penalty")] public ApiScorerPenalty? Penalty { get; set; }
+}
+
+internal class ApiScorerTeam
+{
+    [JsonPropertyName("id")] public int Id { get; set; }
+    [JsonPropertyName("name")] public string? Name { get; set; }
+    [JsonPropertyName("logo")] public string? Logo { get; set; }
+}
+
+internal class ApiScorerGames
+{
+    [JsonPropertyName("appearences")] public int? Appearences { get; set; }
+    [JsonPropertyName("minutes")] public int? Minutes { get; set; }
+}
+
+internal class ApiScorerGoals
+{
+    [JsonPropertyName("total")] public int? Total { get; set; }
+    [JsonPropertyName("assists")] public int? Assists { get; set; }
+}
+
+internal class ApiScorerPenalty
+{
+    [JsonPropertyName("scored")] public int? Scored { get; set; }
+}
