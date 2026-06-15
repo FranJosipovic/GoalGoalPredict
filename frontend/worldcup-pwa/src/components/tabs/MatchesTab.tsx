@@ -166,12 +166,19 @@ export default function MatchesTab({ groupId, onMatchClick }: Props) {
 
   return (
     <div className="matches-tab">
-      {/* Live banner */}
+      {/* Live banner — tap to open the live match (the first, if several) */}
       {liveMatches.length > 0 && (
-        <div className="live-banner">
+        <button
+          type="button"
+          className="live-banner"
+          onClick={() => onMatchClick(liveMatches[0].id, true)}
+        >
           <div className="live-banner-dot" />
           <span>{liveMatches.length} match{liveMatches.length > 1 ? 'es' : ''} live now</span>
-        </div>
+          <svg className="live-banner-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <path d="M9 6l6 6-6 6" />
+          </svg>
+        </button>
       )}
 
       {/* Filter pills */}

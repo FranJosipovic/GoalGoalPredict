@@ -45,10 +45,16 @@ builder.Services.AddScoped<IGroupRepository, GroupRepository>();
 // Services
 builder.Services.AddScoped<ITokenService, JwtTokenService>();
 builder.Services.AddScoped<IPasswordHasher, BcryptPasswordHasher>();
+builder.Services.AddScoped<IGoogleTokenVerifier, GoalGoalPredict.Infrastructure.Auth.GoogleTokenVerifier>();
+builder.Services.AddHttpClient<IEmailSender, GoalGoalPredict.Infrastructure.Email.ResendEmailSender>();
 
 // Use cases — Auth & Groups
 builder.Services.AddScoped<RegisterUser>();
 builder.Services.AddScoped<LoginUser>();
+builder.Services.AddScoped<GoogleSignIn>();
+builder.Services.AddScoped<LinkGoogleAccount>();
+builder.Services.AddScoped<VerifyEmail>();
+builder.Services.AddScoped<ResendVerification>();
 builder.Services.AddScoped<UpdateProfile>();
 builder.Services.AddScoped<CreateGroup>();
 builder.Services.AddScoped<JoinGroup>();
