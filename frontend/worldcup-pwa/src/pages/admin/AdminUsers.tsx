@@ -6,6 +6,7 @@ import { getAdminUsers, deleteUser, setUserAdmin } from '../../api/admin'
 interface AdminUser {
   id: string; email: string; firstName: string; lastName: string
   isAdmin: boolean; createdAt: string
+  emailVerified: boolean; isGoogle: boolean
   groups: number; predictions: number; hasPush: boolean
 }
 
@@ -60,14 +61,21 @@ export default function AdminUsers() {
           : (
             <table className="admin-table">
               <thead><tr>
-                <th>Name</th><th>Email</th><th>Groups</th><th>Preds</th>
+                <th>Name</th><th>Email</th><th>Verified</th><th>Groups</th><th>Preds</th>
                 <th>Push</th><th>Joined</th><th>Role</th><th></th>
               </tr></thead>
               <tbody>
                 {users.map(u => (
                   <tr key={u.id}>
                     <td><Link className="admin-link" to={`/admin/users/${u.id}`}>{u.firstName} {u.lastName}</Link></td>
-                    <td className="admin-dim">{u.email}</td>
+                    <td className="admin-dim">
+                      {u.email}{u.isGoogle && <span className="admin-tag" title="Signed in with Google"> G</span>}
+                    </td>
+                    <td>
+                      {u.emailVerified
+                        ? <span className="admin-diff-state admin-diff-state--match" title="Email verified">✓ Verified</span>
+                        : <span className="admin-diff-state admin-diff-state--mismatch" title="Email not verified">✗ Unverified</span>}
+                    </td>
                     <td>{u.groups}</td>
                     <td>{u.predictions}</td>
                     <td>{u.hasPush ? '🔔' : '—'}</td>

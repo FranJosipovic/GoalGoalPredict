@@ -33,6 +33,8 @@ public class AdminUsersController(AppDbContext db, DeleteUser deleteUser, IPassw
             .OrderByDescending(u => u.CreatedAt)
             .Select(u => new {
                 u.Id, u.Email, u.FirstName, u.LastName, u.IsAdmin, u.CreatedAt,
+                u.EmailVerified,
+                IsGoogle = u.GoogleSub != null,
                 Groups = db.GroupMembers.Count(m => m.UserId == u.Id),
                 Predictions = db.Predictions.Count(p => p.UserId == u.Id),
                 HasPush = db.PushSubscriptions.Any(p => p.UserId == u.Id)
@@ -64,6 +66,8 @@ public class AdminUsersController(AppDbContext db, DeleteUser deleteUser, IPassw
 
         return Ok(new {
             user.Id, user.Email, user.FirstName, user.LastName, user.IsAdmin, user.CreatedAt,
+            user.EmailVerified,
+            IsGoogle = user.GoogleSub != null,
             pushCount, totalPoints, totalPredictions, groups
         });
     }

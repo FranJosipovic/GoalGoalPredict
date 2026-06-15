@@ -10,6 +10,7 @@ interface UserGroup {
 interface UserDetail {
   id: string; email: string; firstName: string; lastName: string
   isAdmin: boolean; createdAt: string
+  emailVerified: boolean; isGoogle: boolean
   pushCount: number; totalPoints: number; totalPredictions: number
   groups: UserGroup[]
 }
@@ -61,6 +62,15 @@ export default function AdminUserDetail() {
         <h2 className="admin-section-title">Account</h2>
         <div className="admin-review-grid">
           <div className="admin-review-item"><span>EMAIL</span><strong>{u.email}</strong></div>
+          <div className="admin-review-item">
+            <span>EMAIL STATUS</span>
+            <strong>
+              {u.emailVerified
+                ? <span className="admin-diff-state admin-diff-state--match">✓ Verified</span>
+                : <span className="admin-diff-state admin-diff-state--mismatch">✗ Unverified</span>}
+            </strong>
+          </div>
+          <div className="admin-review-item"><span>SIGN-IN</span><strong>{u.isGoogle ? 'Google' : 'Email / password'}</strong></div>
           <div className="admin-review-item"><span>ROLE</span><strong>{u.isAdmin ? 'Admin' : 'User'}</strong></div>
           <div className="admin-review-item"><span>JOINED</span><strong>{new Date(u.createdAt).toLocaleString()}</strong></div>
           <div className="admin-review-item"><span>PUSH DEVICES</span><strong>{u.pushCount}</strong></div>

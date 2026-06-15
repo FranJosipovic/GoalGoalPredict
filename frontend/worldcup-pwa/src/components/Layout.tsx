@@ -1,6 +1,7 @@
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import TopBarMenu from './TopBarMenu'
+import EmailVerifyModal from './EmailVerifyModal'
 
 interface Props {
   children: React.ReactNode
@@ -42,6 +43,8 @@ export default function Layout({ children, title, showBack }: Props) {
         </div>
       </header>
       <main className="main-content">{children}</main>
+
+      {user && <EmailVerifyModal />}
 
       {/* Bottom nav — only on main pages */}
       {!showBack && user && (

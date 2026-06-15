@@ -129,10 +129,14 @@ public class ApiFootballClient(HttpClient http, IConfiguration config, ILogger<A
         var result = new List<ApiLineupPlayerData>();
         foreach (var team in resp.Response)
         {
+            // API-Football can return a null player id for someone not in their DB —
+            // we can't store a lineup row without a player, so skip those entries.
             foreach (var w in team.StartXI)
-                result.Add(new ApiLineupPlayerData(w.Player.Id, team.Team.Id, true, w.Player.Pos, w.Player.Number));
+                if (w.Player?.Id is int pid)
+                    result.Add(new ApiLineupPlayerData(pid, team.Team.Id, true, w.Player.Pos, w.Player.Number ?? 0));
             foreach (var w in team.Substitutes)
-                result.Add(new ApiLineupPlayerData(w.Player.Id, team.Team.Id, false, w.Player.Pos, w.Player.Number));
+                if (w.Player?.Id is int pid)
+                    result.Add(new ApiLineupPlayerData(pid, team.Team.Id, false, w.Player.Pos, w.Player.Number ?? 0));
         }
         return result;
     }

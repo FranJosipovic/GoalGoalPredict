@@ -145,8 +145,10 @@ internal class ApiLineupPlayerWrapper
 
 internal class ApiLineupPlayer
 {
-    [JsonPropertyName("id")] public int Id { get; set; }
-    [JsonPropertyName("number")] public int Number { get; set; }
+    // API-Football occasionally returns a null player id (and number) for a player
+    // missing from their database — keep these nullable so deserialization doesn't blow up.
+    [JsonPropertyName("id")] public int? Id { get; set; }
+    [JsonPropertyName("number")] public int? Number { get; set; }
     [JsonPropertyName("pos")] public string Pos { get; set; } = "";
 }
 

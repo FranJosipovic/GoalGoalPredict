@@ -504,6 +504,120 @@ input { font-family: inherit; }
 }
 .auth-link:hover { opacity: 0.8; }
 
+/* ─── Auth divider ("or") ─── */
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 18px 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* ─── Google sign-in button ─── */
+.google-btn-wrap {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  color-scheme: light; /* keep Google's iframe button from going dark-on-dark */
+}
+/* Let Google's button keep its own (centered) width — forcing the inner wrapper to
+   100% leaves the fixed-width iframe stranded on the left. */
+
+/* ─── Email verification panels ─── */
+.verify-prompt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+  padding: 8px 0;
+}
+.verify-icon { font-size: 40px; line-height: 1; }
+.verify-title {
+  font-family: 'Oswald', sans-serif;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+}
+.verify-text {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  max-width: 320px;
+}
+.verify-text strong { color: var(--text); }
+.verify-sent {
+  font-size: 13px;
+  color: var(--accent);
+  font-weight: 500;
+}
+.verify-prompt .btn-secondary,
+.verify-prompt .auth-divider,
+.verify-prompt .google-btn-wrap { width: 100%; }
+.back-link {
+  margin-top: 4px;
+  font-size: 13px;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.spinner-dark {
+  border-color: rgba(255, 255, 255, 0.2);
+  border-top-color: var(--accent);
+  width: 28px;
+  height: 28px;
+}
+
+/* ─── Email verification modal (blocking, logged-in & unverified) ─── */
+.verify-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.78);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: overlay-in 0.2s ease;
+}
+.verify-modal {
+  background: var(--surface);
+  border: 1px solid var(--border-solid);
+  border-radius: 20px;
+  padding: 30px 24px 26px;
+  width: 100%;
+  max-width: 380px;
+  max-height: calc(100dvh - 40px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+  animation: modal-pop 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes modal-pop {
+  from { transform: scale(0.94); opacity: 0; }
+  to   { transform: scale(1);    opacity: 1; }
+}
+.verify-modal .verify-text { max-width: 320px; }
+.verify-modal .btn-secondary,
+.verify-modal .auth-divider,
+.verify-modal .google-btn-wrap,
+.verify-modal .error-msg { width: 100%; }
+
 /* ─── Install Banner ─── */
 .install-banner {
   display: flex;
@@ -1087,6 +1201,7 @@ input { font-family: inherit; }
   display: flex;
   align-items: center;
   gap: 10px;
+  width: calc(100% - 40px);
   margin: 16px 20px 0;
   padding: 10px 16px;
   background: rgba(255, 60, 60, 0.08);
@@ -1094,8 +1209,15 @@ input { font-family: inherit; }
   border-radius: var(--radius-sm);
   font-size: 13px;
   font-weight: 500;
+  font-family: inherit;
+  text-align: left;
   color: #ff6b6b;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
 }
+.live-banner:hover { background: rgba(255, 60, 60, 0.14); border-color: rgba(255, 60, 60, 0.35); }
+.live-banner:active { transform: scale(0.99); }
+.live-banner-arrow { margin-left: auto; flex-shrink: 0; opacity: 0.8; }
 .live-banner-dot {
   width: 8px; height: 8px;
   border-radius: 50%;
@@ -1525,6 +1647,10 @@ input { font-family: inherit; }
 .my-pred-pts em { font-size: 9px; font-style: normal; color: var(--text-muted); letter-spacing: 0.06em; text-transform: uppercase; margin-left: 3px; }
 .my-pred-score { display: flex; align-items: center; justify-content: center; gap: 12px; margin: 10px 0; font-size: 13px; color: var(--text-muted); }
 .my-pred-score strong { font-family: 'Oswald', sans-serif; font-size: 24px; color: var(--text); }
+/* Everyone's picks list: neutral cards, with the current user's highlighted. */
+.match-picks { padding-top: 4px; }
+.match-picks .my-pred { background: var(--surface-2); border-color: var(--border); }
+.match-picks .my-pred--me { background: var(--accent-glow); border-color: var(--accent-dim); }
 
 /* Picks grouped by team (shared: match detail, Picks tab, player history) */
 /* Two columns: home on the left, away on the right; picks stacked as a list. */
@@ -2307,6 +2433,12 @@ input { font-family: inherit; }
   cursor: pointer;
 }
 
+/* Card/penalty picker inside the bottom sheet */
+.pp-sheet .picker-team-switch { margin-top: 12px; }
+.pp-sheet .picker-search { margin: 10px 0; }
+.card-pick-scroll { max-height: 52vh; overflow-y: auto; }
+.card-pick-scroll .player-list { max-height: none; overflow: visible; }
+
 /* ─── Admin Shell ─── */
 .admin-shell {
   display: flex;
@@ -2534,6 +2666,8 @@ input { font-family: inherit; }
 .admin-diff-state--extra_in_db { color: rgba(232,232,240,0.6); background: rgba(255,255,255,0.06); }
 .admin-diff-state--db_only { color: #ef9a9a; background: rgba(239,154,154,0.12); }
 .admin-diff-state--live { color: #4caf50; background: rgba(76,175,80,0.14); animation: admin-live-pulse 1.6s ease-in-out infinite; }
+.admin-diff-state--match { color: #4caf50; background: rgba(76,175,80,0.14); }
+.admin-tag { font-size: 10px; font-weight: 700; color: #64b5f6; background: rgba(100,181,246,0.14); padding: 1px 5px; border-radius: 4px; margin-left: 4px; letter-spacing: 0.04em; }
 .admin-row-live { background: rgba(76,175,80,0.05); }
 @keyframes admin-live-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.55; } }
 

@@ -4,6 +4,7 @@ export interface User {
   firstName: string
   lastName: string
   isAdmin?: boolean
+  emailVerified?: boolean
 }
 
 export interface Group {
