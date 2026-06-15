@@ -7,7 +7,7 @@ import { useAuthStore } from "../store/authStore";
 import PicksByTeam from "../components/PicksByTeam";
 import type { MatchDetail, GroupPredictions } from "../types";
 
-type Tab = "events" | "lineups" | "mypred";
+type Tab = "events" | "lineups" | "picks";
 type Side = "home" | "away";
 
 export default function MatchLivePage() {
@@ -64,7 +64,10 @@ export default function MatchLivePage() {
 
   const isLive = ["1H", "HT", "2H", "ET", "P"].includes(match.status);
   const isFinished = ["FT", "AET", "PEN"].includes(match.status);
-  const myPred = preds?.predictions.find((p) => p.userId === user?.id) ?? null;
+  // All members' picks for this match, best projected/scored first.
+  const allPicks = [...(preds?.predictions ?? [])].sort(
+    (a, b) => b.projectedPoints - a.projectedPoints,
+  );
 
   type Ev = {
     minute: number;
@@ -192,7 +195,7 @@ export default function MatchLivePage() {
           {([
             ["events", "📋 Events"],
             ["lineups", "👕 Lineups"],
-            ["mypred", "🎯 My Pick"],
+            ["picks", "🎯 Picks"],
           ] as [Tab, string][]).map(([t, label]) => (
             <button
               key={t}
@@ -300,32 +303,41 @@ export default function MatchLivePage() {
           )
         )}
 
-        {/* TAB: My prediction */}
-        {tab === "mypred" && (
-          !myPred ? (
-            <div className="empty-state"><p>You didn't predict this match</p></div>
+        {/* TAB: Everyone's picks */}
+        {tab === "picks" && (
+          allPicks.length === 0 ? (
+            <div className="empty-state"><p>No predictions for this match</p></div>
           ) : (
-            <div className="my-pred">
-              <div className="my-pred-head">
-                <span className="section-label">YOUR PREDICTION</span>
-                <span className="my-pred-pts">
-                  {myPred.projectedPoints}
-                  <em>{isFinished ? "pts" : "proj"}</em>
-                </span>
-              </div>
-              <div className="my-pred-score">
-                <span>{match.homeTeam.code || match.homeTeam.name}</span>
-                <strong>
-                  {myPred.predHome} : {myPred.predAway}
-                </strong>
-                <span>{match.awayTeam.code || match.awayTeam.name}</span>
-              </div>
-              <PicksByTeam
-                scorers={myPred.scorers}
-                cards={myPred.cards}
-                home={match.homeTeam}
-                away={match.awayTeam}
-              />
+            <div className="match-picks">
+              {allPicks.map((p) => {
+                const isMe = p.userId === user?.id;
+                return (
+                  <div key={p.userId} className={`my-pred ${isMe ? "my-pred--me" : ""}`}>
+                    <div className="my-pred-head">
+                      <span className="section-label">
+                        {p.firstName} {p.lastName}{isMe ? " (You)" : ""}
+                      </span>
+                      <span className="my-pred-pts">
+                        {p.projectedPoints}
+                        <em>{isFinished ? "pts" : "proj"}</em>
+                      </span>
+                    </div>
+                    <div className="my-pred-score">
+                      <span>{match.homeTeam.code || match.homeTeam.name}</span>
+                      <strong>
+                        {p.predHome} : {p.predAway}
+                      </strong>
+                      <span>{match.awayTeam.code || match.awayTeam.name}</span>
+                    </div>
+                    <PicksByTeam
+                      scorers={p.scorers}
+                      cards={p.cards}
+                      home={match.homeTeam}
+                      away={match.awayTeam}
+                    />
+                  </div>
+                );
+              })}
             </div>
           )
         )}

@@ -37,10 +37,16 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             b.Property(u => u.Email).HasColumnName("email").IsRequired().HasMaxLength(256);
             b.Property(u => u.FirstName).HasColumnName("first_name").IsRequired().HasMaxLength(100);
             b.Property(u => u.LastName).HasColumnName("last_name").IsRequired().HasMaxLength(100);
-            b.Property(u => u.PasswordHash).HasColumnName("password_hash").IsRequired();
+            b.Property(u => u.PasswordHash).HasColumnName("password_hash");
+            b.Property(u => u.GoogleSub).HasColumnName("google_sub").HasMaxLength(64);
+            b.Property(u => u.EmailVerified).HasColumnName("email_verified").HasDefaultValue(false);
+            b.Property(u => u.EmailVerificationToken).HasColumnName("email_verification_token").HasMaxLength(128);
+            b.Property(u => u.EmailVerificationTokenExpiresAt).HasColumnName("email_verification_token_expires_at");
             b.Property(u => u.CreatedAt).HasColumnName("created_at");
             b.Property(u => u.IsAdmin).HasColumnName("is_admin").HasDefaultValue(false);
             b.HasIndex(u => u.Email).IsUnique();
+            // One Google account maps to at most one local user; nulls are unconstrained.
+            b.HasIndex(u => u.GoogleSub).IsUnique().HasFilter("google_sub IS NOT NULL");
         });
 
         modelBuilder.Entity<Group>(b =>

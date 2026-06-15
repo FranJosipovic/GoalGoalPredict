@@ -13,6 +13,12 @@ public class UserRepository(AppDbContext db) : IUserRepository
     public async Task<User?> GetByIdAsync(Guid id) =>
         await db.Users.FindAsync(id);
 
+    public async Task<User?> GetByGoogleSubAsync(string googleSub) =>
+        await db.Users.FirstOrDefaultAsync(u => u.GoogleSub == googleSub);
+
+    public async Task<User?> GetByEmailVerificationTokenAsync(string token) =>
+        await db.Users.FirstOrDefaultAsync(u => u.EmailVerificationToken == token);
+
     public async Task AddAsync(User user)
     {
         db.Users.Add(user);
