@@ -1268,6 +1268,16 @@ input { font-family: inherit; }
   transition: background 0.15s, border-color 0.15s;
 }
 .load-more-btn:hover { background: var(--accent-glow); border-color: var(--accent); }
+.load-more-btn { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.load-more-btn--loading { cursor: progress; opacity: 0.85; }
+.load-more-btn:disabled { cursor: progress; }
+.load-more-spinner {
+  width: 14px; height: 14px; flex-shrink: 0;
+  border: 2px solid var(--accent-glow);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
 
 .match-day-group { margin-bottom: 8px; }
 .match-day-label {
@@ -1687,6 +1697,10 @@ input { font-family: inherit; }
 .ev-main { font-size: 14px; color: var(--text); }
 .ev-in { font-size: 14px; color: #4caf50; }
 .ev-out { font-size: 13px; color: #ef5350; }
+/* Home events read left-to-right; away events mirror to the right edge so the
+   substituted players line up under the away minute instead of drifting left. */
+.ev-row--home .ev-in, .ev-row--home .ev-out { justify-content: flex-start; }
+.ev-row--away .ev-in, .ev-row--away .ev-out { justify-content: flex-end; }
 
 .live-predictions { padding: 0 16px 16px; }
 .live-pred-row {
@@ -2212,60 +2226,98 @@ input { font-family: inherit; }
 .groups-page, .tournament-page { padding-bottom: 80px; }
 
 /* ─── Formation Pitch ─── */
-.pitch-container { width: 100%; max-width: 400px; margin: 0 auto; }
+.pitch-container { width: 100%; max-width: 420px; margin: 0 auto; }
 .pitch-field {
-  background: linear-gradient(180deg, #1a4a2e 0%, #1e5c35 50%, #1a4a2e 100%);
-  border: 2px solid rgba(255,255,255,0.15);
-  border-radius: 8px;
-  padding: 16px 8px;
   position: relative;
-  min-height: 360px;
+  overflow: hidden;
+  border-radius: 16px;
+  padding: 24px 10px 26px;
+  min-height: 440px;
   display: flex;
   flex-direction: column;
   justify-content: space-around;
-  gap: 8px;
+  gap: 10px;
+  /* Mowed-grass bands over a deep pitch green + vignette */
+  background:
+    repeating-linear-gradient(180deg, rgba(255,255,255,0.045) 0 42px, rgba(0,0,0,0.04) 42px 84px),
+    radial-gradient(120% 80% at 50% 0%, #1a6b3c 0%, #115029 55%, #0c3a1e 100%);
+  border: 1px solid rgba(255,255,255,0.14);
+  box-shadow: inset 0 0 70px rgba(0,0,0,0.4), 0 18px 44px rgba(0,0,0,0.45);
 }
-.pitch-center-line {
-  position: absolute;
-  top: 50%; left: 8px; right: 8px;
-  height: 1px;
-  background: rgba(255,255,255,0.2);
+/* Pitch markings (all decorative, behind players) */
+.pitch-mark, .pitch-box, .pitch-arc {
+  position: absolute; pointer-events: none; z-index: 0;
+  border-color: rgba(255,255,255,0.22);
 }
-.pitch-center-circle {
-  position: absolute;
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
-  width: 60px; height: 60px;
-  border-radius: 50%;
-  border: 1px solid rgba(255,255,255,0.2);
+.pitch-mark--line { top: 50%; left: 10px; right: 10px; height: 0; border-top: 1px solid rgba(255,255,255,0.18); }
+.pitch-mark--circle {
+  top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: 96px; height: 96px; border: 1px solid rgba(255,255,255,0.18); border-radius: 50%;
 }
+.pitch-mark--spot {
+  top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,0.35);
+}
+.pitch-box { left: 50%; transform: translateX(-50%); width: 150px; height: 56px; border: 1px solid rgba(255,255,255,0.16); }
+.pitch-box--top { top: 0; border-top: none; border-radius: 0 0 4px 4px; }
+.pitch-box--bottom { bottom: 0; border-bottom: none; border-radius: 4px 4px 0 0; }
+.pitch-arc { left: 50%; transform: translateX(-50%); width: 64px; height: 22px; border: 1px solid rgba(255,255,255,0.16); }
+.pitch-arc--top { top: 56px; border-top: none; border-radius: 0 0 40px 40px; }
+.pitch-arc--bottom { bottom: 56px; border-bottom: none; border-radius: 40px 40px 0 0; }
+
 .pitch-row {
   display: flex;
-  justify-content: center;
-  gap: 6px;
+  justify-content: space-evenly;
+  align-items: flex-start;
+  gap: 4px;
   position: relative;
   z-index: 1;
 }
-.pitch-slot {
-  width: 64px;
-  min-height: 56px;
-  border-radius: 8px;
-  border: 1.5px solid;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  padding: 4px 2px;
-  transition: all 0.15s;
-  text-align: center;
+
+/* ── Player token: circular headshot + shirt badge + name ── */
+.pp-token {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  width: 64px; padding: 0; background: none; border: none; cursor: pointer;
+  position: relative; z-index: 1;
+  animation: ggp-fade-up 0.4s both cubic-bezier(0.16,1,0.3,1);
 }
-.pitch-slot--edit { cursor: pointer; }
-.pitch-slot--edit:hover { filter: brightness(1.3); transform: scale(1.05); }
-.pitch-slot--highlighted { box-shadow: 0 0 12px var(--accent); }
-.slot-shirt { font-family: 'Oswald', sans-serif; font-size: 11px; font-weight: 700; }
-.slot-player-name { font-size: 10px; color: rgba(255,255,255,0.9); line-height: 1.2; word-break: break-word; }
-.slot-empty-hint { font-size: 9px; color: rgba(255,255,255,0.4); }
+.pp-avatar {
+  position: relative;
+  width: 46px; height: 46px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: linear-gradient(160deg, #21402c, #0b2014);
+  border: 2px solid rgba(255,255,255,0.82);
+  box-shadow: 0 5px 12px rgba(0,0,0,0.5);
+  transition: transform 0.16s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.pp-avatar-img {
+  width: 100%; height: 100%; border-radius: 50%;
+  object-fit: cover; object-position: top center; background: #0b2014;
+}
+.pp-avatar-fallback {
+  font-family: 'Oswald', sans-serif; font-weight: 600; font-size: 15px;
+  color: rgba(255,255,255,0.92);
+}
+.pp-shirt {
+  position: absolute; bottom: -4px; right: -5px;
+  min-width: 19px; height: 19px; padding: 0 4px;
+  display: grid; place-items: center;
+  font-family: 'Oswald', sans-serif; font-size: 10px; font-weight: 700;
+  color: #0a1a0a; background: var(--accent);
+  border-radius: 10px; border: 1.5px solid #0c2417;
+}
+.pp-token:hover .pp-avatar { transform: translateY(-3px) scale(1.06); border-color: #fff; }
+.pp-token:active .pp-avatar { transform: scale(0.95); }
+.pp-token--picked .pp-avatar {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(184,255,106,0.4), 0 5px 14px rgba(0,0,0,0.5);
+}
+.pp-name {
+  max-width: 66px; font-size: 11px; font-weight: 500; line-height: 1.1;
+  color: #fff; text-align: center;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.7);
+}
 
 /* ─── Pitch-based predicting ─── */
 .pitch-predictor { margin: 0 20px 8px; }
@@ -2276,53 +2328,79 @@ input { font-family: inherit; }
   margin: 10px 0 0;
 }
 .pitch-bench {
-  margin-top: 12px;
-  padding: 10px 8px;
-  background: rgba(255,255,255,0.03);
-  border: 1px solid var(--border-solid);
-  border-radius: 8px;
+  margin-top: 14px;
+  padding: 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
 }
 .pitch-bench-label {
-  display: block;
+  display: flex; align-items: center; gap: 7px;
   font-family: 'Oswald', sans-serif;
-  font-size: 10px;
-  letter-spacing: 0.12em;
-  color: var(--text-muted, #888);
-  margin-bottom: 8px;
+  font-size: 11px; font-weight: 600;
+  letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 12px;
 }
-.pitch-bench-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+.pitch-bench-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--accent); flex-shrink: 0;
 }
-.pitch-bench-row .pp-token { position: static; }
-.pp-token {
-  background: rgba(255,255,255,0.06);
-  border: 1.5px solid rgba(255,255,255,0.15);
-  cursor: pointer;
-  position: relative;
-  font: inherit;
-  color: inherit;
+.pitch-bench-count {
+  margin-left: auto; letter-spacing: 0;
+  min-width: 20px; height: 18px; padding: 0 6px;
+  display: inline-grid; place-items: center;
+  font-size: 11px; color: var(--accent);
+  background: var(--accent-glow); border-radius: 9px;
 }
-.pp-token:hover { filter: brightness(1.25); transform: scale(1.04); }
-.pp-token--picked {
-  background: rgba(184,255,106,0.16);
-  border-color: var(--accent);
-  box-shadow: 0 0 10px rgba(184,255,106,0.4);
+/* Substitutes as a scannable vertical list */
+.pitch-bench-list { display: flex; flex-direction: column; gap: 4px; }
+.pp-bench-row {
+  display: flex; align-items: center; gap: 11px;
+  width: 100%; padding: 6px 10px 6px 6px;
+  background: var(--surface); border: 1px solid transparent;
+  border-radius: 11px; cursor: pointer; text-align: left;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.12s ease;
+  animation: ggp-fade-up 0.4s both cubic-bezier(0.16,1,0.3,1);
 }
+.pp-bench-row:hover { background: var(--surface-3); border-color: var(--border-solid); }
+.pp-bench-row:active { transform: scale(0.99); }
+.pp-bench-row--picked { background: var(--accent-glow); border-color: var(--accent-dim); }
+/* Smaller avatar on the bench rows; tuned for the dark list surface */
+.pp-bench-row .pp-avatar {
+  width: 38px; height: 38px; flex-shrink: 0;
+  border-color: var(--border-solid);
+  box-shadow: 0 3px 8px rgba(0,0,0,0.35);
+}
+.pp-bench-row .pp-avatar-fallback { font-size: 13px; }
+.pp-bench-row .pp-shirt {
+  min-width: 17px; height: 17px; font-size: 9px;
+  border-color: var(--surface);
+}
+.pp-bench-name {
+  flex: 1; min-width: 0;
+  font-size: 13.5px; color: var(--text); font-weight: 500;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.pp-bench-row--picked .pp-bench-name { color: var(--accent); }
+.pp-bench-pos {
+  flex-shrink: 0;
+  font-family: 'Oswald', sans-serif; font-size: 11px; font-weight: 600;
+  color: var(--text-muted); letter-spacing: 0.08em;
+  width: 22px; text-align: center;
+}
+
+/* Event badges overlaid on the avatar (goals/cards/subs) */
 .pp-badges {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 2px;
-  margin-top: 1px;
+  position: absolute; top: -6px; left: -7px; z-index: 3;
+  display: flex; flex-direction: column; gap: 2px; align-items: flex-start;
 }
 .pp-badge {
-  font-size: 10px;
-  line-height: 1;
-  background: rgba(0,0,0,0.35);
-  border-radius: 6px;
-  padding: 1px 3px;
+  display: inline-flex; align-items: center; gap: 1px;
+  line-height: 1; padding: 2px 3px; border-radius: 7px;
+  background: rgba(8,14,10,0.92);
+  border: 1px solid rgba(255,255,255,0.16);
+  box-shadow: 0 2px 5px rgba(0,0,0,0.45);
 }
 
 /* Per-player prediction bottom sheet */
@@ -2368,7 +2446,14 @@ input { font-family: inherit; }
   gap: 12px;
   padding: 10px 4px;
 }
-.pp-row-icon { font-size: 20px; width: 26px; text-align: center; }
+.pp-row-icon {
+  width: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255,255,255,0.85);
+  flex-shrink: 0;
+}
 .pp-row-text { display: flex; flex-direction: column; flex: 1; }
 .pp-row-label { font-size: 15px; font-weight: 500; }
 .pp-row-sub { font-size: 11px; color: rgba(255,255,255,0.45); }
@@ -2786,3 +2871,296 @@ input { font-family: inherit; }
 .sub-event { display: flex; align-items: center; gap: 8px; font-size: 13px; }
 .sub-event .sub-in { color: var(--text, inherit); }
 .sub-event .sub-out { color: var(--text-muted, #888); }
+
+/* ════════════════════════════════════════════════════════════
+   UI REDESIGN — icon system, refreshed chips & motion layer
+   (feature/ui-redesign). Replaces emoji glyphs with the inline
+   SVG <Icon> set and brings the app to life with subtle motion.
+   ════════════════════════════════════════════════════════════ */
+
+/* ── Generic icon defaults ── */
+.empty-icon-svg { color: var(--text-muted); margin-bottom: 16px; opacity: 0.8; }
+.loading-ball svg { color: var(--accent); display: block; }
+.loading-ball { font-size: 0; }
+
+/* ── Group hub tabs: icon above label ── */
+.hub-tab {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 10px 2px 11px;
+}
+.hub-tab-icon { color: currentColor; transition: transform 0.2s ease; }
+.hub-tab-label { font-size: 11px; letter-spacing: 0.02em; }
+.hub-tab--active .hub-tab-icon { transform: translateY(-1px) scale(1.08); }
+.hub-tab:active .hub-tab-icon { transform: scale(0.92); }
+
+/* ── Match detail tabs: icon inline with label ── */
+.match-tab { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.match-tab-icon { transition: transform 0.2s ease; }
+.match-tab--active .match-tab-icon { transform: scale(1.08); }
+
+/* ── Leaderboard: medals, chevron, rows ── */
+.lb-pos { width: 30px; height: 30px; display: grid; place-items: center; font-size: 0; }
+.lb-medal { display: grid; place-items: center; filter: drop-shadow(0 1px 3px rgba(0,0,0,0.4)); }
+.lb-medal--gold   { color: #ffcf3f; }
+.lb-medal--silver { color: #cdd5dc; }
+.lb-medal--bronze { color: #e08c4e; }
+.lb-medal svg { animation: ggp-medal-in 0.5s both cubic-bezier(0.16,1,0.3,1); }
+@keyframes ggp-medal-in {
+  from { opacity: 0; transform: scale(0.4) rotate(-25deg); }
+  to   { opacity: 1; transform: none; }
+}
+.lb-chevron { color: var(--text-muted); margin-left: 4px; flex-shrink: 0; transition: transform 0.2s ease; }
+.lb-row:hover .lb-chevron { transform: translateX(3px); color: var(--accent); }
+
+/* ── Prediction chips (PicksByTeam) — cleaner, icon-led ── */
+.pick-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 12px; color: var(--text);
+  padding: 4px 9px 4px 7px; border-radius: 999px;
+  background: var(--surface-2); border: 1px solid var(--border-solid);
+  max-width: 100%;
+  transition: transform 0.15s ease, background 0.2s ease, border-color 0.2s ease;
+}
+.pick-chip:hover { transform: translateY(-1px); border-color: var(--accent-dim); }
+.pick-chip-ico { color: var(--text-muted); flex-shrink: 0; }
+.pick-chip-ico--miss { color: var(--error); }
+.pick-chip-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pick-chip-tag {
+  font-family: 'Oswald', sans-serif; font-size: 9px; font-weight: 600; letter-spacing: 0.04em;
+  color: #0a1a0a; background: var(--text-muted); padding: 1px 4px; border-radius: 4px; flex-shrink: 0;
+}
+.pick-chip strong { font-weight: 700; font-size: 11px; color: var(--accent); flex-shrink: 0; }
+.pick-chip--hit {
+  background: var(--accent-glow); border-color: var(--accent-dim);
+  box-shadow: inset 0 0 0 1px var(--accent-glow);
+}
+.pick-chip--hit .pick-chip-ico { color: var(--accent); }
+.pick-chip--miss { border-color: rgba(239,83,80,0.4); background: var(--error-bg); }
+.pick-chip--miss strong { color: var(--error); }
+
+/* ── Match events: icon glyphs ── */
+.ev-icon { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; min-width: 22px; }
+.ev-goal { display: inline-flex; align-items: center; gap: 2px; color: var(--text); }
+.ev-goal em { font-family: 'Oswald', sans-serif; font-style: normal; font-size: 9px; font-weight: 600; color: var(--text-muted); }
+.ev-icon-var { color: var(--text-muted); }
+.ev-icon-sub { color: #4caf50; }
+.ev-in  { display: inline-flex; align-items: center; gap: 4px; color: #4caf50; }
+.ev-out { display: inline-flex; align-items: center; gap: 4px; color: #ef5350; }
+.ev-in svg  { color: #4caf50; }
+.ev-out svg { color: #ef5350; transform: rotate(180deg); }
+
+/* ── Reveal / locked picks rows: align inline icons ── */
+.picks-reveal-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.picks-reveal-btn svg { transition: transform 0.2s ease; }
+.picks-panel--hidden { display: flex; align-items: center; justify-content: center; gap: 6px; }
+.picks-panel--hidden svg { opacity: 0.7; }
+
+/* ════ MOTION LAYER ════ */
+@keyframes ggp-fade-up { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes ggp-fade    { from { opacity: 0; } to { opacity: 1; } }
+
+/* Tab panels fade in on switch */
+.leaderboard-tab, .mypred-tab { animation: ggp-fade 0.3s ease both; }
+
+/* Leaderboard rows rise in (per-row delay set inline in JSX) */
+.lb-list .lb-row { animation: ggp-fade-up 0.5s both cubic-bezier(0.16,1,0.3,1); }
+
+/* Prediction cards stagger in */
+.mypred-group .mypred-card { animation: ggp-fade-up 0.5s both cubic-bezier(0.16,1,0.3,1); }
+.mypred-group .mypred-card:nth-child(2) { animation-delay: 0.05s; }
+.mypred-group .mypred-card:nth-child(3) { animation-delay: 0.1s; }
+.mypred-group .mypred-card:nth-child(4) { animation-delay: 0.15s; }
+.mypred-group .mypred-card:nth-child(n+5) { animation-delay: 0.2s; }
+
+/* Summary stat numbers pop on mount */
+.mypred-stat-num { display: inline-block; animation: ggp-stat-pop 0.5s both cubic-bezier(0.16,1,0.3,1); }
+@keyframes ggp-stat-pop { from { opacity: 0; transform: scale(0.6); } to { opacity: 1; transform: none; } }
+
+/* Group-picks chips cascade when a row reveals */
+.picks-panel .pick-chip { animation: ggp-fade-up 0.35s both ease; }
+
+@media (prefers-reduced-motion: reduce) {
+  .lb-list .lb-row, .mypred-group .mypred-card, .mypred-stat-num,
+  .leaderboard-tab, .mypred-tab, .lb-medal svg, .picks-panel .pick-chip {
+    animation: none !important;
+  }
+}
+
+/* ── Icon placement fixups for converted emoji ── */
+.btn-with-icon { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.invite-copy-icon { display: inline-flex; align-items: center; color: var(--text-muted); transition: color 0.2s ease; }
+.invite-code-btn:hover .invite-copy-icon { color: var(--accent); }
+.notif-icon { display: inline-flex; align-items: center; color: var(--accent); }
+.notif-icon--off { color: var(--text-muted); opacity: 0.7; }
+.rules-banner { display: flex; align-items: flex-start; gap: 9px; }
+.rules-banner-icon { flex-shrink: 0; margin-top: 1px; color: var(--text-muted); }
+
+/* ── Pitch player badges & lineup legend (SVG glyphs) ── */
+.pp-badge { display: inline-flex; align-items: center; gap: 1px; }
+.pp-badge-count { font-style: normal; font-size: 9px; font-weight: 700; font-family: 'Oswald', sans-serif; }
+.pp-ico-goal { color: #fff; }
+.pp-ico-og { color: #ef5350; }
+.pp-ico-in  { color: #4caf50; }
+.pp-ico-out { color: #ef5350; }
+.lineup-legend span { display: inline-flex; align-items: center; gap: 5px; }
+
+/* ── Admin FormationPitch — legacy box-token slots (kept separate from the
+   photo-avatar match pitch). Restored after the lineup redesign. ── */
+.pitch-center-line {
+  position: absolute; top: 50%; left: 10px; right: 10px;
+  height: 1px; background: rgba(255,255,255,0.18); z-index: 0;
+}
+.pitch-center-circle {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: 84px; height: 84px; border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.18); z-index: 0;
+}
+.pitch-slot {
+  width: 64px; min-height: 56px;
+  border-radius: 10px; border: 1.5px solid rgba(255,255,255,0.2);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 2px; padding: 4px 2px; text-align: center;
+  position: relative; z-index: 1;
+  background: rgba(0,0,0,0.18); transition: transform 0.15s, filter 0.15s, box-shadow 0.15s;
+}
+.pitch-slot--edit { cursor: pointer; }
+.pitch-slot--edit:hover { filter: brightness(1.3); transform: scale(1.05); }
+.pitch-slot--highlighted { box-shadow: 0 0 12px var(--accent); border-color: var(--accent); }
+.slot-shirt { font-family: 'Oswald', sans-serif; font-size: 12px; font-weight: 700; }
+.slot-player-name { font-size: 10px; color: rgba(255,255,255,0.9); line-height: 1.2; word-break: break-word; }
+.slot-empty-hint { font-size: 9px; color: rgba(255,255,255,0.4); }
+
+/* ── Substitution arrows: dedicated column beside the minute (green ↑ in, red ↓ out) ── */
+.ev-sub-arrows { display: flex; flex-direction: column; gap: 2px; align-items: center; }
+.ev-arrow-in  { color: #4caf50; }
+.ev-arrow-out { color: #ef5350; }
+
+/* ════════════════════════════════════════════════════════════
+   Player statistics — stat card, sheet segmented control,
+   and the squad-picker stats affordance.
+   ════════════════════════════════════════════════════════════ */
+
+/* Predict | Stats segmented control inside the player sheet */
+.pp-seg {
+  display: flex; gap: 4px; padding: 4px;
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: 11px; margin-bottom: 14px;
+}
+.pp-seg-btn {
+  flex: 1; padding: 9px; border-radius: 8px;
+  font-family: 'Oswald', sans-serif; font-size: 13px; font-weight: 600;
+  letter-spacing: 0.04em; text-transform: uppercase;
+  color: var(--text-muted); background: transparent;
+  transition: color 0.18s ease, background 0.18s ease;
+}
+.pp-seg-btn--on { color: #0a1a0a; background: var(--accent); }
+
+.pp-sheet--stats { padding-bottom: 16px; }
+
+/* Pre-lineup picker: stats icon beside each toggle row */
+.player-row-wrap { display: flex; align-items: stretch; gap: 6px; }
+.player-row-wrap .player-row { flex: 1; }
+.player-stats-ico {
+  flex-shrink: 0; width: 40px;
+  display: grid; place-items: center;
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--surface-2); color: var(--text-muted);
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+.player-stats-ico:hover { color: var(--accent); border-color: var(--accent-dim); background: var(--accent-glow); }
+
+/* ── Stat card ── */
+.pstat-card { animation: ggp-fade 0.25s ease both; }
+.pstat-loading { padding: 36px; text-align: center; }
+.pstat-loading .loading-ball svg { color: var(--accent); }
+.pstat-empty {
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  padding: 32px 16px; color: var(--text-muted); text-align: center;
+}
+.pstat-empty svg { opacity: 0.6; }
+
+.pstat-hero { display: flex; gap: 14px; align-items: center; margin-bottom: 16px; }
+.pstat-photo {
+  position: relative; flex-shrink: 0;
+  width: 68px; height: 68px; border-radius: 50%;
+  background: linear-gradient(160deg, var(--surface-3), var(--surface));
+  border: 2px solid var(--border-solid);
+  display: grid; place-items: center; overflow: visible;
+}
+.pstat-photo img {
+  width: 100%; height: 100%; border-radius: 50%;
+  object-fit: cover; object-position: top center;
+}
+.pstat-photo-fallback {
+  font-family: 'Oswald', sans-serif; font-weight: 600; font-size: 22px;
+  color: var(--text-muted);
+}
+.pstat-rating {
+  position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%);
+  display: inline-flex; align-items: center; gap: 2px;
+  font-family: 'Oswald', sans-serif; font-size: 11px; font-weight: 700;
+  color: #0a1a0a; background: var(--accent);
+  padding: 2px 7px; border-radius: 100px; border: 2px solid var(--surface);
+  white-space: nowrap;
+}
+.pstat-id { min-width: 0; }
+.pstat-name {
+  display: flex; align-items: center; gap: 7px; flex-wrap: wrap;
+  font-family: 'Oswald', sans-serif; font-size: 19px; font-weight: 600;
+  color: var(--text); line-height: 1.1;
+}
+.pstat-capt {
+  width: 17px; height: 17px; border-radius: 4px;
+  display: inline-grid; place-items: center;
+  font-size: 10px; font-weight: 700; color: #0a1a0a; background: var(--accent);
+}
+.pstat-injured {
+  font-size: 10px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase;
+  color: var(--error); background: var(--error-bg);
+  padding: 2px 7px; border-radius: 100px;
+}
+.pstat-meta {
+  font-size: 13px; color: var(--accent-dim); margin-top: 3px;
+  font-weight: 500;
+}
+.pstat-bio {
+  display: flex; flex-wrap: wrap; gap: 6px 12px; margin-top: 7px;
+  font-size: 12px; color: var(--text-muted);
+}
+.pstat-bio span { position: relative; }
+.pstat-bio span:not(:last-child)::after {
+  content: '·'; position: absolute; right: -8px; color: var(--border-solid);
+}
+
+.pstat-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+}
+.pstat-tile {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: 12px 6px; border-radius: 11px;
+  background: var(--surface-2); border: 1px solid var(--border);
+}
+.pstat-val {
+  font-family: 'Oswald', sans-serif; font-size: 22px; font-weight: 700;
+  color: var(--accent); line-height: 1;
+}
+.pstat-cardval { display: inline-flex; align-items: center; gap: 4px; color: var(--text); }
+.pstat-label {
+  font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text-muted); text-align: center;
+}
+
+.lineup-tap-hint {
+  text-align: center; margin-top: 10px;
+  font-size: 12px; color: var(--text-muted);
+}
+
+.pstat-nodata {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 24px 16px; text-align: center;
+  color: var(--text-muted);
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.pstat-nodata svg { opacity: 0.5; }
+.pstat-nodata p { font-size: 13px; }

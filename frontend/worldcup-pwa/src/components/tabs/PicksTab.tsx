@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { getMyPredictions, getMatchPredictions } from "../../api/matches";
 import { useAuthStore } from "../../store/authStore";
 import PicksByTeam from "../PicksByTeam";
+import Icon from "../Icon";
 import type {
   MyPredictionItem,
   GroupPredictions,
@@ -73,7 +74,7 @@ function GroupPicksPanel({
   if (state === "hidden" || !data)
     return (
       <div className="picks-panel picks-panel--hidden">
-        🔒 Other picks reveal at kickoff
+        <Icon name="lock" size={14} /> Other picks reveal at kickoff
       </div>
     );
 
@@ -216,11 +217,14 @@ function PredictionCard({
         onClick={() => canReveal && setExpanded((v) => !v)}
         disabled={!canReveal}
       >
-        {canReveal
-          ? expanded
-            ? "▲ Hide group picks"
-            : "▼ Show group picks"
-          : "🔒 Group picks reveal at kickoff"}
+        {canReveal ? (
+          <>
+            <Icon name={expanded ? "chevron-up" : "chevron-down"} size={15} />
+            {expanded ? "Hide group picks" : "Show group picks"}
+          </>
+        ) : (
+          <><Icon name="lock" size={14} /> Group picks reveal at kickoff</>
+        )}
       </button>
 
       {expanded && canReveal && (
@@ -241,6 +245,7 @@ export default function PicksTab({ groupId, onMatchClick }: Props) {
   const [items, setItems] = useState<MyPredictionItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [finishedLimit, setFinishedLimit] = useState(3);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [stats, setStats] = useState({ finishedTotal: 0, totalPicks: 0, totalPoints: 0, exactCount: 0 });
 
   const load = useCallback(async () => {
@@ -255,6 +260,7 @@ export default function PicksTab({ groupId, onMatchClick }: Props) {
       });
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   }, [groupId, finishedLimit]);
 
@@ -271,14 +277,14 @@ export default function PicksTab({ groupId, onMatchClick }: Props) {
   if (loading)
     return (
       <div className="loading-state">
-        <span className="loading-ball">⚽</span>
+        <span className="loading-ball"><Icon name="ball" size={34} /></span>
       </div>
     );
 
   if (stats.totalPicks === 0) {
     return (
       <div className="empty-state">
-        <span className="empty-icon">🎯</span>
+        <Icon name="target" size={40} className="empty-icon-svg" />
         <p className="empty-title">No picks yet</p>
         <p className="empty-sub">Head to Matches and place your first pick</p>
       </div>
@@ -350,10 +356,21 @@ export default function PicksTab({ groupId, onMatchClick }: Props) {
             ))}
             {hasMore && (
               <button
-                className="load-more-btn"
-                onClick={() => setFinishedLimit((n) => n + 3)}
+                className={`load-more-btn ${loadingMore ? "load-more-btn--loading" : ""}`}
+                disabled={loadingMore}
+                onClick={() => {
+                  setLoadingMore(true);
+                  setFinishedLimit((n) => n + 3);
+                }}
               >
-                Load more
+                {loadingMore ? (
+                  <>
+                    <span className="load-more-spinner" />
+                    Loading…
+                  </>
+                ) : (
+                  "Load more"
+                )}
               </button>
             )}
           </div>

@@ -1,13 +1,9 @@
 import type { ScorerPick, CardPick, TeamSummary } from '../types'
-
-const POS_COLOR: Record<string, string> = {
-  Goalkeeper: '#64b5f6', Defender: '#4db6ac', Midfielder: '#ffd54f', Attacker: '#ef5350',
-}
-const CARD_ICON: Record<string, string> = { Yellow: '🟨', Red: '🟥', MissedPenalty: '❌' }
+import Icon, { FootballCard } from './Icon'
 
 function typeTag(goalType: string) {
-  if (goalType === 'Penalty') return ' (P)'
-  if (goalType === 'Own Goal') return ' (OG)'
+  if (goalType === 'Penalty') return 'P'
+  if (goalType === 'Own Goal') return 'OG'
   return ''
 }
 
@@ -35,10 +31,12 @@ export default function PicksByTeam({ scorers, cards, home, away }: {
             <div className="picks-team-chips">
               {sc.map((s, i) => {
                 const hit = s.pointsAwarded > 0
+                const tag = typeTag(s.goalType)
                 return (
-                  <span key={`s${i}`} className={`pick-chip ${hit ? 'pick-chip--hit' : ''}`}
-                    style={{ borderLeftColor: hit ? 'var(--accent)' : (POS_COLOR[s.position] ?? '#666') }}>
-                    ⚽ {s.name.split(' ').pop()}{typeTag(s.goalType)}
+                  <span key={`s${i}`} className={`pick-chip pick-chip--goal ${hit ? 'pick-chip--hit' : ''}`}>
+                    <Icon name="ball" size={13} className="pick-chip-ico" />
+                    <span className="pick-chip-name">{s.name.split(' ').pop()}</span>
+                    {tag && <span className="pick-chip-tag">{tag}</span>}
                     {hit && <strong>+{s.pointsAwarded}</strong>}
                   </span>
                 )
@@ -47,10 +45,15 @@ export default function PicksByTeam({ scorers, cards, home, away }: {
                 const hit = c.pointsAwarded > 0
                 const miss = c.pointsAwarded < 0
                 return (
-                  <span key={`c${i}`} className={`pick-chip ${hit ? 'pick-chip--hit' : ''}`}
-                    style={{ borderLeftColor: hit ? 'var(--accent)' : miss ? '#ef5350' : '#666' }}>
-                    {CARD_ICON[c.kind] ?? '🟨'} {c.name.split(' ').pop()}
-                    {c.pointsAwarded !== 0 && <strong> {c.pointsAwarded > 0 ? `+${c.pointsAwarded}` : c.pointsAwarded}</strong>}
+                  <span key={`c${i}`}
+                    className={`pick-chip ${hit ? 'pick-chip--hit' : ''} ${miss ? 'pick-chip--miss' : ''}`}>
+                    {c.kind === 'MissedPenalty'
+                      ? <Icon name="close" size={12} className="pick-chip-ico pick-chip-ico--miss" />
+                      : <FootballCard color={c.kind === 'Red' ? 'red' : 'yellow'} size={13} />}
+                    <span className="pick-chip-name">{c.name.split(' ').pop()}</span>
+                    {c.pointsAwarded !== 0 && (
+                      <strong>{c.pointsAwarded > 0 ? `+${c.pointsAwarded}` : c.pointsAwarded}</strong>
+                    )}
                   </span>
                 )
               })}

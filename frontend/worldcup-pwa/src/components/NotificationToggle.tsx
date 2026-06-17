@@ -1,4 +1,5 @@
 import { usePushNotifications } from '../hooks/usePushNotifications'
+import Icon from './Icon'
 
 export default function NotificationToggle() {
   const { supported, status, busy, enable, disable } = usePushNotifications()
@@ -7,7 +8,7 @@ export default function NotificationToggle() {
   if (status === 'denied') {
     return (
       <div className="notif-toggle notif-toggle--denied">
-        <span className="notif-icon">🔕</span>
+        <span className="notif-icon notif-icon--off"><Icon name="bell" size={17} /></span>
         <span className="notif-text">Notifications blocked in browser settings</span>
       </div>
     )
@@ -21,7 +22,7 @@ export default function NotificationToggle() {
       onClick={() => (enabled ? disable() : enable())}
       disabled={busy}
     >
-      <span className="notif-icon">{enabled ? '🔔' : '🔕'}</span>
+      <span className={`notif-icon ${enabled ? '' : 'notif-icon--off'}`}><Icon name="bell" size={17} /></span>
       <span className="notif-text">
         {busy ? 'Working…' : enabled ? 'Match alerts on' : 'Enable match alerts'}
       </span>

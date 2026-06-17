@@ -26,6 +26,18 @@ public record ApiTopScorerData(
     int PlayerId, string Name, string PhotoUrl, string Nationality,
     int TeamId, string TeamName, string TeamLogo,
     int Goals, int Assists, int Appearances, int Minutes, int PenaltiesScored, int Rank);
+public record ApiPlayerStatsData(
+    int PlayerId, string Name, string? Firstname, string? Lastname,
+    int? Age, string? BirthDate, string? BirthPlace, string? BirthCountry,
+    string? Nationality, string? Height, string? Weight, bool Injured, string? PhotoUrl,
+    // games
+    int? Appearances, int? Lineups, int? Minutes, int? Number, string? Position, string? Rating, bool Captain,
+    // goals
+    int? Goals, int? Conceded, int? Assists, int? Saves,
+    // cards
+    int? Yellow, int? YellowRed, int? Red,
+    // fouls
+    int? FoulsDrawn, int? FoulsCommitted);
 
 public interface IApiFootballClient
 {
@@ -41,4 +53,5 @@ public interface IApiFootballClient
     Task<List<ApiStandingData>> GetStandingsAsync(CancellationToken ct = default);
     Task<ApiTeamStatsData?> GetTeamStatisticsAsync(int teamId, CancellationToken ct = default);
     Task<List<ApiTopScorerData>> GetTopScorersAsync(CancellationToken ct = default);
+    Task<ApiPlayerStatsData?> GetPlayerStatisticsAsync(int playerId, CancellationToken ct = default);
 }

@@ -44,11 +44,16 @@ public class PredictionsController(UpsertPrediction upsert, GetGroupLeaderboard 
     }
 
     [HttpGet("user/{userId:guid}")]
-    public async Task<IActionResult> GetForUser(Guid userId, [FromQuery] Guid groupId, CancellationToken ct)
+    public async Task<IActionResult> GetForUser(Guid userId, [FromQuery] Guid groupId, [FromQuery] int? take, CancellationToken ct)
     {
         // Own history shows everything; other members only after kickoff.
         var onlyStarted = userId != UserId;
-        var result = await getMyPredictions.ExecuteAsync(userId, groupId, onlyStarted, ct);
+        if (take is null)
+        {
+            var all = await getMyPredictions.ExecuteAsync(userId, groupId, onlyStarted, ct);
+            return Ok(all);
+        }
+        var result = await getMyPredictions.ExecuteUserPagedAsync(userId, groupId, onlyStarted, take.Value, ct);
         return Ok(result);
     }
 

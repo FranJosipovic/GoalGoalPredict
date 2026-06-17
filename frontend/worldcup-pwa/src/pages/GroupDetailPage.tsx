@@ -7,10 +7,18 @@ import PicksTab from '../components/tabs/PicksTab'
 import LeaderboardTab from '../components/tabs/LeaderboardTab'
 import MembersTab from '../components/tabs/MembersTab'
 import RulesTab from '../components/tabs/RulesTab'
+import Icon, { type IconName } from '../components/Icon'
 import type { GroupDetail } from '../types'
 
 type Tab = 'matches' | 'mypicks' | 'leaderboard' | 'members' | 'rules'
 const TABS: Tab[] = ['matches', 'mypicks', 'leaderboard', 'members', 'rules']
+const TAB_META: Record<Tab, { icon: IconName; label: string }> = {
+  matches: { icon: 'ball', label: 'Matches' },
+  mypicks: { icon: 'target', label: 'Picks' },
+  leaderboard: { icon: 'trophy', label: 'Board' },
+  members: { icon: 'users', label: 'Members' },
+  rules: { icon: 'sliders', label: 'Rules' },
+}
 
 export default function GroupDetailPage() {
   const { id, tab: tabParam } = useParams<{ id: string; tab: string }>()
@@ -52,7 +60,7 @@ export default function GroupDetailPage() {
   if (loading) {
     return (
       <Layout showBack>
-        <div className="loading-state"><span className="loading-ball">⚽</span></div>
+        <div className="loading-state"><span className="loading-ball"><Icon name="ball" size={34} /></span></div>
       </Layout>
     )
   }
@@ -61,7 +69,7 @@ export default function GroupDetailPage() {
     return (
       <Layout showBack>
         <div className="empty-state">
-          <span className="empty-icon">🔍</span>
+          <Icon name="search" size={40} className="empty-icon-svg" />
           <p className="empty-title">Group not found</p>
         </div>
       </Layout>
@@ -80,11 +88,8 @@ export default function GroupDetailPage() {
               className={`hub-tab ${tab === t ? 'hub-tab--active' : ''}`}
               onClick={() => setTab(t)}
             >
-              {t === 'matches' && '⚽ Matches'}
-              {t === 'mypicks' && '🎯 Picks'}
-              {t === 'leaderboard' && '🏆 Board'}
-              {t === 'members' && '👥 Members'}
-              {t === 'rules' && '⚙️ Rules'}
+              <Icon name={TAB_META[t].icon} size={18} className="hub-tab-icon" />
+              <span className="hub-tab-label">{TAB_META[t].label}</span>
             </button>
           ))}
           <div className="hub-tab-indicator" style={{ left: `calc(${tabIndex} * ${100 / TABS.length}%)`, width: `${100 / TABS.length}%` }} />

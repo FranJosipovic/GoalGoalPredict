@@ -1,7 +1,9 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, type ReactNode } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import Layout from '../components/Layout'
 import PredictionPitch, { type PlayerBadge } from '../components/PredictionPitch'
+import PlayerStats from '../components/PlayerStats'
+import Icon, { FootballCard } from '../components/Icon'
 import { getMatchDetail, getMyPrediction, upsertPrediction, getCopyablePrediction, type CopyablePrediction } from '../api/matches'
 import { getGroupRules } from '../api/groups'
 import { getTeamSquad } from '../api/teams'
@@ -33,6 +35,15 @@ const EXTRA_ICONS: Record<ExtraCat, string> = {
   Yellow: '🟨', Red: '🟥', MissedPenalty: '❌',
 }
 const CARD_KIND: Record<ExtraCat, string> = { Yellow: 'Yellow', Red: 'Red', MissedPenalty: 'MissedPenalty' }
+
+// Modern SVG icon for each card/penalty category — used in the prediction sheets so they
+// match the rest of the app's line-icon set instead of the legacy emoji (kept in EXTRA_ICONS
+// only for the compact inline label strings).
+function ExtraIcon({ cat, size = 18 }: { cat: ExtraCat; size?: number }) {
+  if (cat === 'Yellow') return <FootballCard color="yellow" size={size} />
+  if (cat === 'Red') return <FootballCard color="red" size={size} />
+  return <Icon name="close" size={size} />
+}
 
 // Builds the editable form state from a stored/copied prediction, mapping each pick to the
 // right side and dropping picks disabled by (or no longer fitting) the current group's rules.
@@ -92,6 +103,9 @@ export default function MatchPredictPage() {
   const [extraCat, setExtraCat] = useState<ExtraCat | null>(null)
   const [cardTeam, setCardTeam] = useState<Side>('home')
   const [sheetPlayerId, setSheetPlayerId] = useState<number | null>(null)
+  const [sheetTab, setSheetTab] = useState<'predict' | 'stats'>('predict')
+  // Pre-lineup squad picker: which player's stat card is open in a modal.
+  const [statsPlayerId, setStatsPlayerId] = useState<number | null>(null)
 
   const countdown = useCountdown(match?.kickoffUtc ?? '')
   const lineupCountdown = useCountdown(match?.lineupRevealUtc ?? '')
@@ -670,7 +684,7 @@ export default function MatchPredictPage() {
                   players={xiFor(activeTeamId)}
                   bench={benchFor(activeTeamId)}
                   badgesFor={badgesForPlayer}
-                  onPlayerTap={setSheetPlayerId}
+                  onPlayerTap={(id) => { setSheetPlayerId(id); setSheetTab('predict') }}
                 />
                 <p className="pitch-predictor-hint">Tap any player (including subs) to predict their goals &amp; cards</p>
               </div>
@@ -703,13 +717,18 @@ export default function MatchPredictPage() {
                   {pickList.map(p => {
                     const count = scorerCountFor(p.id)
                     return (
-                      <button key={p.id} className={`player-row ${count > 0 ? 'player-row--picked' : ''}`} onClick={() => addPick(p.id)} disabled={activeFull}>
-                        <span className="player-num">#{p.shirtNumber}</span>
-                        <span className="player-name">{p.name}</span>
-                        <span className="player-pos-badge">{p.position.slice(0,3).toUpperCase()}</span>
-                        <span className="player-pts">{pickerMode === 'owngoal' ? `${rules?.ownGoalPoints ?? 0}pt` : `${posPoints(p.position)}pt`}</span>
-                        {count > 0 && <span className="player-count">×{count}</span>}
-                      </button>
+                      <div key={p.id} className="player-row-wrap">
+                        <button type="button" className="player-stats-ico" onClick={() => setStatsPlayerId(p.id)} aria-label={`${p.name} statistics`}>
+                          <Icon name="chart" size={16} />
+                        </button>
+                        <button className={`player-row ${count > 0 ? 'player-row--picked' : ''}`} onClick={() => addPick(p.id)} disabled={activeFull}>
+                          <span className="player-num">#{p.shirtNumber}</span>
+                          <span className="player-name">{p.name}</span>
+                          <span className="player-pos-badge">{p.position.slice(0,3).toUpperCase()}</span>
+                          <span className="player-pts">{pickerMode === 'owngoal' ? `${rules?.ownGoalPoints ?? 0}pt` : `${posPoints(p.position)}pt`}</span>
+                          {count > 0 && <span className="player-count">×{count}</span>}
+                        </button>
+                      </div>
                     )
                   })}
                 </div>
@@ -773,7 +792,7 @@ export default function MatchPredictPage() {
           <div className="pp-sheet-overlay" onClick={() => setExtraCat(null)}>
             <div className="pp-sheet" onClick={e => e.stopPropagation()}>
               <div className="pp-sheet-head">
-                <span className="pp-row-icon">{EXTRA_ICONS[extraCat]}</span>
+                <span className="pp-row-icon"><ExtraIcon cat={extraCat} /></span>
                 <span className="pp-sheet-name">{EXTRA_LABELS[extraCat]}</span>
                 <span className="extra-cat-count">
                   {extrasOf(extraCat).length}{capFor(extraCat) !== Infinity ? `/${capFor(extraCat)}` : ''}
@@ -810,12 +829,17 @@ export default function MatchPredictPage() {
                         const picked = extras.some(e => e.category === extraCat && e.playerId === p.id)
                         const full = extrasOf(extraCat).length >= capFor(extraCat) && !picked
                         return (
-                          <button type="button" key={p.id} className={`player-row ${picked ? 'player-row--picked' : ''}`} onClick={() => toggleExtra(p.id, extraCat)} disabled={full}>
-                            <span className="player-num">#{p.shirtNumber}</span>
-                            <span className="player-name">{p.name}</span>
-                            <span className="player-pos-badge">{p.position.slice(0,3).toUpperCase()}</span>
-                            {picked && <span className="player-count">✓</span>}
-                          </button>
+                          <div key={p.id} className="player-row-wrap">
+                            <button type="button" className="player-stats-ico" onClick={() => setStatsPlayerId(p.id)} aria-label={`${p.name} statistics`}>
+                              <Icon name="chart" size={16} />
+                            </button>
+                            <button type="button" className={`player-row ${picked ? 'player-row--picked' : ''}`} onClick={() => toggleExtra(p.id, extraCat)} disabled={full}>
+                              <span className="player-num">#{p.shirtNumber}</span>
+                              <span className="player-name">{p.name}</span>
+                              <span className="player-pos-badge">{p.position.slice(0,3).toUpperCase()}</span>
+                              {picked && <span className="player-count">✓</span>}
+                            </button>
+                          </div>
                         )
                       })}
                     </div>
@@ -833,7 +857,7 @@ export default function MatchPredictPage() {
           const pid = sheetPlayerId
           const pl = playerOf(pid)
           const oppCode = sideOf(pid) === 'home' ? match.awayTeam.code : match.homeTeam.code
-          const goalRow = (icon: string, label: string, sub: string, type: GoalType) => {
+          const goalRow = (icon: ReactNode, label: string, sub: string, type: GoalType) => {
             const full = sideFull(goalSide(pid, type))
             return (
               <div className="pp-row">
@@ -860,29 +884,40 @@ export default function MatchPredictPage() {
                   <button className="pp-sheet-close" onClick={() => setSheetPlayerId(null)} aria-label="Close">✕</button>
                 </div>
 
-                {scorerEnabled && goalRow('⚽', 'Goal', `${posPoints(pl?.position ?? '')} pt each`, 'Normal Goal')}
-                {scorerEnabled && goalRow('🅿️', 'Penalty', `${posPoints(pl?.position ?? '')} pt each`, 'Penalty')}
-                {ownEnabled && goalRow('🥅', 'Own goal', `counts for ${oppCode} · ${rules?.ownGoalPoints ?? 0} pt`, 'Own Goal')}
+                <div className="pp-seg">
+                  <button type="button" className={`pp-seg-btn ${sheetTab === 'predict' ? 'pp-seg-btn--on' : ''}`} onClick={() => setSheetTab('predict')}>Predict</button>
+                  <button type="button" className={`pp-seg-btn ${sheetTab === 'stats' ? 'pp-seg-btn--on' : ''}`} onClick={() => setSheetTab('stats')}>Stats</button>
+                </div>
 
-                {enabledCats.length > 0 && (
-                  <div className="pp-cards">
-                    {enabledCats.map(cat => {
-                      const on = extras.some(e => e.category === cat && e.playerId === pid)
-                      const cap = capFor(cat)
-                      const full = extrasOf(cat).length >= cap && !on
-                      return (
-                        <button
-                          key={cat}
-                          className={`pp-card-toggle ${on ? 'pp-card-toggle--on' : ''}`}
-                          disabled={full}
-                          onClick={() => toggleExtra(pid, cat)}
-                        >
-                          {EXTRA_ICONS[cat]} {EXTRA_LABELS[cat]}
-                          <span className="pp-card-count">{extrasOf(cat).length}{cap !== Infinity ? `/${cap}` : ''}</span>
-                        </button>
-                      )
-                    })}
-                  </div>
+                {sheetTab === 'stats' ? (
+                  <PlayerStats playerId={pid} />
+                ) : (
+                  <>
+                    {scorerEnabled && goalRow(<Icon name="ball" size={18} />, 'Goal', `${posPoints(pl?.position ?? '')} pt each`, 'Normal Goal')}
+                    {scorerEnabled && goalRow(<Icon name="target" size={18} />, 'Penalty', `${posPoints(pl?.position ?? '')} pt each`, 'Penalty')}
+                    {ownEnabled && goalRow(<Icon name="net" size={18} />, 'Own goal', `counts for ${oppCode} · ${rules?.ownGoalPoints ?? 0} pt`, 'Own Goal')}
+
+                    {enabledCats.length > 0 && (
+                      <div className="pp-cards">
+                        {enabledCats.map(cat => {
+                          const on = extras.some(e => e.category === cat && e.playerId === pid)
+                          const cap = capFor(cat)
+                          const full = extrasOf(cat).length >= cap && !on
+                          return (
+                            <button
+                              key={cat}
+                              className={`pp-card-toggle ${on ? 'pp-card-toggle--on' : ''}`}
+                              disabled={full}
+                              onClick={() => toggleExtra(pid, cat)}
+                            >
+                              <ExtraIcon cat={cat} size={16} /> {EXTRA_LABELS[cat]}
+                              <span className="pp-card-count">{extrasOf(cat).length}{cap !== Infinity ? `/${cap}` : ''}</span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </>
                 )}
 
                 <button className="pp-sheet-done" onClick={() => setSheetPlayerId(null)}>Done</button>
@@ -890,6 +925,21 @@ export default function MatchPredictPage() {
             </div>
           )
         })()}
+
+        {/* Player statistics modal (pre-lineup squad picker) */}
+        {statsPlayerId != null && (
+          <div className="pp-sheet-overlay" onClick={() => setStatsPlayerId(null)}>
+            <div className="pp-sheet pp-sheet--stats" onClick={e => e.stopPropagation()}>
+              <div className="pp-sheet-head">
+                <Icon name="chart" size={18} className="pp-row-icon" />
+                <span className="pp-sheet-name">Player statistics</span>
+                <button className="pp-sheet-close" onClick={() => setStatsPlayerId(null)} aria-label="Close">✕</button>
+              </div>
+              <PlayerStats playerId={statsPlayerId} />
+              <button className="pp-sheet-done" onClick={() => setStatsPlayerId(null)}>Done</button>
+            </div>
+          </div>
+        )}
       </div>
     </Layout>
   )

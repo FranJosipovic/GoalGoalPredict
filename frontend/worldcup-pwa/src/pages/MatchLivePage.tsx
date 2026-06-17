@@ -5,9 +5,16 @@ import PredictionPitch, { type PlayerBadge } from "../components/PredictionPitch
 import { getMatchDetail, getMatchPredictions } from "../api/matches";
 import { useAuthStore } from "../store/authStore";
 import PicksByTeam from "../components/PicksByTeam";
+import Icon, { FootballCard, type IconName } from "../components/Icon";
+import PlayerStats from "../components/PlayerStats";
 import type { MatchDetail, GroupPredictions } from "../types";
 
 type Tab = "events" | "lineups" | "picks";
+const MATCH_TABS: [Tab, IconName, string][] = [
+  ["events", "clipboard", "Events"],
+  ["lineups", "shirt", "Lineups"],
+  ["picks", "target", "Picks"],
+];
 type Side = "home" | "away";
 
 export default function MatchLivePage() {
@@ -21,6 +28,7 @@ export default function MatchLivePage() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>("events");
   const [lineupSide, setLineupSide] = useState<Side>("home");
+  const [statsPlayerId, setStatsPlayerId] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     if (!matchId || !groupId) return;
@@ -49,7 +57,7 @@ export default function MatchLivePage() {
     return (
       <Layout showBack>
         <div className="loading-state">
-          <span className="loading-ball">⚽</span>
+          <span className="loading-ball"><Icon name="ball" size={34} /></span>
         </div>
       </Layout>
     );
@@ -146,12 +154,12 @@ export default function MatchLivePage() {
     const out: PlayerBadge[] = [];
     const g = goalsByPlayer.get(playerId) ?? 0;
     const og = ownGoalsByPlayer.get(playerId) ?? 0;
-    if (g) out.push({ icon: "⚽", count: g });
-    if (og) out.push({ icon: "🥅", count: og });
-    if (yellowIds.has(playerId)) out.push({ icon: "🟨" });
-    if (redIds.has(playerId)) out.push({ icon: "🟥" });
-    if (subOutIds.has(playerId)) out.push({ icon: "🔻" });
-    if (subInIds.has(playerId)) out.push({ icon: "🔺" });
+    if (g) out.push({ icon: <Icon name="ball" size={13} className="pp-ico-goal" />, count: g });
+    if (og) out.push({ icon: <Icon name="ball" size={13} className="pp-ico-og" />, count: og });
+    if (yellowIds.has(playerId)) out.push({ icon: <FootballCard color="yellow" size={12} /> });
+    if (redIds.has(playerId)) out.push({ icon: <FootballCard color="red" size={12} /> });
+    if (subOutIds.has(playerId)) out.push({ icon: <Icon name="arrow-down" size={12} className="pp-ico-out" /> });
+    if (subInIds.has(playerId)) out.push({ icon: <Icon name="arrow-up" size={12} className="pp-ico-in" /> });
     return out;
   };
 
@@ -192,16 +200,13 @@ export default function MatchLivePage() {
 
         {/* Tabs */}
         <div className="match-tabs">
-          {([
-            ["events", "📋 Events"],
-            ["lineups", "👕 Lineups"],
-            ["picks", "🎯 Picks"],
-          ] as [Tab, string][]).map(([t, label]) => (
+          {MATCH_TABS.map(([t, icon, label]) => (
             <button
               key={t}
               className={`match-tab ${tab === t ? "match-tab--active" : ""}`}
               onClick={() => setTab(t)}
             >
+              <Icon name={icon} size={16} className="match-tab-icon" />
               {label}
             </button>
           ))}
@@ -225,29 +230,32 @@ export default function MatchLivePage() {
                       {e.extraMinute ? `+${e.extraMinute}` : ""}'
                     </span>
                     <span className="ev-icon">
-                      {e.kind === "goal"
-                        ? e.goalType === "Penalty"
-                          ? "⚽(P)"
-                          : e.goalType === "Own Goal"
-                            ? "⚽(OG)"
-                            : "⚽"
-                        : e.kind === "card"
-                          ? e.cardType === "Red Card"
-                            ? "🟥"
-                            : "🟨"
-                          : e.kind === "var"
-                            ? /disallow|cancel/i.test(e.detail ?? "")
-                              ? "❌"
-                              : "📺"
-                            : e.kind === "sub"
-                              ? "🔄"
-                              : ""}
+                      {e.kind === "goal" ? (
+                        <span className="ev-goal">
+                          <Icon name="ball" size={15} />
+                          {e.goalType === "Penalty" && <em>P</em>}
+                          {e.goalType === "Own Goal" && <em>OG</em>}
+                        </span>
+                      ) : e.kind === "card" ? (
+                        <FootballCard color={e.cardType === "Red Card" ? "red" : "yellow"} size={15} />
+                      ) : e.kind === "var" ? (
+                        <Icon
+                          name={/disallow|cancel/i.test(e.detail ?? "") ? "close" : "whistle"}
+                          size={15}
+                          className="ev-icon-var"
+                        />
+                      ) : e.kind === "sub" ? (
+                        <span className="ev-sub-arrows">
+                          <Icon name="arrow-up" size={13} className="ev-arrow-in" />
+                          <Icon name="arrow-down" size={13} className="ev-arrow-out" />
+                        </span>
+                      ) : null}
                     </span>
                     <div className="ev-text">
                       {e.kind === "sub" ? (
                         <>
-                          <span className="ev-in">▲ {e.inName ?? "Unknown"}</span>
-                          <span className="ev-out">▼ {e.outName ?? "Unknown"}</span>
+                          <span className="ev-in">{e.inName ?? "Unknown"}</span>
+                          <span className="ev-out">{e.outName ?? "Unknown"}</span>
                         </>
                       ) : e.kind === "var" ? (
                         <>
@@ -290,14 +298,15 @@ export default function MatchLivePage() {
                 players={xiFor(lineupTeam.id)}
                 bench={benchFor(lineupTeam.id)}
                 badgesFor={lineupBadges}
-                onPlayerTap={() => {}}
+                onPlayerTap={setStatsPlayerId}
               />
+              <p className="lineup-tap-hint">Tap a player for season statistics</p>
 
               <div className="lineup-legend">
-                <span>⚽ goal</span>
-                <span>🟨 / 🟥 card</span>
-                <span>🔻 subbed off</span>
-                <span>🔺 subbed on</span>
+                <span><Icon name="ball" size={13} /> goal</span>
+                <span><FootballCard color="yellow" size={12} /> / <FootballCard color="red" size={12} /> card</span>
+                <span><Icon name="arrow-down" size={13} className="pp-ico-out" /> subbed off</span>
+                <span><Icon name="arrow-up" size={13} className="pp-ico-in" /> subbed on</span>
               </div>
             </div>
           )
@@ -340,6 +349,21 @@ export default function MatchLivePage() {
               })}
             </div>
           )
+        )}
+
+        {/* Player statistics modal (tap a lineup player) */}
+        {statsPlayerId != null && (
+          <div className="pp-sheet-overlay" onClick={() => setStatsPlayerId(null)}>
+            <div className="pp-sheet pp-sheet--stats" onClick={(e) => e.stopPropagation()}>
+              <div className="pp-sheet-head">
+                <Icon name="chart" size={18} className="pp-row-icon" />
+                <span className="pp-sheet-name">Player statistics</span>
+                <button className="pp-sheet-close" onClick={() => setStatsPlayerId(null)} aria-label="Close">✕</button>
+              </div>
+              <PlayerStats playerId={statsPlayerId} />
+              <button className="pp-sheet-done" onClick={() => setStatsPlayerId(null)}>Done</button>
+            </div>
+          </div>
         )}
       </div>
     </Layout>

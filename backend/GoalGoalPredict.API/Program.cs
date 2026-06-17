@@ -84,6 +84,7 @@ builder.Services.AddScoped<GetMyPredictions>();
 builder.Services.AddScoped<GetMatches>();
 builder.Services.AddScoped<GetGroupPredictions>();
 builder.Services.AddScoped<GetGroupLeaderboard>();
+builder.Services.AddScoped<GoalGoalPredict.Infrastructure.UseCases.Players.GetPlayerStatistics>();
 
 // Use cases — Admin management & compare
 builder.Services.AddScoped<AdminCompareService>();

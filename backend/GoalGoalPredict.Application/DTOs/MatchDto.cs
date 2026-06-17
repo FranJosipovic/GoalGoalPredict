@@ -29,6 +29,16 @@ public record PagedMyPredictionsDto(
     int TotalPoints,
     int ExactCount);
 
+// A single member's prediction history, paged latest-first. Stats are aggregated
+// over ALL their picks (cheap SQL sums), so the hero header stays correct no
+// matter how many pages are loaded.
+public record PagedUserPredictionsDto(
+    List<MyPredictionItemDto> Items,
+    int Total,
+    int TotalPoints,
+    int ExactCount,
+    int ScorerPoints);
+
 public record MyPredictionDto(
     Guid Id,
     int HomeGoals,
@@ -85,7 +95,8 @@ public record LineupPlayerDto(
     string Position,
     int ShirtNumber,
     bool IsStarting,
-    int TeamId);
+    int TeamId,
+    string PhotoUrl);
 
 public record GoalEventDto(
     int Minute,

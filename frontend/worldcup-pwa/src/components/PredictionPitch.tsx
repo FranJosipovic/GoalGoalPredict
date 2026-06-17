@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { LineupPlayer } from '../types'
 
 // Positions arrive as full names ("Goalkeeper"/"Attacker") or short codes ("G"/"F").
@@ -7,8 +8,16 @@ const POS_LETTER = (pos: string) => {
 }
 const ROW_ORDER = ['G', 'D', 'M', 'F']
 
+const lastName = (name: string) => name.split(' ').pop() ?? name
+const initialsOf = (name: string) => {
+  const parts = name.trim().split(/\s+/)
+  const first = parts[0]?.[0] ?? ''
+  const last = parts.length > 1 ? parts[parts.length - 1][0] : ''
+  return (first + last).toUpperCase()
+}
+
 export interface PlayerBadge {
-  icon: string
+  icon: React.ReactNode
   count?: number
 }
 
@@ -17,6 +26,38 @@ interface Props {
   bench?: LineupPlayer[]                           // substitutes (optional)
   badgesFor: (playerId: number) => PlayerBadge[]
   onPlayerTap: (playerId: number) => void
+}
+
+// Circular player headshot with a graceful fallback to coloured initials when no
+// photo is available (or the image fails to load).
+function Avatar({ p, badges }: { p: LineupPlayer; badges: PlayerBadge[] }) {
+  const [failed, setFailed] = useState(false)
+  const showImg = p.photoUrl && !failed
+  return (
+    <span className="pp-avatar">
+      {showImg ? (
+        <img
+          src={p.photoUrl}
+          className="pp-avatar-img"
+          alt=""
+          loading="lazy"
+          onError={() => setFailed(true)}
+        />
+      ) : (
+        <span className="pp-avatar-fallback">{initialsOf(p.name)}</span>
+      )}
+      <span className="pp-shirt">{p.shirtNumber}</span>
+      {badges.length > 0 && (
+        <span className="pp-badges">
+          {badges.map((b, i) => (
+            <span key={i} className="pp-badge">
+              {b.icon}{b.count && b.count > 1 ? <em className="pp-badge-count">{b.count}</em> : ''}
+            </span>
+          ))}
+        </span>
+      )}
+    </span>
+  )
 }
 
 // Renders a single team's XI on a pitch. Players are grouped into G/D/M/F rows
@@ -28,50 +69,72 @@ export default function PredictionPitch({ players, bench = [], badgesFor, onPlay
     .map(code => players.filter(p => POS_LETTER(p.position) === code))
     .filter(r => r.length > 0)
 
-  const token = (p: LineupPlayer) => {
+  const token = (p: LineupPlayer, idx: number) => {
     const badges = badgesFor(p.playerId)
     const picked = badges.length > 0
     return (
       <button
         key={p.playerId}
         type="button"
-        className={`pitch-slot pp-token ${picked ? 'pp-token--picked' : ''}`}
+        className={`pp-token ${picked ? 'pp-token--picked' : ''}`}
+        style={{ animationDelay: `${Math.min(idx, 11) * 0.03}s` }}
         onClick={() => onPlayerTap(p.playerId)}
       >
-        <div className="slot-shirt">#{p.shirtNumber}</div>
-        <div className="slot-player-name">{p.name.split(' ').pop()}</div>
-        {picked && (
-          <div className="pp-badges">
-            {badges.map((b, i) => (
-              <span key={i} className="pp-badge">
-                {b.icon}{b.count && b.count > 1 ? b.count : ''}
-              </span>
-            ))}
-          </div>
-        )}
+        <Avatar p={p} badges={badges} />
+        <span className="pp-name">{lastName(p.name)}</span>
       </button>
     )
   }
 
+  // Bench rows: horizontal list entries (avatar + full name + position) rather
+  // than pitch tokens, so a full bench reads as a clean scannable list.
+  const benchRow = (p: LineupPlayer) => {
+    const badges = badgesFor(p.playerId)
+    const picked = badges.length > 0
+    return (
+      <button
+        key={p.playerId}
+        type="button"
+        className={`pp-bench-row ${picked ? 'pp-bench-row--picked' : ''}`}
+        onClick={() => onPlayerTap(p.playerId)}
+      >
+        <Avatar p={p} badges={badges} />
+        <span className="pp-bench-name">{p.name}</span>
+        <span className="pp-bench-pos">{POS_LETTER(p.position)}</span>
+      </button>
+    )
+  }
+
+  let slot = 0
+
   return (
     <div className="pitch-container">
       <div className="pitch-field">
-        <div className="pitch-center-circle" />
-        <div className="pitch-center-line" />
+        {/* Markings */}
+        <span className="pitch-mark pitch-mark--circle" />
+        <span className="pitch-mark pitch-mark--spot" />
+        <span className="pitch-mark pitch-mark--line" />
+        <span className="pitch-box pitch-box--top" />
+        <span className="pitch-box pitch-box--bottom" />
+        <span className="pitch-arc pitch-arc--top" />
+        <span className="pitch-arc pitch-arc--bottom" />
 
         {/* GK row at the bottom, attackers at the top */}
         {[...rows].reverse().map((row, ri) => (
           <div key={ri} className="pitch-row">
-            {row.map(token)}
+            {row.map(p => token(p, slot++))}
           </div>
         ))}
       </div>
 
       {bench.length > 0 && (
         <div className="pitch-bench">
-          <span className="pitch-bench-label">SUBS</span>
-          <div className="pitch-bench-row">
-            {bench.map(token)}
+          <span className="pitch-bench-label">
+            <span className="pitch-bench-dot" />Substitutes
+            <span className="pitch-bench-count">{bench.length}</span>
+          </span>
+          <div className="pitch-bench-list">
+            {bench.map(benchRow)}
           </div>
         </div>
       )}
