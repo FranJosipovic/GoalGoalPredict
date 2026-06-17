@@ -101,6 +101,7 @@ export default function MatchesTab({ groupId, onMatchClick }: Props) {
   })
   const [finishedLimit, setFinishedLimit] = useState(3)
   const [finishedTotal, setFinishedTotal] = useState(0)
+  const [loadingMore, setLoadingMore] = useState(false)
 
   const load = useCallback(async () => {
     try {
@@ -109,6 +110,7 @@ export default function MatchesTab({ groupId, onMatchClick }: Props) {
       setFinishedTotal(data.finishedTotal)
     } finally {
       setLoading(false)
+      setLoadingMore(false)
     }
   }, [groupId, finishedLimit])
 
@@ -222,8 +224,12 @@ export default function MatchesTab({ groupId, onMatchClick }: Props) {
       )}
 
       {hasMoreFinished && (
-        <button className="load-more-btn" onClick={() => setFinishedLimit(n => n + 3)}>
-          Load more
+        <button
+          className={`load-more-btn ${loadingMore ? 'load-more-btn--loading' : ''}`}
+          disabled={loadingMore}
+          onClick={() => { setLoadingMore(true); setFinishedLimit(n => n + 3) }}
+        >
+          {loadingMore ? <><span className="load-more-spinner" />Loading…</> : 'Load more'}
         </button>
       )}
     </div>

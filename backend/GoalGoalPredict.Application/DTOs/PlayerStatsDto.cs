@@ -1,0 +1,40 @@
+namespace GoalGoalPredict.Application.DTOs;
+
+public record PlayerStatsDto(
+    int PlayerId,
+    string Name,
+    string? Firstname,
+    string? Lastname,
+    int? Age,
+    string? BirthDate,
+    string? BirthPlace,
+    string? BirthCountry,
+    string? Nationality,
+    string? Height,
+    string? Weight,
+    bool Injured,
+    string PhotoUrl,
+    string TeamName,
+    string TeamCode,
+    // games
+    int? Appearances,
+    int? Lineups,
+    int? Minutes,
+    int? Number,
+    string? Position,
+    string? Rating,
+    bool Captain,
+    // goals
+    int? Goals,
+    int? Conceded,
+    int? Assists,
+    int? Saves,
+    // cards
+    int? Yellow,
+    int? YellowRed,
+    int? Red,
+    // fouls
+    int? FoulsDrawn,
+    int? FoulsCommitted,
+    // False = API has no stats for this player yet (bio still shown).
+    bool HasApiData);

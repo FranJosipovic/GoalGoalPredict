@@ -184,18 +184,14 @@ export default function LandingPage() {
         </div>
         <div className="lp-phones">
           {[
-            { label: 'Tactical pitch — pick your scorers', tilt: 'l' },
-            { label: 'Live leaderboard', tilt: 'c', hero: true },
-            { label: 'Match predictions', tilt: 'r' },
+            { label: 'Tactical pitch — pick your scorers', tilt: 'l', src: '/shots/pitch.jpeg' },
+            { label: 'Live leaderboard', tilt: 'c', hero: true, src: '/shots/leaderboard.jpeg' },
+            { label: 'Match predictions', tilt: 'r', src: '/shots/match.jpeg' },
           ].map((p) => (
             <figure className={`lp-phone lp-phone-${p.tilt}${p.hero ? ' is-hero' : ''}`} key={p.label}>
               <div className="lp-phone-frame">
                 <span className="lp-phone-notch" />
-                {/* TODO: drop a real screenshot here, e.g. <img src="/shots/pitch.png" alt={p.label} /> */}
-                <div className="lp-phone-ph">
-                  <span className="lp-phone-ph-ball">⚽</span>
-                  <span className="lp-phone-ph-text">Screenshot</span>
-                </div>
+                <img src={p.src} alt={p.label} loading="lazy" />
               </div>
               <figcaption>{p.label}</figcaption>
             </figure>

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useAuthStore } from '../../store/authStore'
 import { resetInviteCode, kickGroupMember } from '../../api/groups'
+import Icon from '../Icon'
 import type { GroupDetail } from '../../types'
 
 export default function MembersTab({ group }: { group: GroupDetail }) {
@@ -78,8 +79,8 @@ export default function MembersTab({ group }: { group: GroupDetail }) {
   return (
     <div className="members-section">
       <div className="invite-share" style={{ margin: '20px auto', maxWidth: 420 }}>
-        <button className="btn-primary" onClick={handleShare} style={{ width: '100%' }}>
-          🔗 Invite people
+        <button className="btn-primary btn-with-icon" onClick={handleShare} style={{ width: '100%' }}>
+          <Icon name="link" size={18} /> Invite people
         </button>
 
         <button className="invite-code-btn" onClick={handleCopyCode} style={{ margin: '12px auto', display: 'flex' }}>
@@ -87,12 +88,12 @@ export default function MembersTab({ group }: { group: GroupDetail }) {
             <div className="invite-label">Invite Code</div>
             <div className="invite-code">{inviteCode}</div>
           </div>
-          <span className="invite-copy-icon">📋</span>
+          <span className="invite-copy-icon"><Icon name="copy" size={18} /></span>
         </button>
 
         {isOwner && (
           <button className="btn-ghost" onClick={handleReset} disabled={resetting} style={{ width: '100%' }}>
-            {resetting ? 'Resetting…' : '↻ Reset invite link'}
+            {resetting ? 'Resetting…' : 'Reset invite link'}
           </button>
         )}
 
@@ -115,7 +116,6 @@ export default function MembersTab({ group }: { group: GroupDetail }) {
                 {m.firstName} {m.lastName}
                 {m.userId === user?.id && <span className="member-you"> (you)</span>}
               </div>
-              <div className="member-email">{m.email}</div>
             </div>
             {m.role === 'Owner' && <span className="member-role-badge">OWNER</span>}
             {isOwner && m.role !== 'Owner' && m.userId !== user?.id && (

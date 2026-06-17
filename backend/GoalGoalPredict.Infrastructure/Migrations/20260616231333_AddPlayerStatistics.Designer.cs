@@ -3,6 +3,7 @@ using System;
 using GoalGoalPredict.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace GoalGoalPredict.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260616231333_AddPlayerStatistics")]
+    partial class AddPlayerStatistics
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -723,10 +726,6 @@ namespace GoalGoalPredict.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("goals");
 
-                    b.Property<bool>("HasApiData")
-                        .HasColumnType("boolean")
-                        .HasColumnName("has_api_data");
-
                     b.Property<string>("Height")
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
@@ -735,10 +734,6 @@ namespace GoalGoalPredict.Infrastructure.Migrations
                     b.Property<bool>("Injured")
                         .HasColumnType("boolean")
                         .HasColumnName("injured");
-
-                    b.Property<DateTime>("LastApiAttemptUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("last_api_attempt_at");
 
                     b.Property<DateTime>("LastSyncedAt")
                         .HasColumnType("timestamp with time zone")
@@ -1532,11 +1527,13 @@ namespace GoalGoalPredict.Infrastructure.Migrations
 
             modelBuilder.Entity("GoalGoalPredict.Domain.Entities.PlayerStatistic", b =>
                 {
-                    b.HasOne("GoalGoalPredict.Domain.Entities.Player", null)
-                        .WithMany()
-                        .HasForeignKey("PlayerId")
+                    b.HasOne("GoalGoalPredict.Domain.Entities.Player", "Player")
+                        .WithOne()
+                        .HasForeignKey("GoalGoalPredict.Domain.Entities.PlayerStatistic", "PlayerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Player");
                 });
 
             modelBuilder.Entity("GoalGoalPredict.Domain.Entities.Prediction", b =>

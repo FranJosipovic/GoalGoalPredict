@@ -74,6 +74,7 @@ export interface LineupPlayer {
   shirtNumber: number
   isStarting: boolean
   teamId: number
+  photoUrl: string
 }
 
 export interface GoalEvent {
@@ -206,6 +207,41 @@ export interface Player {
   position: string
   photoUrl: string
   age: number
+}
+
+export interface PlayerStats {
+  playerId: number
+  name: string
+  firstname: string | null
+  lastname: string | null
+  age: number | null
+  birthDate: string | null
+  birthPlace: string | null
+  birthCountry: string | null
+  nationality: string | null
+  height: string | null
+  weight: string | null
+  injured: boolean
+  photoUrl: string
+  teamName: string
+  teamCode: string
+  appearances: number | null
+  lineups: number | null
+  minutes: number | null
+  number: number | null
+  position: string | null
+  rating: string | null
+  captain: boolean
+  goals: number | null
+  conceded: number | null
+  assists: number | null
+  saves: number | null
+  yellow: number | null
+  yellowRed: number | null
+  red: number | null
+  foulsDrawn: number | null
+  foulsCommitted: number | null
+  hasApiData: boolean
 }
 
 export interface TeamSquad {

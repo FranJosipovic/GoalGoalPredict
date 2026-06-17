@@ -201,6 +201,29 @@ public class ApiFootballClient(HttpClient http, IConfiguration config, ILogger<A
         }).ToList();
     }
 
+    public async Task<ApiPlayerStatsData?> GetPlayerStatisticsAsync(int playerId, CancellationToken ct = default)
+    {
+        var json = await GetAsync($"players?id={playerId}&league={LeagueId}&season={Season}", ct);
+        var resp = Deserialize<ApiResponse<PlayerStatsResponse>>(json);
+        var entry = resp?.Response.FirstOrDefault();
+        if (entry is null) return null;
+
+        var p = entry.Player;
+        // Prefer the World Cup stat line; fall back to the first available.
+        var s = entry.Statistics.FirstOrDefault(x => x.League?.Id == LeagueId)
+                ?? entry.Statistics.FirstOrDefault();
+
+        return new ApiPlayerStatsData(
+            p.Id, p.Name, p.Firstname, p.Lastname,
+            p.Age, p.Birth?.Date, p.Birth?.Place, p.Birth?.Country,
+            p.Nationality, p.Height, p.Weight, p.Injured, p.Photo,
+            s?.Games?.Appearences, s?.Games?.Lineups, s?.Games?.Minutes, s?.Games?.Number,
+            s?.Games?.Position, s?.Games?.Rating, s?.Games?.Captain ?? false,
+            s?.Goals?.Total, s?.Goals?.Conceded, s?.Goals?.Assists, s?.Goals?.Saves,
+            s?.Cards?.Yellow, s?.Cards?.Yellowred, s?.Cards?.Red,
+            s?.Fouls?.Drawn, s?.Fouls?.Committed);
+    }
+
     private async Task<string> GetAsync(string path, CancellationToken ct)
     {
         var key = config["ApiFootball:ApiKey"];

@@ -31,8 +31,18 @@ export interface PagedMyPredictions {
 export const getMyPredictions = (groupId: string, finishedTake: number) =>
   client.get<PagedMyPredictions>('/predictions/mine', { params: { groupId, finishedTake } }).then(r => r.data)
 
-export const getUserPredictions = (userId: string, groupId: string) =>
-  client.get<MyPredictionItem[]>(`/predictions/user/${userId}`, { params: { groupId } }).then(r => r.data)
+export interface PagedUserPredictions {
+  items: MyPredictionItem[]
+  total: number
+  totalPoints: number
+  exactCount: number
+  scorerPoints: number
+}
+
+// `take` pages the member's history latest-first; stats are aggregated server-side
+// over all their picks. Returns the most-recent `take` items + a total count.
+export const getUserPredictions = (userId: string, groupId: string, take: number) =>
+  client.get<PagedUserPredictions>(`/predictions/user/${userId}`, { params: { groupId, take } }).then(r => r.data)
 
 export const getMyPrediction = (matchId: number, groupId: string) =>
   client.get<PredictionResult>(`/predictions/my`, { params: { matchId, groupId } })

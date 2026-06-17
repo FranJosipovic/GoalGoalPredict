@@ -33,6 +33,37 @@ public class GetMyPredictions(AppDbContext db, EffectiveRulesService effectiveRu
         return await BuildAsync(groupId, predictions, ct);
     }
 
+    // A member's history paged latest-first: the most-recent `take` picks, plus a total
+    // count and aggregate stats computed over ALL their picks (cheap SQL sums) so the
+    // header stays correct as more pages load.
+    public async Task<PagedUserPredictionsDto> ExecuteUserPagedAsync(Guid userId, Guid groupId, bool onlyStarted, int take, CancellationToken ct = default)
+    {
+        var now = DateTime.UtcNow;
+        var scoped = BaseQuery(userId, groupId)
+            // When viewing another member, hide picks for matches that haven't kicked off.
+            .Where(p => !onlyStarted || p.Match.KickoffUtc <= now);
+
+        var total = await scoped.CountAsync(ct);
+        var page = await scoped
+            .OrderByDescending(p => p.Match.KickoffUtc)
+            .Take(take)
+            .ToListAsync(ct);
+
+        var items = await BuildAsync(groupId, page, ct);
+
+        var totalPoints = await db.PredictionScores
+            .Where(s => s.UserId == userId && s.GroupId == groupId)
+            .SumAsync(s => (int?)s.TotalPoints, ct) ?? 0;
+        var scorerPoints = await db.PredictionScores
+            .Where(s => s.UserId == userId && s.GroupId == groupId)
+            .SumAsync(s => (int?)(s.GoalscorerPoints + s.OwnGoalPoints), ct) ?? 0;
+        var exactCount = await db.Predictions.CountAsync(p =>
+            p.UserId == userId && p.GroupId == groupId && p.Score != null
+            && p.Match.HomeGoals == p.HomeGoals && p.Match.AwayGoals == p.AwayGoals, ct);
+
+        return new PagedUserPredictionsDto(items, total, totalPoints, exactCount, scorerPoints);
+    }
+
     // Active (live + upcoming) picks in full, plus the most-recent `finishedTake` finished
     // picks. Aggregate stats are computed over ALL of the user's picks, so the Picks-tab
     // summary stays correct regardless of how many finished picks are loaded.

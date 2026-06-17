@@ -3,6 +3,7 @@ import { useParams, useLocation } from 'react-router-dom'
 import Layout from '../components/Layout'
 import { getUserPredictions } from '../api/matches'
 import PicksByTeam from '../components/PicksByTeam'
+import Icon from '../components/Icon'
 import type { MyPredictionItem } from '../types'
 
 const LIVE_STATUSES = ['1H', 'HT', '2H', 'ET', 'P']
@@ -33,22 +34,42 @@ export default function PlayerDetailPage() {
   const location = useLocation()
   const navState = (location.state ?? {}) as { name?: string; isMe?: boolean }
   const [items, setItems] = useState<MyPredictionItem[]>([])
+  const [total, setTotal] = useState(0)
+  const [stats, setStats] = useState({ totalPoints: 0, exactCount: 0, scorerPoints: 0 })
   const [loading, setLoading] = useState(true)
+  const [take, setTake] = useState(3)
+  const [loadingMore, setLoadingMore] = useState(false)
+
+  // Reset paging when switching players.
+  useEffect(() => { setTake(3) }, [userId])
 
   useEffect(() => {
     if (!groupId || !userId) return
-    getUserPredictions(userId, groupId)
-      .then(setItems)
-      .finally(() => setLoading(false))
-  }, [groupId, userId])
+    getUserPredictions(userId, groupId, take)
+      .then(data => {
+        setItems(data.items)
+        setTotal(data.total)
+        setStats({ totalPoints: data.totalPoints, exactCount: data.exactCount, scorerPoints: data.scorerPoints })
+      })
+      .finally(() => { setLoading(false); setLoadingMore(false) })
+  }, [groupId, userId, take])
+
+  const loadMore = () => {
+    setLoadingMore(true)
+    setTake(t => t + 3) // refetch with a larger page (server-paged)
+  }
 
   const name = navState.name ?? 'Player'
   const initials = name.split(' ').map(s => s[0]).slice(0, 2).join('')
 
-  const scored = items.filter(i => i.isScored)
-  const totalPoints = scored.reduce((sum, i) => sum + (i.points ?? 0), 0)
-  const exactCount = scored.filter(i => i.predHome === i.actualHome && i.predAway === i.actualAway).length
-  const scorerPoints = scored.reduce((sum, i) => sum + (breakdown(i)?.scorer ?? 0), 0)
+  // Server returns the most-recent `take` picks; sort desc for display so the
+  // latest match is always on top.
+  const shownItems = [...items].sort(
+    (a, b) => new Date(b.kickoffUtc).getTime() - new Date(a.kickoffUtc).getTime(),
+  )
+  const hasMore = total > items.length
+
+  const { totalPoints, exactCount, scorerPoints } = stats
 
   return (
     <Layout title={navState.isMe ? 'My history' : name} showBack>
@@ -66,16 +87,16 @@ export default function PlayerDetailPage() {
         </div>
 
         {loading ? (
-          <div className="loading-state"><span className="loading-ball">⚽</span></div>
+          <div className="loading-state"><span className="loading-ball"><Icon name="ball" size={34} /></span></div>
         ) : items.length === 0 ? (
           <div className="empty-state">
-            <span className="empty-icon">📭</span>
+            <Icon name="target" size={40} className="empty-icon-svg" />
             <p className="empty-title">No visible picks</p>
             <p className="empty-sub">Their picks appear once matches kick off</p>
           </div>
         ) : (
           <div className="player-matches">
-            {items.map(p => {
+            {shownItems.map(p => {
               const b = breakdown(p)
               const hasResult = p.actualHome !== null && p.actualAway !== null
               const isLive = LIVE_STATUSES.includes(p.status)
@@ -123,6 +144,15 @@ export default function PlayerDetailPage() {
                 </div>
               )
             })}
+            {hasMore && (
+              <button
+                className={`load-more-btn ${loadingMore ? 'load-more-btn--loading' : ''}`}
+                disabled={loadingMore}
+                onClick={loadMore}
+              >
+                {loadingMore ? <><span className="load-more-spinner" />Loading…</> : 'Load more'}
+              </button>
+            )}
           </div>
         )}
       </div>

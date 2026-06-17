@@ -304,3 +304,80 @@ internal class ApiScorerPenalty
 {
     [JsonPropertyName("scored")] public int? Scored { get; set; }
 }
+
+// ─── Full player statistics (players?id=…) ───
+internal class PlayerStatsResponse
+{
+    [JsonPropertyName("player")] public ApiStatsPlayerBio Player { get; set; } = null!;
+    [JsonPropertyName("statistics")] public List<ApiPlayerStatistics> Statistics { get; set; } = [];
+}
+
+internal class ApiStatsPlayerBio
+{
+    [JsonPropertyName("id")] public int Id { get; set; }
+    [JsonPropertyName("name")] public string Name { get; set; } = "";
+    [JsonPropertyName("firstname")] public string? Firstname { get; set; }
+    [JsonPropertyName("lastname")] public string? Lastname { get; set; }
+    [JsonPropertyName("age")] public int? Age { get; set; }
+    [JsonPropertyName("birth")] public ApiPlayerBirth? Birth { get; set; }
+    [JsonPropertyName("nationality")] public string? Nationality { get; set; }
+    [JsonPropertyName("height")] public string? Height { get; set; }
+    [JsonPropertyName("weight")] public string? Weight { get; set; }
+    [JsonPropertyName("injured")] public bool Injured { get; set; }
+    [JsonPropertyName("photo")] public string? Photo { get; set; }
+}
+
+internal class ApiPlayerBirth
+{
+    [JsonPropertyName("date")] public string? Date { get; set; }
+    [JsonPropertyName("place")] public string? Place { get; set; }
+    [JsonPropertyName("country")] public string? Country { get; set; }
+}
+
+internal class ApiPlayerStatistics
+{
+    [JsonPropertyName("team")] public ApiScorerTeam? Team { get; set; }
+    [JsonPropertyName("league")] public ApiStatsLeague? League { get; set; }
+    [JsonPropertyName("games")] public ApiPlayerGames? Games { get; set; }
+    [JsonPropertyName("goals")] public ApiPlayerGoals? Goals { get; set; }
+    [JsonPropertyName("cards")] public ApiPlayerCards? Cards { get; set; }
+    [JsonPropertyName("fouls")] public ApiPlayerFouls? Fouls { get; set; }
+}
+
+internal class ApiStatsLeague
+{
+    [JsonPropertyName("id")] public int Id { get; set; }
+    [JsonPropertyName("season")] public int Season { get; set; }
+}
+
+internal class ApiPlayerGames
+{
+    [JsonPropertyName("appearences")] public int? Appearences { get; set; }
+    [JsonPropertyName("lineups")] public int? Lineups { get; set; }
+    [JsonPropertyName("minutes")] public int? Minutes { get; set; }
+    [JsonPropertyName("number")] public int? Number { get; set; }
+    [JsonPropertyName("position")] public string? Position { get; set; }
+    [JsonPropertyName("rating")] public string? Rating { get; set; }
+    [JsonPropertyName("captain")] public bool Captain { get; set; }
+}
+
+internal class ApiPlayerGoals
+{
+    [JsonPropertyName("total")] public int? Total { get; set; }
+    [JsonPropertyName("conceded")] public int? Conceded { get; set; }
+    [JsonPropertyName("assists")] public int? Assists { get; set; }
+    [JsonPropertyName("saves")] public int? Saves { get; set; }
+}
+
+internal class ApiPlayerCards
+{
+    [JsonPropertyName("yellow")] public int? Yellow { get; set; }
+    [JsonPropertyName("yellowred")] public int? Yellowred { get; set; }
+    [JsonPropertyName("red")] public int? Red { get; set; }
+}
+
+internal class ApiPlayerFouls
+{
+    [JsonPropertyName("drawn")] public int? Drawn { get; set; }
+    [JsonPropertyName("committed")] public int? Committed { get; set; }
+}

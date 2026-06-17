@@ -11,6 +11,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<GroupScoringRules> GroupScoringRules => Set<GroupScoringRules>();
     public DbSet<Team> Teams => Set<Team>();
     public DbSet<Player> Players => Set<Player>();
+    public DbSet<PlayerStatistic> PlayerStatistics => Set<PlayerStatistic>();
     public DbSet<Match> Matches => Set<Match>();
     public DbSet<MatchLineupPlayer> MatchLineupPlayers => Set<MatchLineupPlayer>();
     public DbSet<MatchGoal> MatchGoals => Set<MatchGoal>();
@@ -132,6 +133,45 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             b.Property(p => p.PhotoUrl).HasColumnName("photo_url").HasMaxLength(300);
             b.Property(p => p.IsActive).HasColumnName("is_active").HasDefaultValue(true);
             b.HasOne(p => p.Team).WithMany(t => t.Players).HasForeignKey(p => p.TeamId);
+        });
+
+        modelBuilder.Entity<PlayerStatistic>(b =>
+        {
+            b.ToTable("player_statistics");
+            b.HasKey(s => s.PlayerId);
+            b.Property(s => s.PlayerId).HasColumnName("player_id").ValueGeneratedNever();
+            b.Property(s => s.Firstname).HasColumnName("firstname").HasMaxLength(100);
+            b.Property(s => s.Lastname).HasColumnName("lastname").HasMaxLength(100);
+            b.Property(s => s.Age).HasColumnName("age");
+            b.Property(s => s.BirthDate).HasColumnName("birth_date").HasMaxLength(20);
+            b.Property(s => s.BirthPlace).HasColumnName("birth_place").HasMaxLength(120);
+            b.Property(s => s.BirthCountry).HasColumnName("birth_country").HasMaxLength(120);
+            b.Property(s => s.Nationality).HasColumnName("nationality").HasMaxLength(120);
+            b.Property(s => s.Height).HasColumnName("height").HasMaxLength(20);
+            b.Property(s => s.Weight).HasColumnName("weight").HasMaxLength(20);
+            b.Property(s => s.Injured).HasColumnName("injured");
+            b.Property(s => s.Appearances).HasColumnName("appearances");
+            b.Property(s => s.Lineups).HasColumnName("lineups");
+            b.Property(s => s.Minutes).HasColumnName("minutes");
+            b.Property(s => s.Number).HasColumnName("number");
+            b.Property(s => s.Position).HasColumnName("position").HasMaxLength(40);
+            b.Property(s => s.Rating).HasColumnName("rating").HasMaxLength(10);
+            b.Property(s => s.Captain).HasColumnName("captain");
+            b.Property(s => s.Goals).HasColumnName("goals");
+            b.Property(s => s.Conceded).HasColumnName("conceded");
+            b.Property(s => s.Assists).HasColumnName("assists");
+            b.Property(s => s.Saves).HasColumnName("saves");
+            b.Property(s => s.Yellow).HasColumnName("yellow");
+            b.Property(s => s.YellowRed).HasColumnName("yellow_red");
+            b.Property(s => s.Red).HasColumnName("red");
+            b.Property(s => s.FoulsDrawn).HasColumnName("fouls_drawn");
+            b.Property(s => s.FoulsCommitted).HasColumnName("fouls_committed");
+            b.Property(s => s.LastSyncedAt).HasColumnName("last_synced_at");
+            b.Property(s => s.LastApiAttemptUtc).HasColumnName("last_api_attempt_at");
+            b.Property(s => s.HasApiData).HasColumnName("has_api_data");
+            // FK to players without a navigation — keeps this a plain cache table and
+            // avoids EF's shared-PK 1:1 insert ordering quirks.
+            b.HasOne<Player>().WithMany().HasForeignKey(s => s.PlayerId);
         });
 
         modelBuilder.Entity<Match>(b =>
