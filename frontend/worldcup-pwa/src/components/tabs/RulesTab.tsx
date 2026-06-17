@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getGroupRules, updateGroupRules, type GroupRulesUpdate } from '../../api/groups'
+import Icon from '../Icon'
 import type { GroupScoringRules, CardPredictionMode } from '../../types'
 
 interface Props {
@@ -26,7 +27,7 @@ export default function RulesTab({ groupId }: Props) {
       .finally(() => setLoading(false))
   }, [groupId])
 
-  if (loading) return <div className="loading-state"><span className="loading-ball">⚽</span></div>
+  if (loading) return <div className="loading-state"><span className="loading-ball"><Icon name="ball" size={34} /></span></div>
   if (!rules || !draft) return <div className="empty-state"><p className="empty-title">Rules unavailable</p></div>
 
   const editable = rules.canEdit
@@ -75,7 +76,8 @@ export default function RulesTab({ groupId }: Props) {
     <div className="rules-tab">
       {editable && (
         <div className="rules-banner">
-          ✏️ Edits apply to matches that haven't kicked off yet. Matches already played keep the points they were scored with.
+          <Icon name="edit" size={15} className="rules-banner-icon" />
+          <span>Edits apply to matches that haven't kicked off yet. Matches already played keep the points they were scored with.</span>
         </div>
       )}
       {!editable && (

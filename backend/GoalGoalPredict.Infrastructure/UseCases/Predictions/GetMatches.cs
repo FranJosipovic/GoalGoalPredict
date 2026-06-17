@@ -84,7 +84,7 @@ public class GetMatches(AppDbContext db)
 
         var lineup = lineupsRevealed
             ? m.LineupPlayers
-                .Select(l => new LineupPlayerDto(l.PlayerId, l.Player.Name, l.Position, l.ShirtNumber, l.IsStarting, l.TeamId))
+                .Select(l => new LineupPlayerDto(l.PlayerId, l.Player.Name, l.Position, l.ShirtNumber, l.IsStarting, l.TeamId, l.Player.PhotoUrl))
                 .ToList()
             : new List<LineupPlayerDto>();
 
