@@ -1,12 +1,17 @@
 using GoalGoalPredict.Application.DTOs;
+using GoalGoalPredict.Application.Interfaces;
 using GoalGoalPredict.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
 namespace GoalGoalPredict.Infrastructure.UseCases.Predictions;
 
-public class GetGroupLeaderboard(AppDbContext db)
+public class GetGroupLeaderboard(AppDbContext db, ILeaderboardCache cache)
 {
-    public async Task<List<LeaderboardEntryDto>> ExecuteAsync(Guid groupId, CancellationToken ct = default)
+    // Cache-aside: serve the cached leaderboard if present, otherwise run the query and cache it.
+    public Task<List<LeaderboardEntryDto>> ExecuteAsync(Guid groupId, CancellationToken ct = default) =>
+        cache.GetOrAddAsync(groupId, () => QueryAsync(groupId, ct));
+
+    private async Task<List<LeaderboardEntryDto>> QueryAsync(Guid groupId, CancellationToken ct)
     {
         var memberIds = await db.GroupMembers
             .Where(m => m.GroupId == groupId)

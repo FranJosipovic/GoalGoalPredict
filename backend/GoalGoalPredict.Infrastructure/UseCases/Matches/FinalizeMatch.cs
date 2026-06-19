@@ -1,3 +1,4 @@
+using GoalGoalPredict.Application.Interfaces;
 using GoalGoalPredict.Domain.Entities;
 using GoalGoalPredict.Domain.Services;
 using GoalGoalPredict.Infrastructure.Data;
@@ -7,7 +8,7 @@ using Microsoft.Extensions.Logging;
 
 namespace GoalGoalPredict.Infrastructure.UseCases.Matches;
 
-public class FinalizeMatch(AppDbContext db, EffectiveRulesService effectiveRules, ILogger<FinalizeMatch> logger)
+public class FinalizeMatch(AppDbContext db, EffectiveRulesService effectiveRules, ILeaderboardCache leaderboardCache, ILogger<FinalizeMatch> logger)
 {
     public async Task ExecuteAsync(int matchId, CancellationToken ct = default)
     {
@@ -53,6 +54,9 @@ public class FinalizeMatch(AppDbContext db, EffectiveRulesService effectiveRules
 
         match.SetFinished();
         await db.SaveChangesAsync(ct);
+
+        // Scores just changed for these groups → drop their cached leaderboards (evict after commit).
+        leaderboardCache.Invalidate(groupIds);
         logger.LogInformation("Finalized match {MatchId}: {Count} predictions scored", matchId, predictions.Count);
     }
 }

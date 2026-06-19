@@ -43,6 +43,8 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IGroupRepository, GroupRepository>();
 
 // Services
+builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<ILeaderboardCache, LeaderboardCache>();
 builder.Services.AddScoped<ITokenService, JwtTokenService>();
 builder.Services.AddScoped<IPasswordHasher, BcryptPasswordHasher>();
 builder.Services.AddScoped<IGoogleTokenVerifier, GoalGoalPredict.Infrastructure.Auth.GoogleTokenVerifier>();
@@ -77,7 +79,7 @@ builder.Services.AddScoped<PushNotificationService>();
 builder.Services.AddScoped<EffectiveRulesService>();
 builder.Services.AddScoped<PollLiveMatch>();
 builder.Services.AddScoped<FinalizeMatch>();
-builder.Services.AddScoped<GoalGoalPredict.Infrastructure.UseCases.Admin.SyncMatchScoring>();
+builder.Services.AddScoped<SyncMatchScoring>();
 builder.Services.AddScoped<UpsertPrediction>();
 builder.Services.AddScoped<GetMyPrediction>();
 builder.Services.AddScoped<GetMyPredictions>();
