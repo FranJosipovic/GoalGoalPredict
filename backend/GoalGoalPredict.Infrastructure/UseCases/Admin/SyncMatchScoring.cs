@@ -10,7 +10,7 @@ namespace GoalGoalPredict.Infrastructure.UseCases.Admin;
 // Re-scores a played match from the events currently stored in the DB, respecting each
 // group's frozen scoring rules. CompareAsync is a dry run (diff only); ApplyAsync persists.
 // Used to fix scores after event data was corrected (VAR, late goals, etc.).
-public class SyncMatchScoring(AppDbContext db, EffectiveRulesService effectiveRules, ILeaderboardCache leaderboardCache)
+public class SyncMatchScoring(AppDbContext db, EffectiveRulesService effectiveRules, ILeaderboardCache leaderboardCache, IGroupPredictionsCache groupPredictionsCache)
 {
     public record CategoryDiff(string Category, int Current, int New);
     public record ScoreDiff(
@@ -93,8 +93,9 @@ public class SyncMatchScoring(AppDbContext db, EffectiveRulesService effectiveRu
         {
             if (!match.IsFinished) match.SetFinished();
             await db.SaveChangesAsync(ct);
-            // Re-scored these groups → drop their cached leaderboards (evict after commit).
+            // Re-scored these groups → drop their cached leaderboards and this match's cached picks.
             leaderboardCache.Invalidate(groupIds);
+            groupPredictionsCache.Invalidate(matchId, groupIds);
         }
 
         var ordered = diffs
