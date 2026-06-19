@@ -9,7 +9,7 @@ public record AdminActionResult(bool Success, string Message);
 
 // Deletes a full group and everything that depends on it. For simulation groups this
 // also removes the group's matches; real (ApiFootball) matches are shared and left intact.
-public class DeleteGroup(AppDbContext db, ILeaderboardCache leaderboardCache, IGroupDetailCache groupDetailCache)
+public class DeleteGroup(AppDbContext db, ILeaderboardCache leaderboardCache, IGroupDetailCache groupDetailCache, IGroupRulesCache groupRulesCache)
 {
     public async Task<AdminActionResult> ExecuteAsync(Guid groupId, CancellationToken ct = default)
     {
@@ -36,9 +36,10 @@ public class DeleteGroup(AppDbContext db, ILeaderboardCache leaderboardCache, IG
 
         await db.Groups.Where(g => g.Id == groupId).ExecuteDeleteAsync(ct);
 
-        // Group gone → drop its leaderboard and members caches.
+        // Group gone → drop its leaderboard, members and rules caches.
         leaderboardCache.Invalidate(groupId);
         groupDetailCache.Invalidate(groupId);
+        groupRulesCache.Invalidate(groupId);
         return new(true, $"Group '{group.Name}' deleted");
     }
 }
