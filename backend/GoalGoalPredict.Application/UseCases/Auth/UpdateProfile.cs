@@ -5,7 +5,7 @@ namespace GoalGoalPredict.Application.UseCases.Auth;
 
 public record UpdateProfileInput(Guid UserId, string FirstName, string LastName);
 
-public class UpdateProfile(IUserRepository users, IGroupRepository groups, ILeaderboardCache leaderboardCache)
+public class UpdateProfile(IUserRepository users, IGroupRepository groups, ILeaderboardCache leaderboardCache, IGroupDetailCache groupDetailCache)
 {
     public async Task<UserDto> ExecuteAsync(UpdateProfileInput input)
     {
@@ -21,9 +21,12 @@ public class UpdateProfile(IUserRepository users, IGroupRepository groups, ILead
         user.UpdateName(firstName, lastName);
         await users.UpdateAsync(user);
 
-        // The leaderboard shows member names → a rename makes every group this user is in stale.
+        // Both the leaderboard and members list show the user's name → a rename makes every
+        // group this user is in stale in both caches.
         var userGroups = await groups.GetByUserIdAsync(input.UserId);
-        leaderboardCache.Invalidate(userGroups.Select(g => g.Id));
+        var groupIds = userGroups.Select(g => g.Id).ToList();
+        leaderboardCache.Invalidate(groupIds);
+        groupDetailCache.Invalidate(groupIds);
 
         return UserDto.From(user);
     }

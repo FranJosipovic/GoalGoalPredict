@@ -45,6 +45,7 @@ builder.Services.AddScoped<IGroupRepository, GroupRepository>();
 // Services
 builder.Services.AddMemoryCache();
 builder.Services.AddSingleton<ILeaderboardCache, LeaderboardCache>();
+builder.Services.AddSingleton<IGroupDetailCache, GroupDetailCache>();
 builder.Services.AddScoped<ITokenService, JwtTokenService>();
 builder.Services.AddScoped<IPasswordHasher, BcryptPasswordHasher>();
 builder.Services.AddScoped<IGoogleTokenVerifier, GoalGoalPredict.Infrastructure.Auth.GoogleTokenVerifier>();
