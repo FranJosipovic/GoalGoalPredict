@@ -1,3 +1,4 @@
+using GoalGoalPredict.Application.Interfaces;
 using GoalGoalPredict.Domain.Entities;
 using GoalGoalPredict.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -8,7 +9,7 @@ public record AdminActionResult(bool Success, string Message);
 
 // Deletes a full group and everything that depends on it. For simulation groups this
 // also removes the group's matches; real (ApiFootball) matches are shared and left intact.
-public class DeleteGroup(AppDbContext db)
+public class DeleteGroup(AppDbContext db, ILeaderboardCache leaderboardCache, IGroupDetailCache groupDetailCache, IGroupRulesCache groupRulesCache)
 {
     public async Task<AdminActionResult> ExecuteAsync(Guid groupId, CancellationToken ct = default)
     {
@@ -34,13 +35,18 @@ public class DeleteGroup(AppDbContext db)
         }
 
         await db.Groups.Where(g => g.Id == groupId).ExecuteDeleteAsync(ct);
+
+        // Group gone → drop its leaderboard, members and rules caches.
+        leaderboardCache.Invalidate(groupId);
+        groupDetailCache.Invalidate(groupId);
+        groupRulesCache.Invalidate(groupId);
         return new(true, $"Group '{group.Name}' deleted");
     }
 }
 
 // Deletes a user and their personal data. Refuses if the user still owns any group —
 // the admin must transfer ownership or delete those groups first.
-public class DeleteUser(AppDbContext db)
+public class DeleteUser(AppDbContext db, ILeaderboardCache leaderboardCache, IGroupDetailCache groupDetailCache)
 {
     public async Task<AdminActionResult> ExecuteAsync(Guid userId, CancellationToken ct = default)
     {
@@ -51,6 +57,9 @@ public class DeleteUser(AppDbContext db)
         if (ownedGroups > 0)
             return new(false, $"User owns {ownedGroups} group(s). Transfer ownership or delete those groups first.");
 
+        // Capture the user's groups before deleting their memberships, so we know which to evict.
+        var affectedGroupIds = await db.GroupMembers.Where(m => m.UserId == userId).Select(m => m.GroupId).ToListAsync(ct);
+
         var predIds = db.Predictions.Where(p => p.UserId == userId).Select(p => p.Id);
         await db.GoalscorerPredictions.Where(g => predIds.Contains(g.PredictionId)).ExecuteDeleteAsync(ct);
         await db.CardPredictions.Where(c => predIds.Contains(c.PredictionId)).ExecuteDeleteAsync(ct);
@@ -60,13 +69,16 @@ public class DeleteUser(AppDbContext db)
         await db.PushSubscriptions.Where(p => p.UserId == userId).ExecuteDeleteAsync(ct);
         await db.Users.Where(u => u.Id == userId).ExecuteDeleteAsync(ct);
 
+        // User left every group they were in → drop those groups' leaderboard and members caches.
+        leaderboardCache.Invalidate(affectedGroupIds);
+        groupDetailCache.Invalidate(affectedGroupIds);
         return new(true, $"User '{user.Email}' deleted");
     }
 }
 
 // Removes a member from a group (and their predictions/scores in that group).
 // The owner cannot be removed — ownership must be transferred first.
-public class RemoveGroupMember(AppDbContext db)
+public class RemoveGroupMember(AppDbContext db, ILeaderboardCache leaderboardCache, IGroupDetailCache groupDetailCache)
 {
     public async Task<AdminActionResult> ExecuteAsync(Guid groupId, Guid userId, CancellationToken ct = default)
     {
@@ -85,12 +97,15 @@ public class RemoveGroupMember(AppDbContext db)
         await db.Predictions.Where(p => p.GroupId == groupId && p.UserId == userId).ExecuteDeleteAsync(ct);
         await db.GroupMembers.Where(m => m.GroupId == groupId && m.UserId == userId).ExecuteDeleteAsync(ct);
 
+        // Member (and their scores) gone → drop this group's leaderboard and members caches.
+        leaderboardCache.Invalidate(groupId);
+        groupDetailCache.Invalidate(groupId);
         return new(true, "Member removed");
     }
 }
 
 // Transfers group ownership to another existing member, swapping the Owner/Member roles.
-public class TransferGroupOwner(AppDbContext db)
+public class TransferGroupOwner(AppDbContext db, IGroupDetailCache groupDetailCache)
 {
     public async Task<AdminActionResult> ExecuteAsync(Guid groupId, Guid newOwnerUserId, CancellationToken ct = default)
     {
@@ -108,6 +123,9 @@ public class TransferGroupOwner(AppDbContext db)
         oldOwner?.ChangeRole(GroupRole.Member);
 
         await db.SaveChangesAsync(ct);
+
+        // Member roles changed (Owner/Member) → drop the members cache. Leaderboard is unaffected.
+        groupDetailCache.Invalidate(groupId);
         return new(true, "Ownership transferred");
     }
 }

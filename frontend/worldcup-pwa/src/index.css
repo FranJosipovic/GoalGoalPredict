@@ -2997,7 +2997,7 @@ input { font-family: inherit; }
 
 /* ── Pitch player badges & lineup legend (SVG glyphs) ── */
 .pp-badge { display: inline-flex; align-items: center; gap: 1px; }
-.pp-badge-count { font-style: normal; font-size: 9px; font-weight: 700; font-family: 'Oswald', sans-serif; }
+.pp-badge-count { font-style: normal; font-size: 9px; font-weight: 700; font-family: 'Oswald', sans-serif; color: #fff; }
 .pp-ico-goal { color: #fff; }
 .pp-ico-og { color: #ef5350; }
 .pp-ico-in  { color: #4caf50; }

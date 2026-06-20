@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 
 namespace GoalGoalPredict.Infrastructure.UseCases.Matches;
 
-public class SyncLineups(AppDbContext db, IApiFootballClient api, ILogger<SyncLineups> logger)
+public class SyncLineups(AppDbContext db, IApiFootballClient api, IMatchDetailCache matchDetailCache, IMatchLineupCache matchLineupCache, ILogger<SyncLineups> logger)
 {
     public async Task ExecuteAsync(int matchId, CancellationToken ct = default)
     {
@@ -39,6 +39,10 @@ public class SyncLineups(AppDbContext db, IApiFootballClient api, ILogger<SyncLi
 
         match.SetLineupsAvailable();
         await db.SaveChangesAsync(ct);
+
+        // Lineups changed → drop the (long-lived) lineup cache and the match-detail cache.
+        matchLineupCache.Invalidate(matchId);
+        matchDetailCache.Invalidate(matchId);
         if (skipped > 0)
             logger.LogWarning("Match {MatchId}: skipped {Skipped} lineup player(s) missing from the API squad", matchId, skipped);
         logger.LogInformation("Lineups saved for match {MatchId}: {Count} players", matchId, players.Count - skipped);

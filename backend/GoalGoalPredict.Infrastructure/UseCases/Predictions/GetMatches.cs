@@ -1,10 +1,11 @@
 using GoalGoalPredict.Application.DTOs;
+using GoalGoalPredict.Application.Interfaces;
 using GoalGoalPredict.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
 namespace GoalGoalPredict.Infrastructure.UseCases.Predictions;
 
-public class GetMatches(AppDbContext db)
+public class GetMatches(AppDbContext db, IMatchDetailCache matchDetailCache, IMatchLineupCache matchLineupCache)
 {
     private static readonly string[] FinishedStatuses = ["FT", "AET", "PEN"];
 
@@ -63,10 +64,16 @@ public class GetMatches(AppDbContext db)
 
     public async Task<MatchDetailDto?> GetDetailAsync(int matchId, CancellationToken ct = default)
     {
+        // A finished match's detail is immutable and shared across all users → serve from cache.
+        // Live/upcoming matches fall through and are recomputed every call (and never stored).
+        if (matchDetailCache.TryGet(matchId, out var cached))
+            return cached;
+
+        // Lineups are fetched separately (cached, long-lived) — see below — so they're left out of
+        // this query, which only carries the volatile parts (scalar header + events).
         var m = await db.Matches
             .Include(m => m.HomeTeam)
             .Include(m => m.AwayTeam)
-            .Include(m => m.LineupPlayers).ThenInclude(l => l.Player)
             .Include(m => m.Goals).ThenInclude(g => g.Scorer)
             .Include(m => m.Cards).ThenInclude(c => c.Player)
             .Include(m => m.Substitutions).ThenInclude(s => s.PlayerIn)
@@ -82,10 +89,10 @@ public class GetMatches(AppDbContext db)
         var revealUtc = m.KickoffUtc.AddMinutes(-30);
         var lineupsRevealed = DateTime.UtcNow >= revealUtc;
 
+        // Lineups don't change once out, so they get their own long-lived cache that the per-poll
+        // detail eviction doesn't touch — the heavy lineup query runs once, not on every live poll.
         var lineup = lineupsRevealed
-            ? m.LineupPlayers
-                .Select(l => new LineupPlayerDto(l.PlayerId, l.Player.Name, l.Position, l.ShirtNumber, l.IsStarting, l.TeamId, l.Player.PhotoUrl))
-                .ToList()
+            ? await matchLineupCache.GetOrAddAsync(matchId, () => LoadLineupAsync(matchId, ct))
             : new List<LineupPlayerDto>();
 
         var goals = m.Goals
@@ -111,10 +118,30 @@ public class GetMatches(AppDbContext db)
             .Select(v => new VarDecisionEventDto(v.Minute, v.ExtraMinute, v.TeamId, v.PlayerId, v.Player?.Name, v.Detail))
             .ToList();
 
-        return new MatchDetailDto(
+        var dto = new MatchDetailDto(
             m.Id, m.Round, m.KickoffUtc, m.Status, m.ElapsedMinutes,
             new TeamSummaryDto(m.HomeTeam.Id, m.HomeTeam.Name, m.HomeTeam.Code, m.HomeTeam.LogoUrl),
             new TeamSummaryDto(m.AwayTeam.Id, m.AwayTeam.Name, m.AwayTeam.Code, m.AwayTeam.LogoUrl),
             m.HomeGoals, m.AwayGoals, lineup, goals, cards, substitutions, varDecisions, lineupsRevealed, revealUtc);
+
+        // Cache from the moment lineups are revealed (the predicting window, live play, and the
+        // post-match browse peak). Before reveal we must NOT cache — lineupsRevealed would be
+        // stored false and served wrong after the reveal time passes. Every PollLiveMatch /
+        // SyncLineups evicts, so a cached entry is never more than one poll stale. Finished detail
+        // is immutable, so we give it a 30-min expiry purely to reclaim RAM after browsing fades.
+        if (lineupsRevealed)
+        {
+            var finished = FinishedStatuses.Contains(m.Status);
+            matchDetailCache.Set(matchId, dto, finished ? TimeSpan.FromMinutes(30) : null);
+        }
+
+        return dto;
     }
+
+    // The starting XI + bench for a match, projected straight to DTOs. Backs the lineup cache.
+    private Task<List<LineupPlayerDto>> LoadLineupAsync(int matchId, CancellationToken ct) =>
+        db.MatchLineupPlayers
+            .Where(l => l.MatchId == matchId)
+            .Select(l => new LineupPlayerDto(l.PlayerId, l.Player.Name, l.Position, l.ShirtNumber, l.IsStarting, l.TeamId, l.Player.PhotoUrl))
+            .ToListAsync(ct);
 }

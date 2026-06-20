@@ -1,11 +1,12 @@
 using GoalGoalPredict.Application.DTOs;
+using GoalGoalPredict.Application.Interfaces;
 using GoalGoalPredict.Domain.Entities;
 using GoalGoalPredict.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
 namespace GoalGoalPredict.Infrastructure.UseCases.Groups;
 
-public class GroupRulesUseCase(AppDbContext db)
+public class GroupRulesUseCase(AppDbContext db, IGroupRulesCache cache)
 {
     public async Task<GroupScoringRulesDto?> GetAsync(Guid groupId, Guid userId, CancellationToken ct = default)
     {
@@ -16,10 +17,11 @@ public class GroupRulesUseCase(AppDbContext db)
         var isMember = await db.GroupMembers.AnyAsync(m => m.GroupId == groupId && m.UserId == userId, ct);
         if (!isMember && !isAdmin) return null;
 
-        var rules = await GetOrCreateAsync(groupId, ct);
+        // The rule values are per-group → cached. CanEdit is per-user, so it's stamped here, not cached.
+        var dto = await cache.GetOrAddAsync(groupId, async () => ToDto(await GetOrCreateAsync(groupId, ct), canEdit: false));
         var canEdit = group.CreatedByUserId == userId || isAdmin;
 
-        return ToDto(rules, canEdit);
+        return dto with { CanEdit = canEdit };
     }
 
     public async Task<(GroupScoringRulesDto? Result, string? Error)> UpdateAsync(
@@ -49,6 +51,9 @@ public class GroupRulesUseCase(AppDbContext db)
             mode, req.WrongPickPenalty);
 
         await db.SaveChangesAsync(ct);
+
+        // Rules changed → drop the cached rules for this group (evict after commit).
+        cache.Invalidate(groupId);
         return (ToDto(rules, canEdit: true), null);
     }
 
