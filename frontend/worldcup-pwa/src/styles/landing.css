@@ -127,8 +127,6 @@
 }
 
 .lp-logo { display: flex; align-items: baseline; gap: 7px; }
-.lp-logo-ball { font-size: 18px; animation: lp-spin 5s linear infinite; align-self: center; }
-@keyframes lp-spin { to { transform: rotate(360deg); } }
 .lp-logo-text {
   font-family: 'Oswald', sans-serif; font-weight: 700;
   font-size: 19px; letter-spacing: 0.06em;
@@ -369,7 +367,7 @@
   0%, 100% { opacity: 0.55; transform: translateY(3px); }
   20%, 80% { opacity: 1; transform: translateY(0); }
 }
-.lp-sb-toast-ball { font-size: 15px; animation: lp-spin 3s linear infinite; }
+.lp-sb-toast-ball { font-size: 15px; }
 
 /* ─────────────────────────────────────────────
    Ticker

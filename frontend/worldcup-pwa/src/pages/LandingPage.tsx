@@ -61,7 +61,6 @@ export default function LandingPage() {
       {/* ── Nav ── */}
       <header className="lp-nav">
         <Link to="/" className="lp-logo">
-          <span className="lp-logo-ball">⚽</span>
           <span className="lp-logo-text">GOAL<span className="lp-accent">GOAL</span></span>
           <span className="lp-logo-sub">PREDICT</span>
         </Link>
@@ -235,7 +234,6 @@ export default function LandingPage() {
       {/* ── Footer ── */}
       <footer className="lp-footer">
         <div className="lp-logo">
-          <span className="lp-logo-ball">⚽</span>
           <span className="lp-logo-text">GOAL<span className="lp-accent">GOAL</span></span>
           <span className="lp-logo-sub">PREDICT</span>
         </div>
