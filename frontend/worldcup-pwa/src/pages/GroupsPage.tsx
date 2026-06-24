@@ -107,27 +107,59 @@ export default function GroupsPage() {
             </div>
           )}
 
-          {groups.map((group, i) => (
-            <div
-              key={group.id}
-              className="group-card"
-              style={{ animationDelay: `${i * 60}ms` }}
-              onClick={() => navigate(`/groups/${group.id}/matches`)}
-            >
-              <div className="group-card-left">
-                <div className="group-card-icon">
-                  {group.name.charAt(0).toUpperCase()}
+          {groups.map((group, i) =>
+            group.isGlobal ? (
+              <div
+                key={group.id}
+                className={`group-card group-card--global ${group.isLocked ? 'group-card--locked' : ''}`}
+                style={{ animationDelay: `${i * 60}ms` }}
+                onClick={() => navigate(`/groups/${group.id}/matches`)}
+              >
+                <div className="group-card-left">
+                  <div className="group-card-icon group-card-icon--global">
+                    {group.isLocked ? (
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="3" y="11" width="18" height="11" rx="2" />
+                        <path d="M7 11V7a5 5 0 0110 0v4" />
+                      </svg>
+                    ) : '🏆'}
+                  </div>
+                  <div>
+                    <div className="group-card-name">
+                      {group.name}
+                      <span className="global-badge">GLOBAL</span>
+                    </div>
+                    <div className="group-card-sub--global">
+                      {group.isLocked ? 'Unlocks at the knockout phase' : 'Everyone competes · live now'}
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <div className="group-card-name">{group.name}</div>
-                  <div className="group-card-code">#{group.inviteCode}</div>
-                </div>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="group-card-arrow">
+                  <path d="M9 18l6-6-6-6" />
+                </svg>
               </div>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="group-card-arrow">
-                <path d="M9 18l6-6-6-6" />
-              </svg>
-            </div>
-          ))}
+            ) : (
+              <div
+                key={group.id}
+                className="group-card"
+                style={{ animationDelay: `${i * 60}ms` }}
+                onClick={() => navigate(`/groups/${group.id}/matches`)}
+              >
+                <div className="group-card-left">
+                  <div className="group-card-icon">
+                    {group.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <div className="group-card-name">{group.name}</div>
+                    <div className="group-card-code">#{group.inviteCode}</div>
+                  </div>
+                </div>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="group-card-arrow">
+                  <path d="M9 18l6-6-6-6" />
+                </svg>
+              </div>
+            )
+          )}
         </div>
       </div>
 

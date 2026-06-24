@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 
 namespace GoalGoalPredict.Infrastructure.UseCases.Matches;
 
-public class FinalizeMatch(AppDbContext db, EffectiveRulesService effectiveRules, ILeaderboardCache leaderboardCache, IGroupPredictionsCache groupPredictionsCache, ILogger<FinalizeMatch> logger)
+public class FinalizeMatch(AppDbContext db, EffectiveRulesService effectiveRules, ILeaderboardCache leaderboardCache, IGroupPredictionsCache groupPredictionsCache, GoalGoalPredict.Infrastructure.UseCases.Guest.GuestMatchScorer guestScorer, ILogger<FinalizeMatch> logger)
 {
     public async Task ExecuteAsync(int matchId, CancellationToken ct = default)
     {
@@ -60,5 +60,8 @@ public class FinalizeMatch(AppDbContext db, EffectiveRulesService effectiveRules
         leaderboardCache.Invalidate(groupIds);
         groupPredictionsCache.Invalidate(matchId, groupIds);
         logger.LogInformation("Finalized match {MatchId}: {Count} predictions scored", matchId, predictions.Count);
+
+        // Score landing-page guest predictions for this match and email their results.
+        await guestScorer.ExecuteAsync(matchId, ct);
     }
 }

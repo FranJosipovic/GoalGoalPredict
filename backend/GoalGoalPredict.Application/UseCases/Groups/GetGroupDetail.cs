@@ -12,7 +12,8 @@ public class GetGroupDetail(IGroupRepository groups, IUserRepository users, IGro
         var group = await groups.GetByIdAsync(groupId)
             ?? throw new InvalidOperationException("Group not found.");
 
-        var isMember = await groups.IsMemberAsync(groupId, requestingUserId);
+        // Everyone belongs to the global group, so it's visible to any authenticated user.
+        var isMember = group.IsGlobal || await groups.IsMemberAsync(groupId, requestingUserId);
         if (!isMember)
             throw new UnauthorizedAccessException("You are not a member of this group.");
 
@@ -32,6 +33,6 @@ public class GetGroupDetail(IGroupRepository groups, IUserRepository users, IGro
                 memberDtos.Add(new GroupMemberDto(user.Id, user.FirstName, user.LastName, user.Email, member.Role.ToString()));
         }
 
-        return new GroupDetailDto(group.Id, group.Name, group.InviteCode, group.CreatedByUserId, group.CreatedAt, memberDtos);
+        return new GroupDetailDto(group.Id, group.Name, group.InviteCode, group.CreatedByUserId, group.CreatedAt, memberDtos, group.IsGlobal, group.IsLocked);
     }
 }
