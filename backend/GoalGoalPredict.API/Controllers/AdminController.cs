@@ -20,6 +20,8 @@ public class AdminController(
     PollLiveMatch pollLiveMatch,
     SyncLineups syncLineups,
     SyncMatchScoring syncScoring,
+    ManageGlobalGroup globalGroup,
+    GoalGoalPredict.Infrastructure.UseCases.Guest.GuestPredictions guestPredictions,
     AppDbContext db) : ControllerBase
 {
     private static readonly string[] FinishedStatuses = ["FT", "AET", "PEN"];
@@ -163,6 +165,31 @@ public class AdminController(
     }
 
     public record SetPlayerActiveBody(bool IsActive);
+
+    // ── Global group (knockout-phase competition everyone joins) ──
+    [HttpGet("global-group")]
+    public async Task<IActionResult> GetGlobalGroup(CancellationToken ct) =>
+        Ok(await globalGroup.GetStatusAsync(ct));
+
+    // Create the global group if missing and backfill all users as members (idempotent).
+    [HttpPost("global-group/ensure")]
+    public async Task<IActionResult> EnsureGlobalGroup(CancellationToken ct) =>
+        Ok(await globalGroup.EnsureAsync(ct));
+
+    // Lock/unlock — unlocking opens predictions for the knockout phase.
+    [HttpPost("global-group/lock")]
+    public async Task<IActionResult> LockGlobalGroup([FromBody] SetLockedBody body, CancellationToken ct)
+    {
+        try { return Ok(await globalGroup.SetLockedAsync(body.Locked, ct)); }
+        catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
+    }
+
+    public record SetLockedBody(bool Locked);
+
+    // ── Guest (landing-page) predictions insight ──
+    [HttpGet("guest-predictions")]
+    public async Task<IActionResult> GuestPredictions(CancellationToken ct) =>
+        Ok(await guestPredictions.GetAdminListAsync(ct));
 
     [HttpGet("status")]
     public async Task<IActionResult> Status(CancellationToken ct)

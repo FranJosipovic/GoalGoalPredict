@@ -7,7 +7,7 @@ namespace GoalGoalPredict.Application.UseCases.Auth;
 public record GoogleSignInInput(string Credential);
 public record GoogleSignInOutput(string Token, UserDto User);
 
-public class GoogleSignIn(IUserRepository users, IGoogleTokenVerifier google, ITokenService tokens)
+public class GoogleSignIn(IUserRepository users, IGoogleTokenVerifier google, ITokenService tokens, IGroupRepository groups)
 {
     public async Task<GoogleSignInOutput> ExecuteAsync(GoogleSignInInput input)
     {
@@ -34,6 +34,7 @@ public class GoogleSignIn(IUserRepository users, IGoogleTokenVerifier google, IT
                 // 3. Brand-new user.
                 user = User.FromGoogle(info.Email, info.FirstName, info.LastName, info.Subject);
                 await users.AddAsync(user);
+                await groups.EnsureGlobalMembershipAsync(user.Id);
             }
         }
 

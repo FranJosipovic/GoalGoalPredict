@@ -25,6 +25,46 @@ export const makeAdmin = (email: string) =>
 export const getSystemStatus = () =>
   client.get('/admin/system').then(r => r.data)
 
+// ── Global group (knockout-phase competition) ─────────────────
+export interface GlobalGroupStatus {
+  exists: boolean
+  id: string | null
+  name: string | null
+  isLocked: boolean
+  memberCount: number
+}
+export const getGlobalGroup = (): Promise<GlobalGroupStatus> =>
+  client.get('/admin/global-group').then(r => r.data)
+
+export const ensureGlobalGroup = (): Promise<GlobalGroupStatus> =>
+  client.post('/admin/global-group/ensure').then(r => r.data)
+
+export const setGlobalGroupLocked = (locked: boolean): Promise<GlobalGroupStatus> =>
+  client.post('/admin/global-group/lock', { locked }).then(r => r.data)
+
+// ── Guest (landing-page) predictions ──────────────────────────
+export interface GuestPredictionItem {
+  id: string
+  email: string
+  matchId: number
+  home: string
+  away: string
+  homeGoals: number
+  awayGoals: number
+  scorerCount: number
+  cardCount: number
+  isScored: boolean
+  points: number | null
+  notified: boolean
+  createdAt: string
+}
+export interface GuestPredictionList {
+  summary: { total: number; uniqueEmails: number; scored: number; pending: number }
+  items: GuestPredictionItem[]
+}
+export const getGuestPredictions = (): Promise<GuestPredictionList> =>
+  client.get('/admin/guest-predictions').then(r => r.data)
+
 export const syncTeamsPlayers = () =>
   client.post('/admin/sync-teams-players').then(r => r.data)
 

@@ -13,6 +13,8 @@ export interface Group {
   inviteCode: string
   createdByUserId: string
   createdAt: string
+  isGlobal: boolean
+  isLocked: boolean
 }
 
 export interface GroupMember {
