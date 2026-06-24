@@ -20,7 +20,30 @@ public class GroupRepository(AppDbContext db) : IGroupRepository
             .Select(m => m.GroupId)
             .ToListAsync();
 
-        return await db.Groups.Where(g => groupIds.Contains(g.Id)).ToListAsync();
+        var groups = await db.Groups.Where(g => groupIds.Contains(g.Id)).ToListAsync();
+
+        // The global group is everyone's group — surface it even if a membership row
+        // hasn't been backfilled yet (e.g. created after this user signed up).
+        if (!groups.Any(g => g.IsGlobal))
+        {
+            var global = await GetGlobalAsync();
+            if (global is not null) groups.Add(global);
+        }
+
+        return groups;
+    }
+
+    public async Task<Group?> GetGlobalAsync() =>
+        await db.Groups.FirstOrDefaultAsync(g => g.IsGlobal);
+
+    public async Task EnsureGlobalMembershipAsync(Guid userId)
+    {
+        var global = await GetGlobalAsync();
+        if (global is null) return;
+        var already = await db.GroupMembers.AnyAsync(m => m.GroupId == global.Id && m.UserId == userId);
+        if (already) return;
+        db.GroupMembers.Add(new GroupMember(global.Id, userId, GroupRole.Member));
+        await db.SaveChangesAsync();
     }
 
     public async Task<List<GroupMember>> GetMembersAsync(Guid groupId) =>

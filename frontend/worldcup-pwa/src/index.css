@@ -804,6 +804,419 @@ input { font-family: inherit; }
   transform: translateX(3px);
 }
 
+/* ─── Global group (premium gold) ─── */
+:root { --gold: #f5c542; --gold-bright: #ffd969; --gold-deep: #b8860b; --gold-glow: rgba(245, 197, 66, 0.18); }
+
+.group-card--global {
+  position: relative;
+  background:
+    linear-gradient(135deg, rgba(245, 197, 66, 0.14), rgba(245, 197, 66, 0.04)) ,
+    var(--surface);
+  border: 1px solid rgba(245, 197, 66, 0.45);
+  box-shadow: 0 4px 24px var(--gold-glow), inset 0 1px 0 rgba(255, 217, 105, 0.18);
+  overflow: hidden;
+}
+.group-card--global::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(120deg, transparent 30%, rgba(255, 217, 105, 0.18) 50%, transparent 70%);
+  background-size: 250% 100%;
+  animation: gold-sheen 6s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes gold-sheen {
+  0%, 100% { background-position: 150% 0; }
+  50%      { background-position: -50% 0; }
+}
+.group-card--global:hover {
+  background:
+    linear-gradient(135deg, rgba(245, 197, 66, 0.2), rgba(245, 197, 66, 0.06)) ,
+    var(--surface-2);
+  border-color: rgba(245, 197, 66, 0.7);
+  box-shadow: 0 8px 32px var(--gold-glow), 0 0 0 1px rgba(245, 197, 66, 0.25);
+  transform: translateY(-2px);
+}
+.group-card-icon--global {
+  background: linear-gradient(135deg, var(--gold-bright), var(--gold-deep));
+  border: 1px solid rgba(255, 217, 105, 0.6);
+  color: #2a1d00;
+  font-size: 20px;
+  box-shadow: 0 2px 12px var(--gold-glow);
+}
+.group-card--global .group-card-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--gold-bright);
+  font-weight: 600;
+}
+.group-card--global:hover .group-card-arrow,
+.group-card--global .group-card-arrow { color: var(--gold); }
+.group-card-sub--global {
+  font-family: 'Oswald', sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  color: var(--gold);
+  opacity: 0.85;
+}
+.group-card--locked .group-card-icon--global {
+  background: linear-gradient(135deg, rgba(245, 197, 66, 0.35), rgba(184, 134, 11, 0.25));
+  color: var(--gold-bright);
+}
+
+.global-badge {
+  font-family: 'Oswald', sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: #2a1d00;
+  background: linear-gradient(135deg, var(--gold-bright), var(--gold));
+  padding: 2px 7px;
+  border-radius: 5px;
+  flex-shrink: 0;
+}
+.global-badge--lg { font-size: 11px; padding: 4px 12px; letter-spacing: 0.18em; margin: 4px 0 8px; }
+
+/* Gold-tinted tab bar when viewing the global group */
+.group-hub--global .hub-tab--active { color: var(--gold-bright); }
+.group-hub--global .hub-tab-indicator { background: var(--gold); }
+.group-hub--global .hub-tab-icon { color: inherit; }
+
+/* Locked global group screen */
+.global-locked {
+  text-align: center;
+  padding: 48px 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.global-locked-icon {
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gold-bright);
+  background: linear-gradient(135deg, rgba(245, 197, 66, 0.18), rgba(184, 134, 11, 0.08));
+  border: 1px solid rgba(245, 197, 66, 0.4);
+  box-shadow: 0 6px 28px var(--gold-glow);
+  margin-bottom: 22px;
+}
+.global-locked-title {
+  font-family: 'Oswald', sans-serif;
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--gold-bright);
+  letter-spacing: 0.02em;
+}
+.global-locked-text {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text-muted);
+  max-width: 340px;
+  margin-top: 14px;
+}
+.global-locked-text strong { color: var(--gold); font-weight: 600; }
+
+/* Knockout bracket shown under the locked global competition view. */
+.global-bracket {
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border-solid);
+}
+.global-bracket-head {
+  display: flex;
+  align-items: center;
+  margin: 0 16px 14px;
+}
+
+/* ─── Knockout bracket ─── */
+:root { --bkt-gap: 22px; --bkt-half: 11px; --bkt-line: var(--border-solid); }
+
+.bracket-wrap { padding: 12px 0 4px; }
+.bracket-scroll {
+  display: flex;
+  gap: var(--bkt-gap);
+  overflow-x: auto;
+  padding: 4px 16px 14px;
+  align-items: stretch;
+  -webkit-overflow-scrolling: touch;
+}
+.bracket-scroll::-webkit-scrollbar { height: 6px; }
+.bracket-scroll::-webkit-scrollbar-thumb { background: var(--border-solid); border-radius: 3px; }
+
+.bkt-col {
+  flex: 0 0 auto;
+  width: 188px;
+  display: flex;
+  flex-direction: column;
+}
+.bkt-col-head {
+  font-family: 'Oswald', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  padding: 0 0 12px 2px;
+}
+.bkt-col-body { display: flex; flex-direction: column; flex: 1; }
+
+/* Each match sits in an equal-height cell; the card is centred so later rounds line up with
+   the midpoint of their two feeders — that's what lets the connectors join cleanly. */
+.bkt-cell {
+  flex: 1 1 0;
+  /* well above a card's height (~100px) so pairs sit apart and cards never overlap */
+  min-height: 150px;
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+/* Incoming stub (every round except the first) */
+.bracket-tree .bkt-col:not(:first-child) .bkt-cell::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: calc(var(--bkt-half) * -1);
+  width: var(--bkt-half);
+  height: 2px;
+  background: var(--bkt-line);
+}
+/* Outgoing L-connector (every round except the last): horizontal stub + half of the vertical
+   spine. Odd cells run the spine down to the pair boundary, even cells run it up. */
+.bracket-tree .bkt-col:not(:last-child) .bkt-cell::after {
+  content: '';
+  position: absolute;
+  right: calc(var(--bkt-half) * -1);
+  width: var(--bkt-half);
+  border-right: 2px solid var(--bkt-line);
+}
+.bracket-tree .bkt-col:not(:last-child) .bkt-cell:nth-child(odd)::after {
+  top: 50%; bottom: 0;
+  border-top: 2px solid var(--bkt-line);
+}
+.bracket-tree .bkt-col:not(:last-child) .bkt-cell:nth-child(even)::after {
+  top: 0; bottom: 50%;
+  border-bottom: 2px solid var(--bkt-line);
+}
+
+.bkt-match {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-shadow: var(--shadow-card);
+}
+.bkt-match--final {
+  border-color: rgba(245, 197, 66, 0.5);
+  box-shadow: 0 4px 20px var(--gold-glow);
+  background: linear-gradient(135deg, rgba(245, 197, 66, 0.08), transparent), var(--surface);
+}
+
+/* 3rd-place play-off — sits apart from the main tree */
+.bkt-third-block { display: flex; flex-direction: column; gap: 8px; }
+.bkt-third-block--desktop { max-width: 240px; margin: 4px auto 0; }
+.bkt-third-tag {
+  font-family: 'Oswald', sans-serif;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* Mobile: one round per tab */
+.bkt-round-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 0 16px 14px;
+}
+.bkt-round-tab {
+  flex: 1;
+  font-family: 'Oswald', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  padding: 9px 0;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.bkt-round-tab--on {
+  background: var(--accent-glow);
+  border-color: var(--border-solid);
+  color: var(--accent);
+}
+.bkt-round-list {
+  display: flex;
+  flex-direction: column;
+  gap: 34px;            /* space BETWEEN pairs */
+  padding: 0 16px;
+}
+/* Smaller cards on mobile */
+.bkt-round-list .bkt-match { padding: 7px; gap: 5px; }
+.bkt-round-list .bkt-slot { padding: 4px; }
+.bkt-round-list .bkt-slot-name { font-size: 12px; }
+.bkt-round-list .bkt-logo { width: 18px; height: 18px; }
+
+.bkt-pair {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;            /* tight space WITHIN a pair (winners meet next round) */
+  position: relative;
+}
+.bracket-wrap--mobile { overflow-x: hidden; }  /* clip the edge-bleeding connector lines */
+.bkt-pair--joined { padding-right: 40px; }  /* lane for the converging spine + forward button */
+
+.bkt-mrow { display: flex; align-items: center; position: relative; }
+.bkt-mrow .bkt-match { flex: 1; min-width: 0; }
+
+/* Round-nav buttons sitting on the connector lines */
+.bkt-nav {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-2);
+  border: 1px solid var(--border-solid);
+  color: var(--accent);
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+.bkt-nav:active { transform: scale(0.9); }
+.bkt-nav:hover { background: var(--surface-3); }
+
+/* Back button + the line it rides: comes in from the screen edge (::before), through the
+   button, into the card (::after). */
+.bkt-nav--back { position: relative; margin-right: 14px; }
+.bkt-nav--back::after {
+  content: '';
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  width: 16px;          /* overlaps the 14px gap so it touches the card with no seam */
+  height: 2px;
+  background: var(--border-solid);
+}
+.bkt-nav--back::before {
+  content: '';
+  position: absolute;
+  right: 100%;
+  top: 50%;
+  width: 100px;         /* runs off to the screen edge (clipped by the mobile wrap) */
+  height: 2px;
+  background: var(--border-solid);
+}
+
+/* Forward button at the pair vertex: the two cards' lines converge into the spine + button,
+   then a line carries on to the screen edge toward the next round. */
+.bkt-nav--fwd { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); z-index: 2; }
+.bkt-nav--fwd::after {
+  content: '';
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  width: 100px;         /* runs off to the screen edge (clipped by the mobile wrap) */
+  height: 2px;
+  background: var(--border-solid);
+}
+.bkt-pair--joined .bkt-mrow::after {     /* each card → spine, at the card's vertical centre */
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: -26px;
+  width: 26px;          /* reaches just past the spine so the corner has no seam */
+  height: 2px;
+  background: var(--border-solid);
+}
+/* Vertical spine joining the pair. The stubs sit at each card's centre — a fixed ~45px (half a
+   card) from the pair's top/bottom — so anchor the spine there, not at 25%/75%. */
+.bkt-pair--joined::after {
+  content: '';
+  position: absolute;
+  right: 16px;
+  top: 45px;
+  bottom: 45px;
+  width: 2px;
+  background: var(--border-solid);
+}
+
+/* Highlighted match after a forward/back jump */
+.bkt-match--hl {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-glow), 0 4px 18px var(--accent-glow);
+  animation: bkt-hl-pulse 1.4s ease-out 2;
+}
+@keyframes bkt-hl-pulse {
+  0% { box-shadow: 0 0 0 0 var(--accent-glow), 0 4px 18px var(--accent-glow); }
+  50% { box-shadow: 0 0 0 5px transparent, 0 4px 18px var(--accent-glow); }
+  100% { box-shadow: 0 0 0 2px var(--accent-glow), 0 4px 18px var(--accent-glow); }
+}
+
+.bkt-slot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 4px;
+  border-radius: 6px;
+}
+.bkt-slot--team { background: var(--surface-2); }
+.bkt-slot--tbd .bkt-slot-name { color: var(--text-muted); font-style: italic; }
+.bkt-logo { width: 20px; height: 20px; object-fit: contain; flex-shrink: 0; }
+.bkt-logo--ph {
+  border-radius: 50%;
+  background: repeating-linear-gradient(45deg, var(--surface-3), var(--surface-3) 3px, transparent 3px, transparent 6px);
+  border: 1px solid var(--border);
+}
+.bkt-slot-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bkt-match-mid {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 4px;
+}
+.bkt-match-num {
+  font-family: 'Oswald', sans-serif;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+.bkt-match-date {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.bracket-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 6px 24px 0;
+  line-height: 1.5;
+}
+
 /* ─── Empty / Loading States ─── */
 .empty-state, .loading-state {
   text-align: center;
@@ -2684,6 +3097,39 @@ input { font-family: inherit; }
 .admin-review-item { display: flex; flex-direction: column; gap: 4px; padding: 12px; background: rgba(255,255,255,0.03); border-radius: 8px; }
 .admin-review-item span { font-size: 11px; color: rgba(232,232,240,0.4); letter-spacing: 0.06em; }
 .admin-review-item strong { font-size: 15px; color: #e8e8f0; }
+
+/* Landing-page (guest) predictions table */
+.admin-guest-table { display: flex; flex-direction: column; gap: 4px; margin-top: 16px; }
+.admin-guest-row {
+  display: grid;
+  grid-template-columns: minmax(140px, 1.6fr) minmax(120px, 1.4fr) 64px 90px 110px 70px;
+  align-items: center; gap: 12px;
+  padding: 11px 14px; font-size: 13px;
+  background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px;
+  color: #e8e8f0;
+}
+.admin-guest-row--head {
+  background: transparent; border: none; padding: 0 14px 2px;
+  font-family: 'Oswald', sans-serif; font-size: 10px; letter-spacing: 0.12em;
+  text-transform: uppercase; color: rgba(232,232,240,0.35);
+}
+.admin-guest-c { text-align: center; }
+.admin-guest-email { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: rgba(232,232,240,0.85); }
+.admin-guest-match { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.admin-guest-match i { font-style: normal; color: rgba(232,232,240,0.3); margin: 0 2px; }
+.admin-guest-score { font-family: 'Oswald', sans-serif; font-weight: 700; color: #b8ff6a; }
+.admin-guest-picks { display: flex; gap: 6px; justify-content: center; }
+.admin-guest-picks em { font-style: normal; font-size: 12px; color: rgba(232,232,240,0.7); }
+.admin-guest-dim { color: rgba(232,232,240,0.25) !important; }
+.admin-guest-when { text-align: right; font-size: 11px; color: rgba(232,232,240,0.4); }
+.admin-guest-more { font-size: 12px; color: rgba(232,232,240,0.35); padding: 8px 14px 0; }
+
+@media (max-width: 720px) {
+  .admin-guest-row { grid-template-columns: minmax(110px, 1.5fr) 56px 86px 96px; }
+  .admin-guest-match, .admin-guest-when,
+  .admin-guest-row--head > span:nth-child(2),
+  .admin-guest-row--head > span:nth-child(6) { display: none; }
+}
 
 /* Match detail */
 .admin-match-header { display: flex; align-items: center; justify-content: space-between; background: #13131a; border: 1px solid rgba(255,255,255,0.07); border-radius: 12px; padding: 24px; margin-bottom: 28px; }

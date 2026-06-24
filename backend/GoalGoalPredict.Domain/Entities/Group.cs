@@ -9,6 +9,11 @@ public class Group
     public DateTime CreatedAt { get; private set; }
     public bool IsSimulation { get; private set; }
 
+    // The single platform-wide "global" group everyone belongs to. It has no owner and
+    // can't be joined/left; it stays locked until an admin opens it for the knockout phase.
+    public bool IsGlobal { get; private set; }
+    public bool IsLocked { get; private set; }
+
     private Group() { }
 
     public Group(string name, Guid createdByUserId, bool isSimulation = false)
@@ -20,6 +25,21 @@ public class Group
         CreatedAt = DateTime.UtcNow;
         IsSimulation = isSimulation;
     }
+
+    // The global group has no real owner (CreatedByUserId stays empty) and starts locked.
+    public static Group CreateGlobal(string name) => new()
+    {
+        Id = Guid.NewGuid(),
+        Name = name,
+        InviteCode = "GLOBAL",
+        CreatedByUserId = Guid.Empty,
+        CreatedAt = DateTime.UtcNow,
+        IsSimulation = false,
+        IsGlobal = true,
+        IsLocked = true
+    };
+
+    public void SetLocked(bool locked) => IsLocked = locked;
 
     public void TransferOwnership(Guid newOwnerUserId) => CreatedByUserId = newOwnerUserId;
 

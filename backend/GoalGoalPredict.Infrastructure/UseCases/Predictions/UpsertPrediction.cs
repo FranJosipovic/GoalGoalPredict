@@ -17,8 +17,19 @@ public class UpsertPrediction(AppDbContext db, EffectiveRulesService effectiveRu
         if (match is null) return (null, "Match not found");
         if (match.KickoffUtc <= DateTime.UtcNow) return (null, "Predictions are locked — match has started");
 
+        var group = await db.Groups.FindAsync([request.GroupId], ct);
+        if (group is null) return (null, "Group not found");
+        if (group.IsGlobal && group.IsLocked)
+            return (null, "The global competition opens when the knockout phase begins");
+
         var isMember = await db.GroupMembers.AnyAsync(m => m.GroupId == request.GroupId && m.UserId == userId, ct);
-        if (!isMember) return (null, "Not a member of this group");
+        if (!isMember)
+        {
+            // Everyone implicitly belongs to the global group — materialise the membership row
+            // on first prediction so the leaderboard/members include them.
+            if (!group.IsGlobal) return (null, "Not a member of this group");
+            db.GroupMembers.Add(new GroupMember(group.Id, userId, GroupRole.Member));
+        }
 
         var rules = await effectiveRules.GetLiveAsync(request.GroupId, ct);
 
