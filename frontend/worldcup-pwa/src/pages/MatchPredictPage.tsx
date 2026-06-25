@@ -758,24 +758,43 @@ export default function MatchPredictPage() {
                     </div>
                   )}
                 </div>
-                <div className="player-list">
-                  {pickList.map(p => {
-                    const count = scorerCountFor(p.id)
-                    return (
-                      <div key={p.id} className="player-row-wrap">
-                        <button type="button" className="player-stats-ico" onClick={() => setStatsPlayerId(p.id)} aria-label={`${p.name} statistics`}>
-                          <Icon name="chart" size={16} />
-                        </button>
-                        <button className={`player-row ${count > 0 ? 'player-row--picked' : ''}`} onClick={() => addPick(p.id)} disabled={activeFull}>
-                          <span className="player-num">#{p.shirtNumber}</span>
-                          <span className="player-name">{p.name}</span>
-                          <span className="player-pos-badge">{p.position.slice(0,3).toUpperCase()}</span>
-                          <span className="player-pts">{pickerMode === 'owngoal' ? `${rules?.ownGoalPoints ?? 0}pt` : `${posPoints(p.position)}pt`}</span>
-                          {count > 0 && <span className="player-count">×{count}</span>}
-                        </button>
+                <div className="player-list-row">
+                  <div className="player-list">
+                    {pickList.map(p => {
+                      const count = scorerCountFor(p.id)
+                      return (
+                        <div key={p.id} className="player-row-wrap">
+                          <button type="button" className="player-stats-ico" onClick={() => setStatsPlayerId(p.id)} aria-label={`${p.name} statistics`}>
+                            <Icon name="chart" size={16} />
+                          </button>
+                          <button className={`player-row ${count > 0 ? 'player-row--picked' : ''}`} onClick={() => addPick(p.id)} disabled={activeFull}>
+                            <span className="player-num">#{p.shirtNumber}</span>
+                            <span className="player-name">{p.name}</span>
+                            <span className="player-pos-badge">{p.position.slice(0,3).toUpperCase()}</span>
+                            <span className="player-pts">{pickerMode === 'owngoal' ? `${rules?.ownGoalPoints ?? 0}pt` : `${posPoints(p.position)}pt`}</span>
+                            {count > 0 && <span className="player-count">×{count}</span>}
+                          </button>
+                        </div>
+                      )
+                    })}
+                  </div>
+                  <div className="player-stats-side">
+                    {statsPlayerId != null ? (
+                      <>
+                        <div className="pp-sheet-head">
+                          <Icon name="chart" size={18} className="pp-row-icon" />
+                          <span className="pp-sheet-name">Player statistics</span>
+                          <button className="pp-sheet-close" onClick={() => setStatsPlayerId(null)} aria-label="Close">✕</button>
+                        </div>
+                        <PlayerStats playerId={statsPlayerId} />
+                      </>
+                    ) : (
+                      <div className="player-stats-empty">
+                        <Icon name="chart" size={28} />
+                        <p>Click the stats icon next to a player to view their impact</p>
                       </div>
-                    )
-                  })}
+                    )}
+                  </div>
                 </div>
               </div>
             )}
