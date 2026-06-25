@@ -1776,6 +1776,7 @@ input { font-family: inherit; }
 }
 .lineup-reveal-pill--live { color: var(--accent); border-color: var(--border-solid); }
 .lineup-locked { text-align: center; padding: 18px 10px; }
+.lineup-ghost-wrap--desktop { display: none; }
 .lineup-locked-icon { font-size: 26px; display: block; margin-bottom: 6px; filter: grayscale(0.3); }
 .lineup-locked-title { font-family: 'Oswald', sans-serif; font-size: 14px; color: var(--text); margin: 0 0 2px; }
 .lineup-locked-sub { font-size: 12px; color: var(--text-muted); margin: 0; }
@@ -2852,6 +2853,7 @@ input { font-family: inherit; }
 .slot-remove:hover { color: var(--error); border-color: var(--error); }
 
 /* Goal vs own-goal mode switch in the player picker */
+.picker-search-row { display: flex; flex-direction: column-reverse; gap: 8px; }
 .picker-mode-switch { display: flex; gap: 6px; margin: 8px 0; }
 .picker-mode-btn {
   flex: 1; padding: 8px 6px; border-radius: 9px; font-size: 12px; cursor: pointer;
@@ -3213,6 +3215,96 @@ input { font-family: inherit; }
     align-items: center;
     gap: 8px;
     padding: 12px 20px;
+  }
+
+  .picker-search-row {
+    flex-direction: row;
+    align-items: stretch;
+    gap: 8px;
+    padding-bottom: 8px;
+  }
+
+  .picker-search-row .picker-search {
+    flex: 2;
+    margin-bottom: 0;
+  }
+
+  .picker-search-row .picker-mode-switch {
+    flex: 1;
+    margin: 0;
+    gap: 4px;
+  }
+
+  .picker-search-row .picker-mode-btn {
+    flex: 1;
+  }
+
+  .lineup-locked--mobile {
+    display: none;
+  }
+
+  .lineup-ghost-wrap--desktop {
+    display: block;
+    position: relative;
+  }
+
+  .lineup-ghost-pitch {
+    filter: blur(6px);
+    opacity: 0.5;
+    pointer-events: none;
+    user-select: none;
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  .lineup-ghost-home,
+  .lineup-ghost-away {
+    width: 45vw;
+  }
+
+  .lineup-ghost-home {
+    transform: rotate(90deg);
+  }
+
+  .lineup-ghost-away {
+    transform: rotate(-90deg);
+  }
+
+  .lineup-ghost-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    text-align: center;
+  }
+
+  .predict-countdown {
+    max-width: clamp(30%, 40vw, 55%);
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .live-team-logo {
+    width: 72px;
+    height: 72px;
+  }
+
+  .live-team-name {
+    font-size: 15px;
+  }
+
+  .stepper-logo {
+    width: 56px;
+    height: 56px;
+  }
+
+  .stepper-team {
+    font-size: 15px;
   }
 
   .match-card,

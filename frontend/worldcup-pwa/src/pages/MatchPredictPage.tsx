@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, type ReactNode } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import Layout from '../components/Layout'
 import PredictionPitch, { type PlayerBadge } from '../components/PredictionPitch'
+import avatarPlaceholder from '../assets/avatar-placeholder.svg'
 import PlayerStats from '../components/PlayerStats'
 import Icon, { FootballCard } from '../components/Icon'
 import { getMatchDetail, getMyPrediction, upsertPrediction, getCopyablePrediction, type CopyablePrediction } from '../api/matches'
@@ -9,6 +10,18 @@ import { getGroupRules } from '../api/groups'
 import { getTeamSquad } from '../api/teams'
 import { useCountdown } from '../hooks/useCountdown'
 import type { MatchDetail, Player, GroupScoringRules } from '../types'
+
+const GHOST_POSITIONS = ['Goalkeeper', 'Defender', 'Defender', 'Defender', 'Defender', 'Midfielder', 'Midfielder', 'Midfielder', 'Forward', 'Forward', 'Forward']
+const ghostPlayers = (teamId: number) =>
+  GHOST_POSITIONS.map((pos, i) => ({
+    playerId: -(teamId * 100 + i),
+    name: '???',
+    position: pos,
+    shirtNumber: i + 1,
+    isStarting: true,
+    teamId,
+    photoUrl: avatarPlaceholder,
+  }))
 
 // Positions arrive as full names ("Goalkeeper"/"Attacker") or short codes ("G"/"F").
 const POS_LETTER = (pos: string) => {
@@ -427,15 +440,46 @@ export default function MatchPredictPage() {
           })}
         </div>
       ) : (
-        <div className="lineup-locked">
-          <span className="lineup-locked-icon">📋</span>
-          <p className="lineup-locked-title">Lineups not out yet</p>
-          <p className="lineup-locked-sub">
-            {lineupCountdown
-              ? <>Revealed in <strong>{lineupCountdown.d > 0 && `${lineupCountdown.d}d `}{String(lineupCountdown.h).padStart(2,'0')}:{String(lineupCountdown.m).padStart(2,'0')}:{String(lineupCountdown.s).padStart(2,'0')}</strong></>
-              : 'Available 30 minutes before kickoff'}
-          </p>
-        </div>
+        <>
+          {/* Mobile: simple locked message */}
+          <div className="lineup-locked lineup-locked--mobile">
+            <span className="lineup-locked-icon">📋</span>
+            <p className="lineup-locked-title">Lineups not out yet</p>
+            <p className="lineup-locked-sub">
+              {lineupCountdown
+                ? <>Revealed in <strong>{lineupCountdown.d > 0 && `${lineupCountdown.d}d `}{String(lineupCountdown.h).padStart(2,'0')}:{String(lineupCountdown.m).padStart(2,'0')}:{String(lineupCountdown.s).padStart(2,'0')}</strong></>
+                : 'Available 30 minutes before kickoff'}
+            </p>
+          </div>
+          {/* Desktop: blurred ghost pitch with overlay message */}
+          <div className="lineup-ghost-wrap lineup-ghost-wrap--desktop">
+            <div className="lineup-ghost-pitch">
+              <div className="lineup-ghost-home">
+                <PredictionPitch
+                  players={ghostPlayers(match.homeTeam.id)}
+                  badgesFor={() => []}
+                  onPlayerTap={() => {}}
+                />
+              </div>
+              <div className="lineup-ghost-away">
+                <PredictionPitch
+                  players={ghostPlayers(match.awayTeam.id)}
+                  badgesFor={() => []}
+                  onPlayerTap={() => {}}
+                />
+              </div>
+            </div>
+            <div className="lineup-ghost-overlay">
+              <span className="lineup-locked-icon">📋</span>
+              <p className="lineup-locked-title">Lineups not out yet</p>
+              <p className="lineup-locked-sub">
+                {lineupCountdown
+                  ? <>Revealed in <strong>{lineupCountdown.d > 0 && `${lineupCountdown.d}d `}{String(lineupCountdown.h).padStart(2,'0')}:{String(lineupCountdown.m).padStart(2,'0')}:{String(lineupCountdown.s).padStart(2,'0')}</strong></>
+                  : 'Available 30 minutes before kickoff'}
+              </p>
+            </div>
+          </div>
+        </>
       )}
     </div>
   )
@@ -701,18 +745,19 @@ export default function MatchPredictPage() {
                   </button>
                 </div>
 
-                {scorerEnabled && ownEnabled && (
-                  <div className="picker-mode-switch">
-                    <button className={`picker-mode-btn ${pickerMode === 'goal' ? 'on' : ''}`} onClick={() => setPickerMode('goal')}>
-                      ⚽ Scored by {activeTeam === 'home' ? match.homeTeam.code : match.awayTeam.code}
-                    </button>
-                    <button className={`picker-mode-btn ${pickerMode === 'owngoal' ? 'on' : ''}`} onClick={() => setPickerMode('owngoal')}>
-                      🥅 Own goal by {activeTeam === 'home' ? match.awayTeam.code : match.homeTeam.code}
-                    </button>
-                  </div>
-                )}
-
-                <input className="field-input picker-search" placeholder="Search player..." value={search} onChange={e => setSearch(e.target.value)} />
+                <div className="picker-search-row">
+                  <input className="field-input picker-search" placeholder="Search player..." value={search} onChange={e => setSearch(e.target.value)} />
+                  {scorerEnabled && ownEnabled && (
+                    <div className="picker-mode-switch">
+                      <button className={`picker-mode-btn ${pickerMode === 'goal' ? 'on' : ''}`} onClick={() => setPickerMode('goal')}>
+                        ⚽ Scored by {activeTeam === 'home' ? match.homeTeam.code : match.awayTeam.code}
+                      </button>
+                      <button className={`picker-mode-btn ${pickerMode === 'owngoal' ? 'on' : ''}`} onClick={() => setPickerMode('owngoal')}>
+                        🥅 Own goal by {activeTeam === 'home' ? match.awayTeam.code : match.homeTeam.code}
+                      </button>
+                    </div>
+                  )}
+                </div>
                 <div className="player-list">
                   {pickList.map(p => {
                     const count = scorerCountFor(p.id)
