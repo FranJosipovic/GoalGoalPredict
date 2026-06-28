@@ -8,7 +8,8 @@ import { getMatchDetail, getMyPrediction, upsertPrediction, getCopyablePredictio
 import { getGroupRules } from '../api/groups'
 import { getTeamSquad } from '../api/teams'
 import { useCountdown } from '../hooks/useCountdown'
-import type { MatchDetail, Player, GroupScoringRules } from '../types'
+import { useCompetitionTheme } from '../hooks/useCompetitionTheme'
+import type { MatchDetail, Player, GroupScoringRules, FinishType } from '../types'
 
 // Positions arrive as full names ("Goalkeeper"/"Attacker") or short codes ("G"/"F").
 const POS_LETTER = (pos: string) => {
@@ -55,9 +56,10 @@ function buildPredictionForm(pred: PredLike, homePlayers: Player[], rules: Group
     if (s.goalType === 'Own Goal') {
       return { playerId: s.playerId, goalType: 'Own Goal' as const, side: (playerIsHome ? 'away' : 'home') as Side }
     }
+    // "A goal is a goal" — historic Penalty picks now collapse into a plain goal.
     return {
       playerId: s.playerId,
-      goalType: (s.goalType === 'Penalty' ? 'Penalty' : 'Normal Goal') as GoalType,
+      goalType: 'Normal Goal' as GoalType,
       side: (playerIsHome ? 'home' : 'away') as Side,
     }
   })
@@ -81,6 +83,7 @@ function buildPredictionForm(pred: PredLike, homePlayers: Player[], rules: Group
 export default function MatchPredictPage() {
   const { groupId, matchId } = useParams<{ groupId: string; matchId: string }>()
   const navigate = useNavigate()
+  useCompetitionTheme()
 
   const [match, setMatch] = useState<MatchDetail | null>(null)
   const [rules, setRules] = useState<GroupScoringRules | null>(null)
@@ -94,7 +97,8 @@ export default function MatchPredictPage() {
   const [awayGoals, setAwayGoals] = useState(0)
   const [scorers, setScorers] = useState<ScorerSel[]>([])
   const [extras, setExtras] = useState<ExtraSel[]>([])
-  const [saved, setSaved] = useState<{ home: number; away: number; scorers: ScorerSel[]; extras: ExtraSel[] } | null>(null)
+  const [finishType, setFinishType] = useState<FinishType | null>(null)
+  const [saved, setSaved] = useState<{ home: number; away: number; scorers: ScorerSel[]; extras: ExtraSel[]; finishType: FinishType | null } | null>(null)
   const [copyable, setCopyable] = useState<CopyablePrediction | null>(null)
 
   const [search, setSearch] = useState('')
@@ -110,6 +114,9 @@ export default function MatchPredictPage() {
   const countdown = useCountdown(match?.kickoffUtc ?? '')
   const lineupCountdown = useCountdown(match?.lineupRevealUtc ?? '')
   const isLocked = match ? new Date(match.kickoffUtc) <= new Date() : false
+  // Knockout ties (Round of 16, Quarter-final, …) carry an extra "how it ends" pick.
+  const isKnockout = match ? !/^group/i.test(match.round) : false
+  const finishEnabled = isKnockout && (rules ? rules.finishTypeEnabled : true)
 
   useEffect(() => {
     if (!matchId || !groupId) return
@@ -134,7 +141,8 @@ export default function MatchPredictPage() {
         setAwayGoals(f.away)
         setScorers(f.scorers)
         setExtras(f.extras)
-        setSaved({ home: f.home, away: f.away, scorers: f.scorers, extras: f.extras })
+        setFinishType(existing.finishType ?? null)
+        setSaved({ home: f.home, away: f.away, scorers: f.scorers, extras: f.extras, finishType: existing.finishType ?? null })
       } else if (new Date(m.kickoffUtc) > new Date()) {
         // No prediction in this group yet — offer to copy from the earliest group where they did.
         const copy = await getCopyablePrediction(Number(matchId), groupId)
@@ -190,9 +198,6 @@ export default function MatchPredictPage() {
   const removeScorerAt = (idx: number) =>
     setScorers(prev => prev.filter((_, i) => i !== idx))
 
-  const setScorerType = (idx: number, goalType: GoalType) =>
-    setScorers(prev => prev.map((s, i) => i === idx ? { ...s, goalType } : s))
-
   const handleScoreChange = (side: Side, val: number) => {
     const v = Math.max(0, Math.min(20, val))
     if (side === 'home') setHomeGoals(v); else setAwayGoals(v)
@@ -226,10 +231,10 @@ export default function MatchPredictPage() {
     })
   }
 
+  // Missed-penalty prediction has been retired — only yellow/red cards are pickable now.
   const enabledCats: ExtraCat[] = rules ? ([
     rules.yellowCardEnabled && 'Yellow',
     rules.redCardEnabled && 'Red',
-    rules.missedPenaltyEnabled && 'MissedPenalty',
   ].filter(Boolean) as ExtraCat[]) : []
 
   // Prefill the form from the copyable prediction (rules-filtered); leaves it unsaved so the
@@ -259,6 +264,7 @@ export default function MatchPredictPage() {
       await upsertPrediction({
         matchId: match.id, groupId, homeGoals, awayGoals,
         scorers: scorerInputs, cards: cardInputs,
+        finishType: finishEnabled ? finishType : null,
       })
       navigate(`/groups/${groupId}/matches`)
     } catch (e: any) {
@@ -317,10 +323,8 @@ export default function MatchPredictPage() {
   const badgesForPlayer = (id: number): PlayerBadge[] => {
     const out: PlayerBadge[] = []
     const n = countGoals(id, 'Normal Goal')
-    const p = countGoals(id, 'Penalty')
     const og = countGoals(id, 'Own Goal')
     if (n) out.push({ icon: '⚽', count: n })
-    if (p) out.push({ icon: '🅿️', count: p })
     if (og) out.push({ icon: '🥅', count: og })
     for (const e of extras.filter(e => e.playerId === id)) out.push({ icon: EXTRA_ICONS[e.category] })
     return out
@@ -352,15 +356,17 @@ export default function MatchPredictPage() {
     if (rules.exactScoreEnabled && exact) lines.push({ label: 'Exact score', pts: rules.exactScorePoints })
     else if (rules.outcomeEnabled && outcome) lines.push({ label: 'Correct outcome', pts: rules.outcomePoints })
 
+    // "A goal is a goal": Normal Goal + Penalty bucket together per player; Own Goal is separate.
+    const bucket = (type: string) => (type === 'Own Goal' ? 'Own Goal' : 'Goal')
     const remaining = new Map<string, number>()
     for (const g of match.goals) {
       if (g.scorerPlayerId == null) continue
       if (!['Normal Goal', 'Penalty', 'Own Goal'].includes(g.goalType)) continue
-      const k = `${g.scorerPlayerId}|${g.goalType}`
+      const k = `${g.scorerPlayerId}|${bucket(g.goalType)}`
       remaining.set(k, (remaining.get(k) ?? 0) + 1)
     }
     const consume = (playerId: number, type: string) => {
-      const k = `${playerId}|${type}`
+      const k = `${playerId}|${bucket(type)}`
       const left = remaining.get(k) ?? 0
       if (left > 0) { remaining.set(k, left - 1); return true }
       return false
@@ -391,6 +397,13 @@ export default function MatchPredictPage() {
       else if (rules.cardPredictionMode === 'Net')
         lines.push({ label: `${EXTRA_ICONS[e.category]} ${nameOf(e.playerId)} (miss)`, pts: -rules.wrongPickPenalty })
     }
+
+    // Knockout finish (Regular / Extra time / Penalties) — judged from the final status.
+    const FINISH_LABEL: Record<FinishType, string> = { Regular: 'Regular time', ExtraTime: 'Extra time', Penalties: 'Penalties' }
+    const actualFinish: FinishType | null =
+      match.status === 'FT' ? 'Regular' : match.status === 'AET' ? 'ExtraTime' : match.status === 'PEN' ? 'Penalties' : null
+    if (finishEnabled && rules.finishTypeEnabled && finishType && actualFinish && finishType === actualFinish)
+      lines.push({ label: `🏁 ${FINISH_LABEL[finishType]}`, pts: rules.finishTypePoints })
 
     myScore = { lines, total: lines.reduce((a, l) => a + l.pts, 0) }
   }
@@ -448,6 +461,7 @@ export default function MatchPredictPage() {
     [...a].map(e => `${e.category}:${e.playerId}`).sort().join(',') === [...b].map(e => `${e.category}:${e.playerId}`).sort().join(',')
   const isDirty = !saved || saved.home !== homeGoals || saved.away !== awayGoals
     || !sameScorers(saved.scorers, scorers) || !sameExtras(saved.extras, extras)
+    || saved.finishType !== finishType
 
   // Render one team's goal slots.
   const renderSlots = (side: Side) => {
@@ -466,20 +480,7 @@ export default function MatchPredictPage() {
             return (
               <div key={i} className="slot slot--filled">
                 <span className="slot-name">{surnameOf(entry.playerId)}</span>
-                {og ? (
-                  <span className="slot-og" title="Own goal">OG</span>
-                ) : (
-                  <span className="slot-typeseg">
-                    <button
-                      className={`slot-seg ${entry.goalType === 'Normal Goal' ? 'slot-seg--on' : ''}`}
-                      onClick={() => setScorerType(globalIdx, 'Normal Goal')}
-                    >Goal</button>
-                    <button
-                      className={`slot-seg ${entry.goalType === 'Penalty' ? 'slot-seg--on' : ''}`}
-                      onClick={() => setScorerType(globalIdx, 'Penalty')}
-                    >Pen</button>
-                  </span>
-                )}
+                {og && <span className="slot-og" title="Own goal">OG</span>}
                 <button className="slot-remove" onClick={() => removeScorerAt(globalIdx)} aria-label="Remove">✕</button>
               </div>
             )
@@ -561,6 +562,36 @@ export default function MatchPredictPage() {
               <img src={match.awayTeam.logoUrl} className="stepper-logo" alt="" />
               <span className="stepper-team">{match.awayTeam.name}</span>
             </div>
+          </div>
+        )}
+
+        {/* KNOCKOUT FINISH — how the tie ends (knockout matches only) */}
+        {!isLocked && finishEnabled && (
+          <div className="finish-picker">
+            <div className="finish-picker-head">
+              <span className="scorer-title">HOW IT ENDS</span>
+              <span className="scorer-sub">Score is judged after 120&apos; — guess the finish for {rules?.finishTypePoints ?? 3} pts.</span>
+            </div>
+            <div className="finish-seg">
+              {([['Regular', 'Regular time'], ['ExtraTime', 'Extra time'], ['Penalties', 'Penalties']] as [FinishType, string][]).map(([val, label]) => (
+                <button
+                  key={val}
+                  type="button"
+                  className={`finish-seg-btn ${finishType === val ? 'finish-seg-btn--on' : ''}`}
+                  onClick={() => setFinishType(finishType === val ? null : val)}
+                >{label}</button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Locked knockout finish — show the user's pick + outcome */}
+        {isLocked && finishEnabled && finishType && (
+          <div className="finish-locked">
+            <span className="scorer-title">HOW IT ENDS</span>
+            <span className="finish-locked-pick">
+              You picked <strong>{finishType === 'Regular' ? 'Regular time' : finishType === 'ExtraTime' ? 'Extra time' : 'Penalties'}</strong>
+            </span>
           </div>
         )}
 
@@ -894,7 +925,6 @@ export default function MatchPredictPage() {
                 ) : (
                   <>
                     {scorerEnabled && goalRow(<Icon name="ball" size={18} />, 'Goal', `${posPoints(pl?.position ?? '')} pt each`, 'Normal Goal')}
-                    {scorerEnabled && goalRow(<Icon name="target" size={18} />, 'Penalty', `${posPoints(pl?.position ?? '')} pt each`, 'Penalty')}
                     {ownEnabled && goalRow(<Icon name="net" size={18} />, 'Own goal', `counts for ${oppCode} · ${rules?.ownGoalPoints ?? 0} pt`, 'Own Goal')}
 
                     {enabledCats.length > 0 && (

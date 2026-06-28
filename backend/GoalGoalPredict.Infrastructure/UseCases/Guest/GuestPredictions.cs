@@ -19,6 +19,8 @@ public static class GuestScoringDefaults
         r.YellowCardEnabled, r.YellowCardPoints, r.YellowCardMaxPicks,
         r.RedCardEnabled, r.RedCardPoints, r.RedCardMaxPicks,
         r.MissedPenaltyEnabled, r.MissedPenaltyPoints, r.MissedPenaltyMaxPicks,
+        // Guest predictor doesn't support finish-type picks.
+        FinishTypeEnabled: false, FinishTypePoints: 0,
         r.CardPredictionMode.ToString(), r.WrongPickPenalty,
         IsLocked: true, CanEdit: false);
 }

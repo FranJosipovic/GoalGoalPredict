@@ -95,6 +95,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             b.Property(r => r.MissedPenaltyEnabled).HasColumnName("missed_penalty_enabled");
             b.Property(r => r.MissedPenaltyPoints).HasColumnName("missed_penalty_points");
             b.Property(r => r.MissedPenaltyMaxPicks).HasColumnName("missed_penalty_max_picks");
+            b.Property(r => r.FinishTypeEnabled).HasColumnName("finish_type_enabled").HasDefaultValue(true);
+            b.Property(r => r.FinishTypePoints).HasColumnName("finish_type_points").HasDefaultValue(3);
             b.Property(r => r.CardPredictionMode).HasColumnName("card_prediction_mode").HasConversion<string>().HasMaxLength(20);
             b.Property(r => r.WrongPickPenalty).HasColumnName("wrong_pick_penalty");
             b.Property(r => r.UpdatedAt).HasColumnName("updated_at");
@@ -306,6 +308,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             b.Property(p => p.GroupId).HasColumnName("group_id");
             b.Property(p => p.HomeGoals).HasColumnName("home_goals");
             b.Property(p => p.AwayGoals).HasColumnName("away_goals");
+            b.Property(p => p.FinishType).HasColumnName("finish_type").HasMaxLength(20);
             b.Property(p => p.CreatedAt).HasColumnName("created_at");
             b.Property(p => p.UpdatedAt).HasColumnName("updated_at");
             b.Property(p => p.IsScored).HasColumnName("is_scored");
@@ -357,6 +360,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             b.Property(s => s.YellowCardPoints).HasColumnName("yellow_card_points").HasDefaultValue(0);
             b.Property(s => s.RedCardPoints).HasColumnName("red_card_points").HasDefaultValue(0);
             b.Property(s => s.MissedPenaltyPoints).HasColumnName("missed_penalty_points").HasDefaultValue(0);
+            b.Property(s => s.FinishTypePoints).HasColumnName("finish_type_points").HasDefaultValue(0);
             b.Property(s => s.TotalPoints).HasColumnName("total_points");
             b.Property(s => s.CalculatedAt).HasColumnName("calculated_at");
             b.HasIndex(s => s.PredictionId).IsUnique();

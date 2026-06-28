@@ -3,7 +3,7 @@ import AdminLayout from '../../components/admin/AdminLayout'
 import type { ReactNode } from 'react'
 import {
   compareTeams, compareFixtures, comparePlayers,
-  syncTeamsPlayers, syncMissingPlayers, syncFixtures, prunePlayers,
+  syncTeamsPlayers, syncMissingPlayers, syncSquad, syncFixtures, prunePlayers,
   setPlayerActive, deletePlayer,
   getAdminMatches, syncMatchEvents, syncMatchLineups, compareMatchEvents,
   compareMatchScoring, syncMatchScoring,
@@ -461,7 +461,7 @@ export default function AdminSync() {
             </button>
           </div>
         </div>
-        <p className="admin-hint">Walking every team's squad hits the API once per team and is throttled — give it a moment. "Remove extra players" deletes DB players no longer in the API squad, unless they're referenced by predictions or match data.</p>
+        <p className="admin-hint">Walking every team's squad hits the API once per team and is throttled — give it a moment. "Sync squad" applies the API values for each team (adds missing players + updates changed number/position/name/age). "Remove extra players" deletes DB players no longer in the API squad, unless they're referenced by predictions or match data.</p>
         {players && (
           playersWithDiffs.length === 0
             ? <p className="admin-empty">All squads in sync.</p>
@@ -469,12 +469,20 @@ export default function AdminSync() {
                 <div key={t.teamId} className="admin-team-diff-block">
                   <div className="admin-compare-head">
                     <div className="admin-team-diff-head">{t.teamName}</div>
+                    <div className="admin-compare-actions">
+                    {(t.result.mismatched + t.result.missingInDb) > 0 && (
+                      <button className="admin-btn admin-btn--primary admin-btn--xs" disabled={!!busy}
+                        onClick={() => teamAction(`sync-squad-${t.teamId}`, t.teamId, () => syncSquad(t.teamId))}>
+                        {busy === `sync-squad-${t.teamId}` ? 'Syncing…' : `Sync squad (${t.result.mismatched + t.result.missingInDb})`}
+                      </button>
+                    )}
                     {t.result.extraInDb > 0 && (
                       <button className="admin-btn admin-btn--danger admin-btn--xs" disabled={!!busy}
                         onClick={() => handlePruneTeam(t.teamId)}>
                         {busy === `prune-${t.teamId}` ? 'Pruning…' : `Prune ${t.result.extraInDb} extra`}
                       </button>
                     )}
+                    </div>
                   </div>
                   <Summary r={t.result} />
                   <DiffTable diffs={t.result.diffs} renderActions={renderPlayerActions(t.teamId)} />

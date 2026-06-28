@@ -48,6 +48,7 @@ public class GroupRulesUseCase(AppDbContext db, IGroupRulesCache cache)
             req.YellowCardEnabled, req.YellowCardPoints, req.YellowCardMaxPicks,
             req.RedCardEnabled, req.RedCardPoints, req.RedCardMaxPicks,
             req.MissedPenaltyEnabled, req.MissedPenaltyPoints, req.MissedPenaltyMaxPicks,
+            req.FinishTypeEnabled, req.FinishTypePoints,
             mode, req.WrongPickPenalty);
 
         await db.SaveChangesAsync(ct);
@@ -81,6 +82,7 @@ public class GroupRulesUseCase(AppDbContext db, IGroupRulesCache cache)
         r.YellowCardEnabled, r.YellowCardPoints, r.YellowCardMaxPicks,
         r.RedCardEnabled, r.RedCardPoints, r.RedCardMaxPicks,
         r.MissedPenaltyEnabled, r.MissedPenaltyPoints, r.MissedPenaltyMaxPicks,
+        r.FinishTypeEnabled, r.FinishTypePoints,
         r.CardPredictionMode.ToString(), r.WrongPickPenalty,
         false, canEdit);
 }

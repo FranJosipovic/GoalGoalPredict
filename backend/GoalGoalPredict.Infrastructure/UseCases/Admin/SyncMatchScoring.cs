@@ -66,7 +66,8 @@ public class SyncMatchScoring(AppDbContext db, EffectiveRulesService effectiveRu
                 match.HomeGoals!.Value, match.AwayGoals!.Value,
                 p.GoalscorerPredictions.Select(g => (g.PlayerId, g.GoalType, g.Player.Position)),
                 p.CardPredictions.Select(c => (c.PlayerId, c.Kind)),
-                goals, cards);
+                goals, cards,
+                p.FinishType, match.IsKnockout ? match.FinishType : null);
 
             existingScores.TryGetValue(p.Id, out var cur);
             var cats = BuildCategories(cur, bd);
@@ -116,6 +117,7 @@ public class SyncMatchScoring(AppDbContext db, EffectiveRulesService effectiveRu
             new("Yellow", cur?.YellowCardPoints ?? 0, b.Yellow),
             new("Red", cur?.RedCardPoints ?? 0, b.Red),
             new("Missed pen", cur?.MissedPenaltyPoints ?? 0, b.MissedPenalty),
+            new("Finish", cur?.FinishTypePoints ?? 0, b.FinishType),
         }
         .Where(c => c.Current != 0 || c.New != 0)
         .ToList();

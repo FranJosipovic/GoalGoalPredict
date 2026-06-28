@@ -24,7 +24,8 @@ public class GetMyPrediction(AppDbContext db)
             prediction.AwayGoals,
             prediction.GoalscorerPredictions.Select(g => new ScorerPickInput(g.PlayerId, g.GoalType)).ToList(),
             prediction.CardPredictions.Select(c => new CardPickInput(c.PlayerId, c.Kind.ToString())).ToList(),
-            prediction.UpdatedAt);
+            prediction.UpdatedAt,
+            prediction.FinishType);
     }
 
     // The user's prediction for this match in another group, to offer for copying when they

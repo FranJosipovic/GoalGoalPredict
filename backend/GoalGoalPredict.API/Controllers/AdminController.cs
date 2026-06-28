@@ -16,6 +16,7 @@ public class AdminController(
     SyncTeamsAndPlayers syncTeams,
     SyncFixtures syncFixtures,
     SyncMissingPlayers syncMissingPlayers,
+    SyncSquad syncSquad,
     PrunePlayers prunePlayers,
     PollLiveMatch pollLiveMatch,
     SyncLineups syncLineups,
@@ -123,6 +124,19 @@ public class AdminController(
     {
         var added = await syncMissingPlayers.ExecuteAsync(ct);
         return Ok(new { message = $"Synced {added} players for teams with missing squads" });
+    }
+
+    // Reconcile one team's squad with the API: add missing players + update changed fields
+    // (name/age/number/position/photo). Does not delete — use prune for that.
+    [HttpPost("sync-squad")]
+    public async Task<IActionResult> SyncSquadForTeam([FromQuery] int teamId, CancellationToken ct)
+    {
+        try
+        {
+            var r = await syncSquad.ExecuteAsync(teamId, ct);
+            return Ok(new { message = $"Squad synced — {r.Added} added, {r.Updated} updated.", result = r });
+        }
+        catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
     }
 
     [HttpPost("sync-fixtures")]

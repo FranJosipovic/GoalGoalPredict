@@ -8,11 +8,11 @@ namespace GoalGoalPredict.Domain.Services;
 /// </summary>
 public record ScoreBreakdown(
     int Exact, int Outcome, int Goalscorer, int OwnGoal,
-    int Yellow, int Red, int MissedPenalty)
+    int Yellow, int Red, int MissedPenalty, int FinishType)
 {
-    public int Total => Exact + Outcome + Goalscorer + OwnGoal + Yellow + Red + MissedPenalty;
+    public int Total => Exact + Outcome + Goalscorer + OwnGoal + Yellow + Red + MissedPenalty + FinishType;
 
-    public static readonly ScoreBreakdown Zero = new(0, 0, 0, 0, 0, 0, 0);
+    public static readonly ScoreBreakdown Zero = new(0, 0, 0, 0, 0, 0, 0, 0);
 }
 
 public static class ScoringEngine
@@ -24,7 +24,9 @@ public static class ScoringEngine
         IEnumerable<(int PlayerId, string GoalType, PlayerPosition Position)> scorerPicks,
         IEnumerable<(int PlayerId, CardKind Kind)> cardPicks,
         IEnumerable<MatchGoal> goals,
-        IEnumerable<MatchCard> cards)
+        IEnumerable<MatchCard> cards,
+        string? predictedFinishType = null,
+        string? actualFinishType = null)
     {
         var goalsList = goals as ICollection<MatchGoal> ?? goals.ToList();
         var cardsList = cards as ICollection<MatchCard> ?? cards.ToList();
@@ -57,31 +59,42 @@ public static class ScoringEngine
             }
         }
 
-        return new ScoreBreakdown(exact, outcome, goalscorer, ownGoal, yellow, red, missed);
+        int finishType = 0;
+        if (rules.FinishTypeEnabled && predictedFinishType is not null
+            && predictedFinishType == actualFinishType)
+            finishType = rules.FinishTypePoints;
+
+        return new ScoreBreakdown(exact, outcome, goalscorer, ownGoal, yellow, red, missed, finishType);
     }
 
     /// <summary>
-    /// Per-pick points for goalscorer picks. A pick scores only when the same player has an
-    /// actual goal of the *same predicted type* not yet consumed by an earlier pick. Own Goal
-    /// picks pay the flat own-goal value (position ignored); Normal/Penalty pay by position.
+    /// Per-pick points for goalscorer picks. "A goal is a goal": in-play goals (Normal Goal +
+    /// Penalty) bucket together per player, so a scorer pick scores for any in-play goal that
+    /// player has, regardless of how it was scored. Own Goal is a separate bucket and pays the
+    /// flat own-goal value (position ignored). Shootout penalties are filtered at ingestion, so
+    /// they never reach here. Each actual goal is consumed by at most one pick.
     /// </summary>
     public static List<int> AwardScorerPoints(
         GroupScoringRules rules,
         IEnumerable<(int PlayerId, string GoalType, PlayerPosition Position)> picks,
         IEnumerable<MatchGoal> goals)
     {
+        // Normal Goal / Penalty → "Goal"; Own Goal stays its own bucket.
+        static string Bucket(string goalType) => goalType == "Own Goal" ? "Own Goal" : "Goal";
+
         var remaining = goals
             .Where(g => g.ScorerPlayerId.HasValue && g.GoalType is "Normal Goal" or "Penalty" or "Own Goal")
-            .GroupBy(g => (g.ScorerPlayerId!.Value, g.GoalType))
+            .GroupBy(g => (g.ScorerPlayerId!.Value, Bucket(g.GoalType)))
             .ToDictionary(g => g.Key, g => g.Count());
 
         var result = new List<int>();
         foreach (var (playerId, goalType, position) in picks)
         {
-            var key = (playerId, goalType);
+            var bucket = Bucket(goalType);
+            var key = (playerId, bucket);
             if (remaining.TryGetValue(key, out var left) && left > 0)
             {
-                int pts = goalType == "Own Goal"
+                int pts = bucket == "Own Goal"
                     ? (rules.OwnGoalEnabled ? rules.OwnGoalPoints : 0)
                     : (rules.GoalscorerEnabled ? rules.ScorerPointsFor(position) : 0);
                 result.Add(pts);
