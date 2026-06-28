@@ -76,6 +76,7 @@ builder.Services.AddScoped<GoalGoalPredict.Infrastructure.UseCases.Groups.KickGr
 builder.Services.AddScoped<SyncTeamsAndPlayers>();
 builder.Services.AddScoped<SyncFixtures>();
 builder.Services.AddScoped<SyncMissingPlayers>();
+builder.Services.AddScoped<SyncSquad>();
 builder.Services.AddScoped<SyncLineups>();
 builder.Services.AddScoped<CreateSimulationGroup>();
 builder.Services.AddScoped<CreateSimulationMatch>();

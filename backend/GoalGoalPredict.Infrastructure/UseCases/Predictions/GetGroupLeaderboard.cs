@@ -18,8 +18,9 @@ public class GetGroupLeaderboard(AppDbContext db, ILeaderboardCache cache)
             .Select(m => m.UserId)
             .ToListAsync(ct);
 
+        // Admin accounts don't make predictions; keep them out of the standings entirely.
         var users = await db.Users
-            .Where(u => memberIds.Contains(u.Id))
+            .Where(u => memberIds.Contains(u.Id) && !u.IsAdmin)
             .ToDictionaryAsync(u => u.Id, ct);
 
         var scores = await db.PredictionScores

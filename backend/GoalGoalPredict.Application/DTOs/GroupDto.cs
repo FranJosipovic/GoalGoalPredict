@@ -16,6 +16,7 @@ public record GroupScoringRulesDto(
     bool YellowCardEnabled, int YellowCardPoints, int YellowCardMaxPicks,
     bool RedCardEnabled, int RedCardPoints, int RedCardMaxPicks,
     bool MissedPenaltyEnabled, int MissedPenaltyPoints, int MissedPenaltyMaxPicks,
+    bool FinishTypeEnabled, int FinishTypePoints,
     string CardPredictionMode, int WrongPickPenalty,
     bool IsLocked, bool CanEdit);
 
@@ -27,4 +28,5 @@ public record UpdateGroupRulesRequest(
     bool YellowCardEnabled, int YellowCardPoints, int YellowCardMaxPicks,
     bool RedCardEnabled, int RedCardPoints, int RedCardMaxPicks,
     bool MissedPenaltyEnabled, int MissedPenaltyPoints, int MissedPenaltyMaxPicks,
+    bool FinishTypeEnabled, int FinishTypePoints,
     string CardPredictionMode, int WrongPickPenalty);

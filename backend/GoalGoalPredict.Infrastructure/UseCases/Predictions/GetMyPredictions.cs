@@ -132,7 +132,8 @@ public class GetMyPredictions(AppDbContext db, EffectiveRulesService effectiveRu
                         rules, p.HomeGoals, p.AwayGoals, m.HomeGoals.Value, m.AwayGoals.Value,
                         scorerPicks.Select(g => (g.PlayerId, g.GoalType, g.Player.Position)),
                         cardPicks.Select(c => (c.PlayerId, c.Kind)),
-                        goals, cards).Total;
+                        goals, cards,
+                        p.FinishType, m.IsKnockout ? m.FinishType : null).Total;
                 else
                     projected = 0;
 

@@ -47,6 +47,43 @@
   --header-bg:    rgba(242, 247, 238, 0.88);
 }
 
+/* ─── Competition themes ───
+   Applied via [data-competition] on <html> while inside a group (see useCompetitionTheme).
+   The base app (home, landing, admin) keeps the default lime theme.
+
+   FIFA World Cup 2026 official identity: monochrome (black / white) + GOLD as the prestige
+   anchor (the Trophy). Host colors red (USA) / blue (Canada) / green (Mexico) are reserved
+   for poster/ball/host-city art, so we keep chrome "placeless" — neutral surfaces, gold accent. */
+[data-competition="worldcup"] {
+  --bg:           #0a0a0b;
+  --surface:      #141416;
+  --surface-2:    #1d1d20;
+  --surface-3:    #28282c;
+  --accent:       #d4af37;
+  --accent-dim:   #a8862a;
+  --accent-glow:  rgba(212, 175, 55, 0.16);
+  --text:         #f0efea;
+  --text-muted:   #8a8a90;
+  --border:       rgba(212, 175, 55, 0.12);
+  --border-solid: rgba(212, 175, 55, 0.28);
+  --header-bg:    rgba(10, 10, 11, 0.85);
+}
+
+[data-theme="light"][data-competition="worldcup"] {
+  --bg:           #f5f4ef;
+  --surface:      #ffffff;
+  --surface-2:    #eceae2;
+  --surface-3:    #dddacd;
+  --accent:       #927519;
+  --accent-dim:   #6f5a12;
+  --accent-glow:  rgba(146, 117, 25, 0.13);
+  --text:         #16140c;
+  --text-muted:   #6b6657;
+  --border:       rgba(146, 117, 25, 0.16);
+  --border-solid: rgba(146, 117, 25, 0.30);
+  --header-bg:    rgba(245, 244, 239, 0.88);
+}
+
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
@@ -1014,6 +1051,20 @@ input { font-family: inherit; }
   gap: 6px;
   box-shadow: var(--shadow-card);
 }
+.bkt-match--clickable {
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+.bkt-match--clickable:hover {
+  border-color: var(--accent);
+  box-shadow: 0 6px 20px var(--accent-glow);
+  transform: translateY(-1px);
+}
+.bkt-match--clickable:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-glow);
+}
 .bkt-match--final {
   border-color: rgba(245, 197, 66, 0.5);
   box-shadow: 0 4px 20px var(--gold-glow);
@@ -1190,23 +1241,20 @@ input { font-family: inherit; }
   text-overflow: ellipsis;
 }
 
-.bkt-match-mid {
+/* Kickoff time, pinned to the card's top-right corner. */
+.bkt-match-head {
   display: flex;
+  justify-content: flex-end;
   align-items: center;
-  justify-content: space-between;
-  padding: 0 4px;
+  min-height: 12px;
+  margin-bottom: -2px;
 }
-.bkt-match-num {
-  font-family: 'Oswald', sans-serif;
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  color: var(--text-muted);
-}
-.bkt-match-date {
+.bkt-match-time {
   font-size: 10px;
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.06em;
+  white-space: nowrap;
 }
 
 .bracket-hint {
@@ -3610,3 +3658,69 @@ input { font-family: inherit; }
 }
 .pstat-nodata svg { opacity: 0.5; }
 .pstat-nodata p { font-size: 13px; }
+
+/* ─── Knockout finish picker ─── */
+.finish-picker { margin: 14px 20px 4px; }
+.finish-picker-head { display: flex; flex-direction: column; gap: 2px; margin-bottom: 8px; }
+.finish-picker-head .scorer-sub { color: var(--text-muted); font-size: 12px; }
+.finish-seg {
+  display: flex; gap: 6px;
+}
+.finish-seg-btn {
+  flex: 1;
+  padding: 11px 6px;
+  border: 1px solid var(--border-solid);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 13px; font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.finish-seg-btn--on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg);
+}
+.finish-locked {
+  margin: 12px 20px;
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px;
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.finish-locked .scorer-title { color: var(--text-muted); }
+.finish-locked-pick { font-size: 13px; }
+
+/* ─── Global group: lock banner + Matches sub-switch ─── */
+.global-lock-banner {
+  display: flex; align-items: center; gap: 10px;
+  margin: 12px 16px 0;
+  padding: 10px 14px;
+  background: var(--accent-glow);
+  border: 1px solid var(--border-solid);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 12.5px; line-height: 1.4;
+}
+.global-lock-banner svg { flex-shrink: 0; color: var(--accent); }
+.match-subswitch {
+  display: flex; gap: 6px;
+  padding: 14px 16px 4px;
+}
+.match-subswitch-btn {
+  flex: 1;
+  padding: 9px 6px;
+  border: 1px solid var(--border-solid);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-size: 13px; font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.match-subswitch-btn.on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg);
+}

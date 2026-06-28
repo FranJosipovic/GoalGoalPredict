@@ -9,6 +9,7 @@ namespace GoalGoalPredict.Infrastructure.UseCases.Predictions;
 public class UpsertPrediction(AppDbContext db, EffectiveRulesService effectiveRules)
 {
     private static readonly string[] ValidGoalTypes = ["Normal Goal", "Penalty", "Own Goal"];
+    private static readonly string[] ValidFinishTypes = ["Regular", "ExtraTime", "Penalties"];
 
     public async Task<(PredictionResultDto? Result, string? Error)> ExecuteAsync(
         Guid userId, UpsertPredictionRequest request, CancellationToken ct = default)
@@ -32,6 +33,19 @@ public class UpsertPrediction(AppDbContext db, EffectiveRulesService effectiveRu
         }
 
         var rules = await effectiveRules.GetLiveAsync(request.GroupId, ct);
+
+        // --- Validate knockout finish-type pick ---
+        // Group-stage matches must not carry a finish type; knockout matches may (when enabled).
+        var finishType = string.IsNullOrEmpty(request.FinishType) ? null : request.FinishType;
+        if (finishType is not null)
+        {
+            if (!match.IsKnockout)
+                return (null, "Finish type only applies to knockout matches");
+            if (!ValidFinishTypes.Contains(finishType))
+                return (null, $"Invalid finish type '{finishType}'");
+            if (!rules.FinishTypeEnabled)
+                return (null, "Finish-type predictions are disabled for this group");
+        }
 
         var scorers = request.Scorers ?? [];
         var cards = request.Cards ?? [];
@@ -70,13 +84,13 @@ public class UpsertPrediction(AppDbContext db, EffectiveRulesService effectiveRu
         Guid predictionId;
         if (existing is null)
         {
-            var prediction = Prediction.Create(userId, request.MatchId, request.GroupId, request.HomeGoals, request.AwayGoals);
+            var prediction = Prediction.Create(userId, request.MatchId, request.GroupId, request.HomeGoals, request.AwayGoals, finishType);
             db.Predictions.Add(prediction);
             predictionId = prediction.Id;
         }
         else
         {
-            existing.Update(request.HomeGoals, request.AwayGoals);
+            existing.Update(request.HomeGoals, request.AwayGoals, finishType);
             predictionId = existing.Id;
             var oldScorers = await db.GoalscorerPredictions.Where(g => g.PredictionId == predictionId).ToListAsync(ct);
             db.GoalscorerPredictions.RemoveRange(oldScorers);
@@ -94,6 +108,6 @@ public class UpsertPrediction(AppDbContext db, EffectiveRulesService effectiveRu
             request.HomeGoals, request.AwayGoals,
             scorers.ToList(),
             parsedCards.Select(c => new CardPickInput(c.PlayerId, c.Kind.ToString())).ToList(),
-            DateTime.UtcNow), null);
+            DateTime.UtcNow, finishType), null);
     }
 }

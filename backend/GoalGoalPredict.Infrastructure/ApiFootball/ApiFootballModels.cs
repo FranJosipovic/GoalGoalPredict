@@ -112,6 +112,8 @@ internal class EventResponse
     [JsonPropertyName("assist")] public ApiEventPlayer? Assist { get; set; }
     [JsonPropertyName("type")] public string Type { get; set; } = "";
     [JsonPropertyName("detail")] public string Detail { get; set; } = "";
+    // "Penalty Shootout" for goals/misses during a shootout — excluded from scoring.
+    [JsonPropertyName("comments")] public string? Comments { get; set; }
 }
 
 internal class ApiEventTime

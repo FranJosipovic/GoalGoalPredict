@@ -101,6 +101,13 @@ export default function RulesTab({ groupId }: Props) {
           <NumberField value={draft.outcomePoints} onChange={v => set('outcomePoints', v)} />
           <span className="rules-unit">pts</span>
         </div>
+        <div className="rules-row">
+          <Toggle on={draft.finishTypeEnabled} onChange={v => set('finishTypeEnabled', v)} />
+          <span className="rules-label">Knockout finish (Reg / ET / Pens)</span>
+          <NumberField value={draft.finishTypePoints} onChange={v => set('finishTypePoints', v)} />
+          <span className="rules-unit">pts</span>
+        </div>
+        <p className="rules-card-sub">Knockout-only: guess whether a tie ends in regular time, extra time or penalties.</p>
       </section>
 
       {/* Goalscorers */}
@@ -109,7 +116,7 @@ export default function RulesTab({ groupId }: Props) {
           <h3 className="rules-card-title">Goalscorers</h3>
           <Toggle on={draft.goalscorerEnabled} onChange={v => set('goalscorerEnabled', v)} />
         </div>
-        <p className="rules-card-sub">You must guess the goal type (normal / penalty). Points by position:</p>
+        <p className="rules-card-sub">A goal is a goal — pick who scores, any goal counts. Points by position:</p>
         <div className="rules-grid">
           <div className="rules-mini">
             <span>Goalkeeper</span>
@@ -174,11 +181,6 @@ export default function RulesTab({ groupId }: Props) {
           label="Red card" enabled={draft.redCardEnabled} points={draft.redCardPoints} max={draft.redCardMaxPicks}
           mode={draft.cardPredictionMode} editable={editable}
           onEnabled={v => set('redCardEnabled', v)} onPoints={v => set('redCardPoints', v)} onMax={v => set('redCardMaxPicks', v)}
-        />
-        <CardRow
-          label="Missed penalty" enabled={draft.missedPenaltyEnabled} points={draft.missedPenaltyPoints} max={draft.missedPenaltyMaxPicks}
-          mode={draft.cardPredictionMode} editable={editable}
-          onEnabled={v => set('missedPenaltyEnabled', v)} onPoints={v => set('missedPenaltyPoints', v)} onMax={v => set('missedPenaltyMaxPicks', v)}
         />
       </section>
 
