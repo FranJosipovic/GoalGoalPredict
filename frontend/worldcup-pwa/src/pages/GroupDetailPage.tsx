@@ -3,6 +3,7 @@ import { useParams, useNavigate, Navigate } from 'react-router-dom'
 import { getGroupDetail } from '../api/groups'
 import { getStandings } from '../api/tournament'
 import { getTeams } from '../api/teams'
+import { getMatches } from '../api/matches'
 import Layout from '../components/Layout'
 import Bracket from '../components/Bracket'
 import MatchesTab from '../components/tabs/MatchesTab'
@@ -11,10 +12,15 @@ import LeaderboardTab from '../components/tabs/LeaderboardTab'
 import MembersTab from '../components/tabs/MembersTab'
 import RulesTab from '../components/tabs/RulesTab'
 import Icon, { type IconName } from '../components/Icon'
-import type { GroupDetail, StandingGroup, TeamInfo } from '../types'
+import { useCompetitionTheme } from '../hooks/useCompetitionTheme'
+import type { GroupDetail, StandingGroup, TeamInfo, MatchListItem } from '../types'
 
 type Tab = 'matches' | 'mypicks' | 'leaderboard' | 'members' | 'rules'
-const TABS: Tab[] = ['matches', 'mypicks', 'leaderboard', 'members', 'rules']
+const FULL_TABS: Tab[] = ['matches', 'mypicks', 'leaderboard', 'members', 'rules']
+// The platform-wide global group has no members tab (everyone's a member). Picks only
+// appears once the group is unlocked for the knockout phase (i.e. predictions are possible).
+const GLOBAL_TABS: Tab[] = ['matches', 'leaderboard', 'rules']
+const GLOBAL_TABS_UNLOCKED: Tab[] = ['matches', 'mypicks', 'leaderboard', 'rules']
 const TAB_META: Record<Tab, { icon: IconName; label: string }> = {
   matches: { icon: 'ball', label: 'Matches' },
   mypicks: { icon: 'target', label: 'Picks' },
@@ -30,10 +36,18 @@ export default function GroupDetailPage() {
   const setTab = (t: Tab) => navigate(`/groups/${id}/${t}`)
   const [group, setGroup] = useState<GroupDetail | null>(null)
   const [loading, setLoading] = useState(true)
-  // Knockout bracket data — only fetched for the locked global competition view.
+  // Knockout bracket data — fetched for the global group's Matches→Bracket sub-view.
   const [standings, setStandings] = useState<StandingGroup[]>([])
   const [teams, setTeams] = useState<TeamInfo[]>([])
+  // Real fixtures, so a resolved bracket card can deep-link into match details.
+  const [bracketMatches, setBracketMatches] = useState<MatchListItem[]>([])
+  // Global Matches tab sub-view: knockout bracket vs upcoming fixtures.
+  const [matchView, setMatchView] = useState<'bracket' | 'upcoming'>('bracket')
+  const tabsRef = useRef<Tab[]>(FULL_TABS)
   const touchStart = useRef<{ x: number; y: number } | null>(null)
+
+  // Inside a group, paint the competition (World Cup) theme; cleared on leave.
+  useCompetitionTheme()
 
   const onTouchStart = (e: React.TouchEvent) => {
     const t = e.touches[0]
@@ -47,9 +61,10 @@ export default function GroupDetailPage() {
     touchStart.current = null
     // Horizontal swipe only: ignore mostly-vertical gestures (scrolling).
     if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return
-    const i = TABS.indexOf(tab)
+    const tabs = tabsRef.current
+    const i = tabs.indexOf(tab)
     const next = dx < 0 ? i + 1 : i - 1
-    if (next >= 0 && next < TABS.length) setTab(TABS[next])
+    if (next >= 0 && next < tabs.length) setTab(tabs[next])
   }
 
   useEffect(() => {
@@ -57,17 +72,22 @@ export default function GroupDetailPage() {
     getGroupDetail(id).then(setGroup).finally(() => setLoading(false))
   }, [id])
 
-  // Pull standings + teams to render the same WC bracket as /tournament once we
-  // know this is the locked global group.
+  // Pull standings + teams to render the same WC bracket as /tournament inside the
+  // global group's Matches → Bracket sub-view.
   useEffect(() => {
-    if (!group?.isGlobal || !group.isLocked) return
+    if (!group?.isGlobal || !id) return
     Promise.all([
       getStandings().catch(() => [] as StandingGroup[]),
       getTeams().catch(() => [] as TeamInfo[]),
-    ]).then(([s, t]) => { setStandings(s); setTeams(t) })
-  }, [group?.isGlobal, group?.isLocked])
+      getMatches(id).then(r => r.matches).catch(() => [] as MatchListItem[]),
+    ]).then(([s, t, m]) => { setStandings(s); setTeams(t); setBracketMatches(m) })
+  }, [group?.isGlobal, id])
 
   if (!id) return null
+
+  const isGlobal = !!group?.isGlobal
+  const TABS = isGlobal ? (group?.isLocked ? GLOBAL_TABS : GLOBAL_TABS_UNLOCKED) : FULL_TABS
+  tabsRef.current = TABS
 
   if (!tabParam || !TABS.includes(tab)) {
     return <Navigate to={`/groups/${id}/matches`} replace />
@@ -93,38 +113,7 @@ export default function GroupDetailPage() {
   }
 
   const tabIndex = TABS.indexOf(tab)
-
-  if (group.isGlobal && group.isLocked) {
-    return (
-      <Layout title={group.name} showBack>
-        <div className="global-locked">
-          <div className="global-locked-icon">
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <rect x="3" y="11" width="18" height="11" rx="2" />
-              <path d="M7 11V7a5 5 0 0110 0v4" />
-            </svg>
-          </div>
-          <h2 className="global-locked-title">Global Competition</h2>
-          <span className="global-badge global-badge--lg">GLOBAL</span>
-          <p className="global-locked-text">
-            Everyone on GoalGoalPredict competes together in one leaderboard — and it
-            unlocks when the <strong>knockout phase</strong> begins.
-          </p>
-          <p className="global-locked-text">
-            Scoring starts fresh from <strong>0</strong>, so every player begins level for the
-            Round of 16. Make your predictions and climb the global board.
-          </p>
-        </div>
-
-        <div className="global-bracket">
-          <div className="global-bracket-head">
-            <span className="section-label">KNOCKOUT BRACKET</span>
-          </div>
-          <Bracket standings={standings} teams={teams} />
-        </div>
-      </Layout>
-    )
-  }
+  const globalLocked = group.isGlobal && group.isLocked
 
   return (
     <Layout title={group.name} showBack>
@@ -143,12 +132,42 @@ export default function GroupDetailPage() {
           <div className="hub-tab-indicator" style={{ left: `calc(${tabIndex} * ${100 / TABS.length}%)`, width: `${100 / TABS.length}%` }} />
         </div>
 
+        {globalLocked && (
+          <div className="global-lock-banner">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="3" y="11" width="18" height="11" rx="2" />
+              <path d="M7 11V7a5 5 0 0110 0v4" />
+            </svg>
+            <span>The global board unlocks at the <strong>knockout phase</strong> — everyone starts level at <strong>0</strong>. Browse the bracket and standings until then.</span>
+          </div>
+        )}
+
         <div className="hub-content" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
           {tab === 'matches' && (
-            <MatchesTab
-              groupId={id}
-              onMatchClick={(matchId, openDetail) => navigate(`/groups/${id}/match/${matchId}${openDetail ? '/live' : ''}`)}
-            />
+            isGlobal ? (
+              <>
+                <div className="match-subswitch">
+                  <button className={`match-subswitch-btn ${matchView === 'bracket' ? 'on' : ''}`} onClick={() => setMatchView('bracket')}>Bracket</button>
+                  <button className={`match-subswitch-btn ${matchView === 'upcoming' ? 'on' : ''}`} onClick={() => setMatchView('upcoming')}>Upcoming</button>
+                </div>
+                {matchView === 'bracket'
+                  ? <Bracket
+                      standings={standings}
+                      teams={teams}
+                      matches={bracketMatches}
+                      onMatchClick={(matchId) => navigate(`/groups/${id}/match/${matchId}`)}
+                    />
+                  : <MatchesTab
+                      groupId={id}
+                      onMatchClick={(matchId, openDetail) => navigate(`/groups/${id}/match/${matchId}${openDetail ? '/live' : ''}`)}
+                    />}
+              </>
+            ) : (
+              <MatchesTab
+                groupId={id}
+                onMatchClick={(matchId, openDetail) => navigate(`/groups/${id}/match/${matchId}${openDetail ? '/live' : ''}`)}
+              />
+            )
           )}
           {tab === 'mypicks' && (
             <PicksTab

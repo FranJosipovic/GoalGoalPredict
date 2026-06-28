@@ -82,6 +82,19 @@ public class Match
 
     public bool IsLive => Status is "1H" or "HT" or "2H" or "ET" or "P";
     public bool IsSimulation => Source == "Simulation";
+
+    // Group stage rounds are "Group A".."Group L"; everything else is a knockout tie.
+    public bool IsKnockout => !Round.StartsWith("Group", StringComparison.OrdinalIgnoreCase);
+
+    /// How the match ended, from its final status: FT→Regular, AET→ExtraTime, PEN→Penalties.
+    /// Null until the match reaches a finished status.
+    public string? FinishType => Status switch
+    {
+        "FT" => "Regular",
+        "AET" => "ExtraTime",
+        "PEN" => "Penalties",
+        _ => null
+    };
     public bool NeedsLineupSync =>
         Source == "ApiFootball" &&
         Status == "NS" && !LineupsAvailable &&

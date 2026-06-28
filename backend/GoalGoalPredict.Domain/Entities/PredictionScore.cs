@@ -16,6 +16,7 @@ public class PredictionScore
     public int YellowCardPoints { get; private set; }
     public int RedCardPoints { get; private set; }
     public int MissedPenaltyPoints { get; private set; }
+    public int FinishTypePoints { get; private set; }
     public int TotalPoints { get; private set; }
     public DateTime CalculatedAt { get; private set; }
 
@@ -37,6 +38,7 @@ public class PredictionScore
         YellowCardPoints = b.Yellow,
         RedCardPoints = b.Red,
         MissedPenaltyPoints = b.MissedPenalty,
+        FinishTypePoints = b.FinishType,
         TotalPoints = b.Total,
         CalculatedAt = DateTime.UtcNow
     };
@@ -50,6 +52,7 @@ public class PredictionScore
         YellowCardPoints = b.Yellow;
         RedCardPoints = b.Red;
         MissedPenaltyPoints = b.MissedPenalty;
+        FinishTypePoints = b.FinishType;
         TotalPoints = b.Total;
         CalculatedAt = DateTime.UtcNow;
     }

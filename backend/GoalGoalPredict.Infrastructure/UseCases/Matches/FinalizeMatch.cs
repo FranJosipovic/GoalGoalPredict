@@ -31,6 +31,9 @@ public class FinalizeMatch(AppDbContext db, EffectiveRulesService effectiveRules
         foreach (var gid in groupIds)
             rulesByGroup[gid] = await effectiveRules.GetForMatchAsync(gid, match, createIfMissing: true, ct);
 
+        // Knockout finish (Regular / Extra time / Penalties) is judged only for knockout ties.
+        var actualFinishType = match.IsKnockout ? match.FinishType : null;
+
         foreach (var prediction in predictions)
         {
             var rules = rulesByGroup[prediction.GroupId];
@@ -41,7 +44,8 @@ public class FinalizeMatch(AppDbContext db, EffectiveRulesService effectiveRules
                 match.HomeGoals!.Value, match.AwayGoals!.Value,
                 prediction.GoalscorerPredictions.Select(g => (g.PlayerId, g.GoalType, g.Player.Position)),
                 prediction.CardPredictions.Select(c => (c.PlayerId, c.Kind)),
-                goals, cards);
+                goals, cards,
+                prediction.FinishType, actualFinishType);
 
             var existing = await db.PredictionScores.FirstOrDefaultAsync(s => s.PredictionId == prediction.Id, ct);
             if (existing is null)

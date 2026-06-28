@@ -54,6 +54,10 @@ public class GroupScoringRules
     public int MissedPenaltyPoints { get; private set; }
     public int MissedPenaltyMaxPicks { get; private set; }
 
+    // Knockout-only: predict how the tie ends (Regular / Extra time / Penalties).
+    public bool FinishTypeEnabled { get; private set; }
+    public int FinishTypePoints { get; private set; }
+
     public CardPredictionMode CardPredictionMode { get; private set; }
     public int WrongPickPenalty { get; private set; }
 
@@ -81,9 +85,12 @@ public class GroupScoringRules
         RedCardEnabled = true,
         RedCardPoints = 3,
         RedCardMaxPicks = 1,
-        MissedPenaltyEnabled = true,
+        // Missed-penalty prediction retired — off by default, columns kept for historic scores.
+        MissedPenaltyEnabled = false,
         MissedPenaltyPoints = 3,
         MissedPenaltyMaxPicks = 1,
+        FinishTypeEnabled = true,
+        FinishTypePoints = 3,
         CardPredictionMode = CardPredictionMode.Limited,
         WrongPickPenalty = 1,
         UpdatedAt = DateTime.UtcNow
@@ -103,6 +110,7 @@ public class GroupScoringRules
         YellowCardEnabled = YellowCardEnabled, YellowCardPoints = YellowCardPoints, YellowCardMaxPicks = YellowCardMaxPicks,
         RedCardEnabled = RedCardEnabled, RedCardPoints = RedCardPoints, RedCardMaxPicks = RedCardMaxPicks,
         MissedPenaltyEnabled = MissedPenaltyEnabled, MissedPenaltyPoints = MissedPenaltyPoints, MissedPenaltyMaxPicks = MissedPenaltyMaxPicks,
+        FinishTypeEnabled = FinishTypeEnabled, FinishTypePoints = FinishTypePoints,
         CardPredictionMode = CardPredictionMode, WrongPickPenalty = WrongPickPenalty,
         UpdatedAt = DateTime.UtcNow
     };
@@ -155,6 +163,7 @@ public class GroupScoringRules
         bool yellowEnabled, int yellowPoints, int yellowMax,
         bool redEnabled, int redPoints, int redMax,
         bool missedPenEnabled, int missedPenPoints, int missedPenMax,
+        bool finishTypeEnabled, int finishTypePoints,
         CardPredictionMode mode, int wrongPickPenalty)
     {
         ExactScoreEnabled = exactScoreEnabled;
@@ -177,6 +186,8 @@ public class GroupScoringRules
         MissedPenaltyEnabled = missedPenEnabled;
         MissedPenaltyPoints = Math.Max(0, missedPenPoints);
         MissedPenaltyMaxPicks = Math.Max(1, missedPenMax);
+        FinishTypeEnabled = finishTypeEnabled;
+        FinishTypePoints = Math.Max(0, finishTypePoints);
         CardPredictionMode = mode;
         WrongPickPenalty = Math.Max(0, wrongPickPenalty);
         UpdatedAt = DateTime.UtcNow;

@@ -71,6 +71,9 @@ export const syncTeamsPlayers = () =>
 export const syncMissingPlayers = () =>
   client.post('/admin/sync-missing-players').then(r => r.data)
 
+export const syncSquad = (teamId: number) =>
+  client.post('/admin/sync-squad', null, { params: { teamId } }).then(r => r.data)
+
 export const syncFixtures = () =>
   client.post('/admin/sync-fixtures').then(r => r.data)
 

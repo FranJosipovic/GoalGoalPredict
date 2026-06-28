@@ -353,6 +353,8 @@ export interface GroupScoringRules {
   missedPenaltyEnabled: boolean
   missedPenaltyPoints: number
   missedPenaltyMaxPicks: number
+  finishTypeEnabled: boolean
+  finishTypePoints: number
   cardPredictionMode: CardPredictionMode
   wrongPickPenalty: number
   isLocked: boolean
@@ -363,6 +365,9 @@ export interface GroupScoringRules {
 export interface ScorerPickInput { playerId: number; goalType: string }
 export interface CardPickInput { playerId: number; kind: string }
 
+// Knockout-only match finish prediction.
+export type FinishType = 'Regular' | 'ExtraTime' | 'Penalties'
+
 export interface PredictionResult {
   id: string
   matchId: number
@@ -372,4 +377,5 @@ export interface PredictionResult {
   scorers: ScorerPickInput[]
   cards: CardPickInput[]
   updatedAt: string
+  finishType: FinishType | null
 }

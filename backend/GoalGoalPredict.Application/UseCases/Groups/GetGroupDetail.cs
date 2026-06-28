@@ -29,7 +29,8 @@ public class GetGroupDetail(IGroupRepository groups, IUserRepository users, IGro
         foreach (var member in members)
         {
             var user = await users.GetByIdAsync(member.UserId);
-            if (user is not null)
+            // Admin accounts don't compete, so they're hidden from the member roster.
+            if (user is not null && !user.IsAdmin)
                 memberDtos.Add(new GroupMemberDto(user.Id, user.FirstName, user.LastName, user.Email, member.Role.ToString()));
         }
 

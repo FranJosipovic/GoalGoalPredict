@@ -3,11 +3,15 @@ import {
   BRACKET, ROUND_ORDER, ROUND_LABEL, classifySlot,
   type ResolvedSlot, type KnockoutRound, type BracketMatch,
 } from '../data/bracket'
-import type { StandingGroup, TeamInfo } from '../types'
+import type { StandingGroup, TeamInfo, MatchListItem, TeamSummary } from '../types'
 
 interface Props {
   standings: StandingGroup[]
   teams: TeamInfo[]
+  // Real fixtures for this competition; used to map a resolved bracket card to a DB match.
+  matches?: MatchListItem[]
+  // Fired when a card backed by a real fixture is clicked.
+  onMatchClick?: (matchId: number) => void
 }
 
 // Collapses to true on narrow screens, where the tree becomes one-round-per-tab.
@@ -45,24 +49,52 @@ function Slot({ slot }: { slot: ResolvedSlot }) {
 
 type Resolver = (raw: string) => ResolvedSlot
 
-function MatchCard({ m, resolve, final, hl }: { m: BracketMatch; resolve: Resolver; final?: boolean; hl?: boolean }) {
+// A card's render data: both slots (filled from a real fixture when one is found),
+// the DB match id (when clickable), and the real kickoff (when known).
+interface CardData { s1: ResolvedSlot; s2: ResolvedSlot; matchId?: number; kickoffUtc?: string }
+type CardBuilder = (m: BracketMatch) => CardData
+
+function MatchCard({ m, build, final, hl, onOpen }: {
+  m: BracketMatch; build: CardBuilder; final?: boolean; hl?: boolean
+  onOpen?: (matchId: number) => void
+}) {
+  const { s1, s2, matchId, kickoffUtc } = build(m)
+  const clickable = matchId != null && !!onOpen
+  const open = () => { if (matchId != null) onOpen?.(matchId) }
+  const when = kickoffUtc
+    ? new Date(kickoffUtc).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+    : new Date(m.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
   return (
-    <div className={`bkt-match ${final ? 'bkt-match--final' : ''} ${hl ? 'bkt-match--hl' : ''}`}>
-      <Slot slot={resolve(m.team1)} />
-      <div className="bkt-match-mid">
-        <span className="bkt-match-num">#{m.num}</span>
-        <span className="bkt-match-date">
-          {new Date(m.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-        </span>
-      </div>
-      <Slot slot={resolve(m.team2)} />
+    <div
+      className={`bkt-match ${final ? 'bkt-match--final' : ''} ${hl ? 'bkt-match--hl' : ''} ${clickable ? 'bkt-match--clickable' : ''}`}
+      onClick={clickable ? open : undefined}
+      role={clickable ? 'button' : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      onKeyDown={clickable ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open() } } : undefined}
+    >
+      <div className="bkt-match-head"><span className="bkt-match-time">{when}</span></div>
+      <Slot slot={s1} />
+      <Slot slot={s2} />
     </div>
   )
 }
 
 const REF_RE = /^[WL](\d+)$/
 
-export default function Bracket({ standings, teams }: Props) {
+// Normalise an API round string ("Round of 16", "Quarter-finals", "3rd Place Final", …)
+// to our skeleton's KnockoutRound. Substring-based so minor spelling variants still match.
+function skeletonRound(dbRound: string): KnockoutRound | null {
+  const r = dbRound.toLowerCase()
+  if (r.includes('32')) return 'Round of 32'
+  if (r.includes('16')) return 'Round of 16'
+  if (r.includes('quarter')) return 'Quarter-final'
+  if (r.includes('semi')) return 'Semi-final'
+  if (r.includes('3rd') || r.includes('third')) return 'Match for third place'
+  if (r.includes('final')) return 'Final'
+  return null
+}
+
+export default function Bracket({ standings, teams, matches, onMatchClick }: Props) {
   const narrow = useIsNarrow()
   const [activeRound, setActiveRound] = useState<KnockoutRound>('Round of 32')
   // Matches highlighted after a forward/back jump (the tie a pair feeds, or the pair a tie comes from).
@@ -102,6 +134,47 @@ export default function Bracket({ standings, teams }: Props) {
       name => byName.get(name.toLowerCase()),
     )
   }, [standings, teams])
+
+  // Real knockout fixtures bucketed by skeleton round. Within a round a team plays exactly
+  // once, so a single known team uniquely identifies its fixture — that lets us fill the
+  // opponent (e.g. a third-placed qualifier the skeleton can't name) straight from the API.
+  const fixturesByRound = useMemo(() => {
+    const map = new Map<KnockoutRound, MatchListItem[]>()
+    for (const m of matches ?? []) {
+      const r = skeletonRound(m.round)
+      if (!r) continue
+      ;(map.get(r) ?? map.set(r, []).get(r)!).push(m)
+    }
+    return map
+  }, [matches])
+
+  const toSlot = (t: TeamSummary): ResolvedSlot =>
+    ({ kind: 'team', label: t.name, teamName: t.name, logoUrl: t.logoUrl })
+
+  // Build a card's render data: resolve both slots from the skeleton, then — if a real
+  // fixture in this round contains either resolved team — override with the fixture's two
+  // teams (filling any TBD side) and attach its id + kickoff so the card is clickable.
+  const cardData: CardBuilder = (m: BracketMatch): CardData => {
+    const s1 = resolve(m.team1)
+    const s2 = resolve(m.team2)
+    const n1 = s1.teamName?.toLowerCase()
+    const n2 = s2.teamName?.toLowerCase()
+    if (!n1 && !n2) return { s1, s2 }
+
+    for (const fx of fixturesByRound.get(m.round) ?? []) {
+      const h = fx.homeTeam.name.toLowerCase()
+      const a = fx.awayTeam.name.toLowerCase()
+      const hit1 = !!n1 && (n1 === h || n1 === a)
+      const hit2 = !!n2 && (n2 === h || n2 === a)
+      if (!hit1 && !hit2) continue
+      // Keep slot1 aligned to whichever fixture side our known team1/team2 implies.
+      const swap = n1 === a || n2 === h
+      const first = swap ? fx.awayTeam : fx.homeTeam
+      const second = swap ? fx.homeTeam : fx.awayTeam
+      return { s1: toSlot(first), s2: toSlot(second), matchId: fx.id, kickoffUtc: fx.kickoffUtc }
+    }
+    return { s1, s2 }
+  }
 
   // The skeleton is in match-number order, not bracket order. Walk the tree from the Final
   // down its W## feeders so each round's matches sit in true top-to-bottom order — that's what
@@ -171,7 +244,7 @@ export default function Bracket({ standings, teams }: Props) {
                       <ChevronLeft />
                     </button>
                   )}
-                  <MatchCard m={m} resolve={resolve} final={activeRound === 'Final'} hl={highlight.includes(m.num)} />
+                  <MatchCard m={m} build={cardData} final={activeRound === 'Final'} hl={highlight.includes(m.num)} onOpen={onMatchClick} />
                 </div>
               ))}
               {nextRound && pair.length === 2 && (
@@ -191,7 +264,7 @@ export default function Bracket({ standings, teams }: Props) {
           {activeRound === 'Final' && thirdPlace && (
             <div className="bkt-third-block">
               <div className="bkt-third-tag">3rd place play-off</div>
-              <MatchCard m={thirdPlace} resolve={resolve} />
+              <MatchCard m={thirdPlace} build={cardData} onOpen={onMatchClick} />
             </div>
           )}
         </div>
@@ -210,7 +283,7 @@ export default function Bracket({ standings, teams }: Props) {
             <div className="bkt-col-body">
               {roundMatches[round].map(m => (
                 <div key={m.num} className="bkt-cell">
-                  <MatchCard m={m} resolve={resolve} final={round === 'Final'} />
+                  <MatchCard m={m} build={cardData} final={round === 'Final'} onOpen={onMatchClick} />
                 </div>
               ))}
             </div>
@@ -220,7 +293,7 @@ export default function Bracket({ standings, teams }: Props) {
       {thirdPlace && (
         <div className="bkt-third-block bkt-third-block--desktop">
           <div className="bkt-third-tag">3rd place play-off</div>
-          <MatchCard m={thirdPlace} resolve={resolve} />
+          <MatchCard m={thirdPlace} build={cardData} onOpen={onMatchClick} />
         </div>
       )}
       <p className="bracket-hint">Group slots fill in as standings settle · winners advance once knockout matches are played</p>

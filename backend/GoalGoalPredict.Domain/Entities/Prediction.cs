@@ -8,6 +8,8 @@ public class Prediction
     public Guid GroupId { get; private set; }
     public int HomeGoals { get; private set; }
     public int AwayGoals { get; private set; }
+    // Knockout-only: "Regular" | "ExtraTime" | "Penalties". Null for group-stage matches.
+    public string? FinishType { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime UpdatedAt { get; private set; }
     public bool IsScored { get; private set; }
@@ -21,7 +23,7 @@ public class Prediction
 
     private Prediction() { }
 
-    public static Prediction Create(Guid userId, int matchId, Guid groupId, int homeGoals, int awayGoals) => new()
+    public static Prediction Create(Guid userId, int matchId, Guid groupId, int homeGoals, int awayGoals, string? finishType = null) => new()
     {
         Id = Guid.NewGuid(),
         UserId = userId,
@@ -29,15 +31,17 @@ public class Prediction
         GroupId = groupId,
         HomeGoals = homeGoals,
         AwayGoals = awayGoals,
+        FinishType = finishType,
         CreatedAt = DateTime.UtcNow,
         UpdatedAt = DateTime.UtcNow,
         IsScored = false
     };
 
-    public void Update(int homeGoals, int awayGoals)
+    public void Update(int homeGoals, int awayGoals, string? finishType = null)
     {
         HomeGoals = homeGoals;
         AwayGoals = awayGoals;
+        FinishType = finishType;
         UpdatedAt = DateTime.UtcNow;
     }
 

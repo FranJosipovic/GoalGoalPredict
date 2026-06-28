@@ -64,7 +64,8 @@ public class GetGroupPredictions(AppDbContext db, EffectiveRulesService effectiv
                     rules, p.HomeGoals, p.AwayGoals, match.HomeGoals!.Value, match.AwayGoals!.Value,
                     scorerPicks.Select(g => (g.PlayerId, g.GoalType, g.Player.Position)),
                     cardPicks.Select(c => (c.PlayerId, c.Kind)),
-                    goals, cards).Total;
+                    goals, cards,
+                    p.FinishType, match.IsKnockout ? match.FinishType : null).Total;
             else
                 projected = 0;
 

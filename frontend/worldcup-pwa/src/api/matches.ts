@@ -70,4 +70,5 @@ export const upsertPrediction = (data: {
   awayGoals: number
   scorers: ScorerPickInput[]
   cards: CardPickInput[]
+  finishType?: string | null
 }) => client.post('/predictions', data).then(r => r.data)
