@@ -6,7 +6,7 @@ import PicksByTeam from '../components/PicksByTeam'
 import Icon from '../components/Icon'
 import type { MyPredictionItem } from '../types'
 
-const LIVE_STATUSES = ['1H', 'HT', '2H', 'ET', 'P']
+const LIVE_STATUSES = ['1H', 'HT', '2H', 'ET', 'BT', 'P']
 const FINISHED_STATUSES = ['FT', 'AET', 'PEN']
 
 function formatKickoff(utc: string) {

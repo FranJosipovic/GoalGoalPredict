@@ -35,30 +35,37 @@ const ChevronRight = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M9 18l6-6-6-6" /></svg>
 )
 
-function Slot({ slot }: { slot: ResolvedSlot }) {
+function Slot({ slot, score, won }: { slot: ResolvedSlot; score?: number | null; won?: boolean }) {
   const resolved = !!slot.teamName
   return (
-    <div className={`bkt-slot ${resolved ? 'bkt-slot--team' : 'bkt-slot--tbd'}`}>
+    <div className={`bkt-slot ${resolved ? 'bkt-slot--team' : 'bkt-slot--tbd'} ${won ? 'bkt-slot--won' : ''}`}>
       {slot.logoUrl
         ? <img src={slot.logoUrl} className="bkt-logo" alt="" />
         : <span className="bkt-logo bkt-logo--ph" />}
       <span className="bkt-slot-name">{slot.teamName ?? slot.label}</span>
+      {score != null && <span className="bkt-slot-score">{score}</span>}
     </div>
   )
 }
 
 type Resolver = (raw: string) => ResolvedSlot
 
-// A card's render data: both slots (filled from a real fixture when one is found),
-// the DB match id (when clickable), and the real kickoff (when known).
-interface CardData { s1: ResolvedSlot; s2: ResolvedSlot; matchId?: number; kickoffUtc?: string }
+// A card's render data: both slots (filled from a real fixture when one is found), the DB match
+// id (when clickable), the real kickoff, and — for live/finished ties — scores, the winning
+// side, and a status tag (FT / AET / Pens / live minute).
+interface CardData {
+  s1: ResolvedSlot; s2: ResolvedSlot
+  matchId?: number; kickoffUtc?: string
+  score1?: number | null; score2?: number | null
+  winner?: 1 | 2; statusTag?: string
+}
 type CardBuilder = (m: BracketMatch) => CardData
 
 function MatchCard({ m, build, final, hl, onOpen }: {
   m: BracketMatch; build: CardBuilder; final?: boolean; hl?: boolean
   onOpen?: (matchId: number) => void
 }) {
-  const { s1, s2, matchId, kickoffUtc } = build(m)
+  const { s1, s2, matchId, kickoffUtc, score1, score2, winner, statusTag } = build(m)
   const clickable = matchId != null && !!onOpen
   const open = () => { if (matchId != null) onOpen?.(matchId) }
   const when = kickoffUtc
@@ -72,12 +79,18 @@ function MatchCard({ m, build, final, hl, onOpen }: {
       tabIndex={clickable ? 0 : undefined}
       onKeyDown={clickable ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open() } } : undefined}
     >
-      <div className="bkt-match-head"><span className="bkt-match-time">{when}</span></div>
-      <Slot slot={s1} />
-      <Slot slot={s2} />
+      <div className="bkt-match-head">
+        <span className="bkt-match-time">{when}</span>
+        {statusTag && <span className="bkt-match-tag">{statusTag}</span>}
+      </div>
+      <Slot slot={s1} score={score1} won={winner === 1} />
+      <Slot slot={s2} score={score2} won={winner === 2} />
     </div>
   )
 }
+
+const FINISHED_ST = ['FT', 'AET', 'PEN']
+const LIVE_ST = ['1H', 'HT', '2H', 'ET', 'BT', 'P']
 
 const REF_RE = /^[WL](\d+)$/
 
@@ -148,33 +161,92 @@ export default function Bracket({ standings, teams, matches, onMatchClick }: Pro
     return map
   }, [matches])
 
-  const toSlot = (t: TeamSummary): ResolvedSlot =>
-    ({ kind: 'team', label: t.name, teamName: t.name, logoUrl: t.logoUrl })
+  // Precompute every card's render data. Rounds are walked in order (R32 → Final, with the
+  // 3rd-place play-off after the semis) so a finished match's winner/loser resolves the W##/L##
+  // slots of later rounds — that's how a result advances a team onto the next card even before
+  // the API publishes the next fixture. When a real fixture exists it takes precedence (fills
+  // TBD sides, attaches scores/clickability); otherwise we fall back to the propagated team.
+  const cardByNum = useMemo(() => {
+    const toSlot = (t: TeamSummary): ResolvedSlot =>
+      ({ kind: 'team', label: t.name, teamName: t.name, logoUrl: t.logoUrl })
+    type Team = { name: string; logoUrl?: string }
+    const slotTeam = (s: ResolvedSlot): Team => ({ name: s.teamName!, logoUrl: s.logoUrl })
 
-  // Build a card's render data: resolve both slots from the skeleton, then — if a real
-  // fixture in this round contains either resolved team — override with the fixture's two
-  // teams (filling any TBD side) and attach its id + kickoff so the card is clickable.
-  const cardData: CardBuilder = (m: BracketMatch): CardData => {
-    const s1 = resolve(m.team1)
-    const s2 = resolve(m.team2)
-    const n1 = s1.teamName?.toLowerCase()
-    const n2 = s2.teamName?.toLowerCase()
-    if (!n1 && !n2) return { s1, s2 }
+    const winnerByNum = new Map<number, Team>()
+    const loserByNum = new Map<number, Team>()
+    const cards = new Map<number, CardData>()
 
-    for (const fx of fixturesByRound.get(m.round) ?? []) {
-      const h = fx.homeTeam.name.toLowerCase()
-      const a = fx.awayTeam.name.toLowerCase()
-      const hit1 = !!n1 && (n1 === h || n1 === a)
-      const hit2 = !!n2 && (n2 === h || n2 === a)
-      if (!hit1 && !hit2) continue
-      // Keep slot1 aligned to whichever fixture side our known team1/team2 implies.
-      const swap = n1 === a || n2 === h
-      const first = swap ? fx.awayTeam : fx.homeTeam
-      const second = swap ? fx.homeTeam : fx.awayTeam
-      return { s1: toSlot(first), s2: toSlot(second), matchId: fx.id, kickoffUtc: fx.kickoffUtc }
+    const resolveSlot = (raw: string): ResolvedSlot => {
+      const w = raw.match(/^W(\d+)$/)
+      if (w && winnerByNum.has(Number(w[1]))) {
+        const t = winnerByNum.get(Number(w[1]))!
+        return { kind: 'winner', label: raw, teamName: t.name, logoUrl: t.logoUrl }
+      }
+      const l = raw.match(/^L(\d+)$/)
+      if (l && loserByNum.has(Number(l[1]))) {
+        const t = loserByNum.get(Number(l[1]))!
+        return { kind: 'loser', label: raw, teamName: t.name, logoUrl: t.logoUrl }
+      }
+      return resolve(raw)
     }
-    return { s1, s2 }
-  }
+
+    const order: KnockoutRound[] = [
+      'Round of 32', 'Round of 16', 'Quarter-final', 'Semi-final', 'Match for third place', 'Final',
+    ]
+    for (const round of order) {
+      for (const m of BRACKET.filter(b => b.round === round)) {
+        let s1 = resolveSlot(m.team1)
+        let s2 = resolveSlot(m.team2)
+        const n1 = s1.teamName?.toLowerCase()
+        const n2 = s2.teamName?.toLowerCase()
+
+        let fx: MatchListItem | undefined
+        let g1: number | null = null, g2: number | null = null
+        if (n1 || n2) {
+          for (const cand of fixturesByRound.get(m.round) ?? []) {
+            const h = cand.homeTeam.name.toLowerCase()
+            const a = cand.awayTeam.name.toLowerCase()
+            const hit1 = !!n1 && (n1 === h || n1 === a)
+            const hit2 = !!n2 && (n2 === h || n2 === a)
+            if (!hit1 && !hit2) continue
+            // Align slot1 to whichever fixture side our known team1/team2 implies.
+            const swap = n1 === a || n2 === h
+            s1 = toSlot(swap ? cand.awayTeam : cand.homeTeam)
+            s2 = toSlot(swap ? cand.homeTeam : cand.awayTeam)
+            g1 = swap ? cand.awayGoals : cand.homeGoals
+            g2 = swap ? cand.homeGoals : cand.awayGoals
+            fx = cand
+            break
+          }
+        }
+
+        const card: CardData = { s1, s2 }
+        if (fx) {
+          card.matchId = fx.id
+          card.kickoffUtc = fx.kickoffUtc
+          const finished = FINISHED_ST.includes(fx.status)
+          const live = LIVE_ST.includes(fx.status)
+          if ((finished || live) && g1 != null && g2 != null) {
+            card.score1 = g1
+            card.score2 = g2
+            if (finished) {
+              card.statusTag = fx.status === 'PEN' ? 'Pens' : fx.status === 'AET' ? 'AET' : 'FT'
+              // Winner from goals (penalty shoot-outs leave goals level — defer to the API fixture).
+              if (g1 > g2) { card.winner = 1; winnerByNum.set(m.num, slotTeam(s1)); loserByNum.set(m.num, slotTeam(s2)) }
+              else if (g2 > g1) { card.winner = 2; winnerByNum.set(m.num, slotTeam(s2)); loserByNum.set(m.num, slotTeam(s1)) }
+            } else {
+              card.statusTag = fx.elapsedMinutes != null ? `${fx.elapsedMinutes}'` : 'LIVE'
+            }
+          }
+        }
+        cards.set(m.num, card)
+      }
+    }
+    return cards
+  }, [resolve, fixturesByRound])
+
+  const cardData: CardBuilder = (m: BracketMatch): CardData =>
+    cardByNum.get(m.num) ?? { s1: resolve(m.team1), s2: resolve(m.team2) }
 
   // The skeleton is in match-number order, not bracket order. Walk the tree from the Final
   // down its W## feeders so each round's matches sit in true top-to-bottom order — that's what

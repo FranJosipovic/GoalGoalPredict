@@ -50,6 +50,7 @@ public class GetMyPrediction(AppDbContext db)
             source.HomeGoals,
             source.AwayGoals,
             source.GoalscorerPredictions.Select(g => new ScorerPickInput(g.PlayerId, g.GoalType)).ToList(),
-            source.CardPredictions.Select(c => new CardPickInput(c.PlayerId, c.Kind.ToString())).ToList());
+            source.CardPredictions.Select(c => new CardPickInput(c.PlayerId, c.Kind.ToString())).ToList(),
+            source.FinishType);
     }
 }

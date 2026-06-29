@@ -14,7 +14,7 @@ interface Props {
   onMatchClick: (matchId: number, openDetail: boolean) => void;
 }
 
-const LIVE_STATUSES = ["1H", "HT", "2H", "ET", "P"];
+const LIVE_STATUSES = ["1H", "HT", "2H", "ET", "BT", "P"];
 const FINISHED_STATUSES = ["FT", "AET", "PEN"];
 
 type Bucket = "live" | "upcoming" | "finished";

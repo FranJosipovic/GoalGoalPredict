@@ -5,7 +5,7 @@ import PredictionPitch, { type PlayerBadge } from '../components/PredictionPitch
 import avatarPlaceholder from '../assets/avatar-placeholder.svg'
 import PlayerStats from '../components/PlayerStats'
 import Icon, { FootballCard } from '../components/Icon'
-import { getMatchDetail, getMyPrediction, upsertPrediction, getCopyablePrediction, type CopyablePrediction } from '../api/matches'
+import { getMatchDetail, getMyPrediction, upsertPrediction, getCopyablePrediction, getCopyTargets, copyPredictionToGroups, type CopyablePrediction, type CopyTarget } from '../api/matches'
 import { getGroupRules } from '../api/groups'
 import { getTeamSquad } from '../api/teams'
 import { useCountdown } from '../hooks/useCountdown'
@@ -30,7 +30,7 @@ const POS_LETTER = (pos: string) => {
   return p === 'A' ? 'F' : p
 }
 const POS_RANK = (pos: string) => ['G', 'D', 'M', 'F'].indexOf(POS_LETTER(pos))
-const LIVE_STATUSES = ['1H', 'HT', '2H', 'ET', 'P']
+const LIVE_STATUSES = ['1H', 'HT', '2H', 'ET', 'BT', 'P']
 const FINISHED_STATUSES = ['FT', 'AET', 'PEN']
 
 type Side = 'home' | 'away'
@@ -113,6 +113,10 @@ export default function MatchPredictPage() {
   const [finishType, setFinishType] = useState<FinishType | null>(null)
   const [saved, setSaved] = useState<{ home: number; away: number; scorers: ScorerSel[]; extras: ExtraSel[]; finishType: FinishType | null } | null>(null)
   const [copyable, setCopyable] = useState<CopyablePrediction | null>(null)
+  // Post-save: prompt to mirror this prediction into the user's other groups.
+  const [copyTargets, setCopyTargets] = useState<CopyTarget[] | null>(null)
+  const [selectedTargets, setSelectedTargets] = useState<Set<string>>(new Set())
+  const [copying, setCopying] = useState(false)
 
   const [search, setSearch] = useState('')
   const [activeTeam, setActiveTeam] = useState<Side>('home')
@@ -261,6 +265,7 @@ export default function MatchPredictPage() {
     setAwayGoals(f.away)
     setScorers(f.scorers)
     setExtras(f.extras)
+    setFinishType((copyable.finishType as FinishType | null | undefined) ?? null)
     setCopyable(null)
   }
 
@@ -281,11 +286,39 @@ export default function MatchPredictPage() {
         scorers: scorerInputs, cards: cardInputs,
         finishType: finishEnabled ? finishType : null,
       })
-      navigate(`/groups/${groupId}/matches`)
+      // If the user is in other groups, offer to copy this prediction there too.
+      const targets = await getCopyTargets(match.id, groupId)
+      if (targets.length > 0) {
+        setCopyTargets(targets)
+        setSelectedTargets(new Set(targets.filter(t => !t.alreadyPredicted).map(t => t.groupId)))
+        setSaved({ home: homeGoals, away: awayGoals, scorers, extras, finishType })
+      } else {
+        navigate(`/groups/${groupId}/matches`)
+      }
     } catch (e: any) {
       setError(e.response?.data?.error ?? 'Failed to save prediction')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const toggleTarget = (id: string) =>
+    setSelectedTargets(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
+
+  const confirmCopyToGroups = async () => {
+    if (!match || !groupId) return
+    setCopying(true)
+    try {
+      const ids = [...selectedTargets]
+      if (ids.length > 0)
+        await copyPredictionToGroups({ matchId: match.id, sourceGroupId: groupId, targetGroupIds: ids })
+    } finally {
+      setCopying(false)
+      navigate(`/groups/${groupId}/matches`)
     }
   }
 
@@ -1073,6 +1106,38 @@ export default function MatchPredictPage() {
               </div>
               <PlayerStats playerId={statsPlayerId} />
               <button className="pp-sheet-done" onClick={() => setStatsPlayerId(null)}>Done</button>
+            </div>
+          </div>
+        )}
+
+        {/* Post-save: copy this prediction into the user's other groups */}
+        {copyTargets && (
+          <div className="pp-sheet-overlay" onClick={() => !copying && navigate(`/groups/${groupId}/matches`)}>
+            <div className="pp-sheet pp-sheet--copy" onClick={e => e.stopPropagation()}>
+              <div className="pp-sheet-head">
+                <Icon name="copy" size={18} className="pp-row-icon" />
+                <span className="pp-sheet-name">Copy to your other groups?</span>
+              </div>
+              <p className="copy-groups-sub">Prediction saved. Apply the same picks in your other groups too?</p>
+              <div className="copy-groups-list">
+                {copyTargets.map(t => (
+                  <label key={t.groupId} className="copy-group-row">
+                    <input
+                      type="checkbox"
+                      checked={selectedTargets.has(t.groupId)}
+                      onChange={() => toggleTarget(t.groupId)}
+                    />
+                    <span className="copy-group-name">{t.groupName}</span>
+                    {t.alreadyPredicted && <span className="copy-group-tag">already predicted — will overwrite</span>}
+                  </label>
+                ))}
+              </div>
+              <div className="copy-pred-actions">
+                <button className="copy-pred-btn copy-pred-btn--no" onClick={() => navigate(`/groups/${groupId}/matches`)} disabled={copying}>Skip</button>
+                <button className="copy-pred-btn copy-pred-btn--yes" onClick={confirmCopyToGroups} disabled={copying || selectedTargets.size === 0}>
+                  {copying ? <span className="spinner" /> : `Copy to ${selectedTargets.size} group${selectedTargets.size === 1 ? '' : 's'}`}
+                </button>
+              </div>
             </div>
           </div>
         )}

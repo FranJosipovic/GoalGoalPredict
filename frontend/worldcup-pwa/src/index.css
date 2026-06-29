@@ -1233,6 +1233,8 @@ input { font-family: inherit; }
   border: 1px solid var(--border);
 }
 .bkt-slot-name {
+  flex: 1;
+  min-width: 0;
   font-size: 13px;
   font-weight: 500;
   color: var(--text);
@@ -1240,14 +1242,42 @@ input { font-family: inherit; }
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* Live/final score for a slot, pinned to the row's right edge. */
+.bkt-slot-score {
+  flex-shrink: 0;
+  font-family: 'Oswald', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  min-width: 14px;
+  text-align: right;
+}
+/* The winning side of a decided tie. */
+.bkt-slot--won { background: color-mix(in srgb, var(--accent) 16%, transparent); }
+.bkt-slot--won .bkt-slot-name { font-weight: 700; color: var(--text); }
+.bkt-slot--won .bkt-slot-score { color: var(--accent); }
+.bkt-round-list .bkt-slot-score { font-size: 13px; }
 
-/* Kickoff time, pinned to the card's top-right corner. */
+/* Kickoff time / status tag, pinned to the card's top-right corner. */
 .bkt-match-head {
   display: flex;
   justify-content: flex-end;
   align-items: center;
+  gap: 6px;
   min-height: 12px;
   margin-bottom: -2px;
+}
+.bkt-match-tag {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  padding: 1px 5px;
+  border-radius: 4px;
+  white-space: nowrap;
 }
 .bkt-match-time {
   font-size: 10px;
@@ -2343,6 +2373,20 @@ input { font-family: inherit; }
 .copy-pred-btn--no { background: var(--surface-2); color: var(--text-muted); border: 1px solid var(--border); }
 .copy-pred-btn--yes { background: var(--accent); color: #06140a; border: 1px solid var(--accent); }
 .copy-pred-btn:active { transform: scale(0.96); }
+.copy-pred-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Post-save "copy to other groups" sheet */
+.pp-sheet--copy { max-width: 420px; }
+.copy-groups-sub { margin: 4px 0 12px; font-size: 13px; color: var(--text-muted); }
+.copy-groups-list { display: flex; flex-direction: column; gap: 2px; margin-bottom: 14px; max-height: 50vh; overflow-y: auto; }
+.copy-group-row {
+  display: flex; align-items: center; gap: 10px; padding: 10px 8px; border-radius: var(--radius-sm);
+  cursor: pointer; transition: background 0.15s;
+}
+.copy-group-row:hover { background: var(--surface-2); }
+.copy-group-row input { width: 17px; height: 17px; accent-color: var(--accent); flex-shrink: 0; }
+.copy-group-name { font-size: 14px; font-weight: 600; color: var(--text); }
+.copy-group-tag { margin-left: auto; font-size: 11px; color: var(--text-muted); font-style: italic; }
 
 .ms-scoreboard {
   display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 14px;

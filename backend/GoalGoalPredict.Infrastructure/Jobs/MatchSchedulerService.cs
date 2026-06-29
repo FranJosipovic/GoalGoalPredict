@@ -114,7 +114,7 @@ public class MatchSchedulerService(IServiceScopeFactory scopeFactory, ILogger<Ma
                 && !m.IsFinished
                 && m.LastSyncedAt <= pollDue
                 && (
-                    m.Status == "1H" || m.Status == "HT" || m.Status == "2H" || m.Status == "ET" || m.Status == "P"
+                    m.Status == "1H" || m.Status == "HT" || m.Status == "2H" || m.Status == "ET" || m.Status == "BT" || m.Status == "P"
                     || (m.Status == "NS" && m.KickoffUtc <= pollUntil && m.KickoffUtc > pollFrom)
                 ))
             .ToListAsync(ct);

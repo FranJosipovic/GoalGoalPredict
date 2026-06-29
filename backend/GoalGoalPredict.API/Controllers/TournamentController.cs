@@ -45,6 +45,30 @@ public class TournamentController(AppDbContext db, SyncTeamStatistics syncTeamSt
         return Ok(scorers);
     }
 
+    // Knockout fixtures for the bracket (not group-scoped). Carries live/final scores so the
+    // bracket can show results and advance winners.
+    [HttpGet("fixtures")]
+    public async Task<IActionResult> GetFixtures(CancellationToken ct)
+    {
+        var matches = await db.Matches
+            .Include(m => m.HomeTeam)
+            .Include(m => m.AwayTeam)
+            .Where(m => m.Source == "ApiFootball")
+            .OrderBy(m => m.KickoffUtc)
+            .ToListAsync(ct);
+
+        var dto = matches
+            .Where(m => m.IsKnockout)
+            .Select(m => new MatchListItemDto(
+                m.Id, m.Round, m.KickoffUtc, m.Status, m.ElapsedMinutes,
+                new TeamSummaryDto(m.HomeTeam.Id, m.HomeTeam.Name, m.HomeTeam.Code, m.HomeTeam.LogoUrl),
+                new TeamSummaryDto(m.AwayTeam.Id, m.AwayTeam.Name, m.AwayTeam.Code, m.AwayTeam.LogoUrl),
+                m.HomeGoals, m.AwayGoals, null))
+            .ToList();
+
+        return Ok(dto);
+    }
+
     // Full team detail: summary, standing, statistics (lazily refreshed) and fixtures.
     [HttpGet("teams/{id:int}")]
     public async Task<IActionResult> GetTeamDetail(int id, CancellationToken ct)

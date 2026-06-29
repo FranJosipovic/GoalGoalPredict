@@ -47,7 +47,7 @@ export default function MatchLivePage() {
 
   useEffect(() => {
     if (!match) return;
-    const isLive = ["1H", "HT", "2H", "ET", "P"].includes(match.status);
+    const isLive = ["1H", "HT", "2H", "ET", "BT", "P"].includes(match.status);
     if (!isLive) return;
     const t = setInterval(load, 30000);
     return () => clearInterval(t);
@@ -70,7 +70,7 @@ export default function MatchLivePage() {
       </Layout>
     );
 
-  const isLive = ["1H", "HT", "2H", "ET", "P"].includes(match.status);
+  const isLive = ["1H", "HT", "2H", "ET", "BT", "P"].includes(match.status);
   const isFinished = ["FT", "AET", "PEN"].includes(match.status);
   // All members' picks for this match, best projected/scored first.
   const allPicks = [...(preds?.predictions ?? [])].sort(
