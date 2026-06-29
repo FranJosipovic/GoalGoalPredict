@@ -196,6 +196,7 @@
     display: flex;
     flex-direction: column;
     flex: 1;
+    min-height: 28rem;
     overflow-y: visible;
     background: #16161d;
     border: 1px solid var(--border-solid);
