@@ -230,6 +230,49 @@
     color: var(--accent);
   }
 
+  /* ─── Card Picker ─── */
+  .pp-sheet-overlay:has(.pp-sheet--card) {
+    display: none;
+  }
+  .card-dual-teams {
+    display: flex;
+    gap: 12px;
+  }
+  .card-team-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: #16161d;
+    border: 1px solid var(--border-solid);
+    border-radius: var(--radius);
+    padding: 14px;
+    max-height: 26rem;
+    overflow-y: auto;
+  }
+  .card-team-sticky {
+    position: sticky;
+    top: -14px;
+    margin: -14px -14px 0;
+    padding: 14px 14px 8px;
+    background: #16161d;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 1;
+  }
+  .card-team-title {
+    font-family: 'Oswald', sans-serif;
+    font-size: 0.85rem;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+    text-transform: uppercase;
+  }
+  .card-team-col .player-list {
+    max-height: unset;
+    overflow-y: unset;
+  }
+
   /* ─── Live Match Page ─── */
   .live-team-logo {
     width: 72px;

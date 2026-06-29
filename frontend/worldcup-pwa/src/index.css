@@ -2028,6 +2028,7 @@ input { font-family: inherit; }
 .player-list { display: flex; flex-direction: column; gap: 4px; max-height: 320px; overflow-y: auto; }
 .player-list-row { display: block; }
 .player-stats-side { display: none; }
+.card-dual-teams { display: none; }
 .player-row {
   display: flex;
   align-items: center;

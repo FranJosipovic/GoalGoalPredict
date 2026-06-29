@@ -119,6 +119,8 @@ export default function MatchPredictPage() {
   const [pickerMode, setPickerMode] = useState<'goal' | 'owngoal'>('goal')
   const [extraCat, setExtraCat] = useState<ExtraCat | null>(null)
   const [cardTeam, setCardTeam] = useState<Side>('home')
+  const [homeCardSearch, setHomeCardSearch] = useState('')
+  const [awayCardSearch, setAwayCardSearch] = useState('')
   const [sheetPlayerId, setSheetPlayerId] = useState<number | null>(null)
   const [sheetTab, setSheetTab] = useState<'predict' | 'stats'>('predict')
   // Pre-lineup squad picker: which player's stat card is open in a modal.
@@ -849,7 +851,7 @@ export default function MatchPredictPage() {
                       <button
                         key={cat}
                         className={`extra-cat-btn ${extraCat === cat ? 'extra-cat-btn--on' : ''}`}
-                        onClick={() => { setExtraCat(extraCat === cat ? null : cat); setSearch('') }}
+                        onClick={() => { setExtraCat(extraCat === cat ? null : cat); setSearch(''); setHomeCardSearch(''); setAwayCardSearch('') }}
                       >
                         {EXTRA_ICONS[cat]} {EXTRA_LABELS[cat]}
                         <span className="extra-cat-count">{picks.length}{cap !== Infinity ? `/${cap}` : ''}</span>
@@ -868,7 +870,47 @@ export default function MatchPredictPage() {
                   </div>
                 )}
 
-                {/* Player selection happens in a team-grouped bottom sheet (rendered at page end). */}
+                {extraCat && (
+                  <div className="card-dual-teams">
+                    {([['home', match.homeTeam, homePlayers, homeCardSearch, setHomeCardSearch], ['away', match.awayTeam, awayPlayers, awayCardSearch, setAwayCardSearch]] as const).map(([side, team, players, cardSearch, setCardSearch]) => (
+                      <div key={side} className="card-team-col">
+                        <div className="card-team-sticky">
+                          <span className="card-team-title">{team.code || team.name}</span>
+                          <input
+                            className="field-input picker-search"
+                            placeholder="Search player..."
+                            value={cardSearch}
+                            onChange={e => setCardSearch(e.target.value)}
+                          />
+                        </div>
+                        <div className="player-list">
+                          {players
+                            .filter(p => !cardSearch || p.name.toLowerCase().includes(cardSearch.toLowerCase()))
+                            .sort((a, b) => posOrder.indexOf(a.position) - posOrder.indexOf(b.position))
+                            .map(p => {
+                              const picked = extras.some(e => e.category === extraCat && e.playerId === p.id)
+                              const full = extrasOf(extraCat).length >= capFor(extraCat) && !picked
+                              return (
+                                <div key={p.id} className="player-row-wrap">
+                                  <button type="button" className="player-stats-ico" onClick={() => setStatsPlayerId(p.id)} aria-label={`${p.name} statistics`}>
+                                    <Icon name="chart" size={16} />
+                                  </button>
+                                  <button type="button" className={`player-row ${picked ? 'player-row--picked' : ''}`} onClick={() => toggleExtra(p.id, extraCat)} disabled={full}>
+                                    <span className="player-num">#{p.shirtNumber}</span>
+                                    <span className="player-name">{p.name}</span>
+                                    <span className="player-pos-badge">{p.position.slice(0,3).toUpperCase()}</span>
+                                    {picked && <span className="player-count">✓</span>}
+                                  </button>
+                                </div>
+                              )
+                            })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Player selection happens in a team-grouped bottom sheet (rendered at page end) on mobile. */}
               </div>
             )}
 
@@ -885,7 +927,7 @@ export default function MatchPredictPage() {
         {/* Card/penalty player picker — team-grouped bottom sheet (lineups-not-out mode) */}
         {!isLocked && !pitchMode && extraCat && (
           <div className="pp-sheet-overlay" onClick={() => setExtraCat(null)}>
-            <div className="pp-sheet" onClick={e => e.stopPropagation()}>
+            <div className="pp-sheet pp-sheet--card" onClick={e => e.stopPropagation()}>
               <div className="pp-sheet-head">
                 <span className="pp-row-icon"><ExtraIcon cat={extraCat} /></span>
                 <span className="pp-sheet-name">{EXTRA_LABELS[extraCat]}</span>
