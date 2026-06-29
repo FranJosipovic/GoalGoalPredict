@@ -218,6 +218,13 @@
     display: none;
   }
 
+  /* ─── Load More Button ─── */
+  .load-more-btn {
+    max-width: clamp(30%, 45vw, 60%);
+    margin-left: auto;
+    margin-right: auto;
+  }
+
   /* ─── Lineup Reveal ─── */
   .lineup-reveal {
     padding-bottom: 28px;
