@@ -119,8 +119,8 @@ input { font-family: inherit; }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 20px;
-  height: 56px;
+  padding: env(safe-area-inset-top) 20px 0;
+  height: calc(56px + env(safe-area-inset-top));
   background: var(--header-bg);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
@@ -1694,6 +1694,7 @@ input { font-family: inherit; }
   gap: 8px;
   padding: 12px 20px;
   overflow-x: auto;
+  justify-content: space-evenly;
 }
 .filter-pill {
   padding: 6px 16px;
@@ -1761,13 +1762,20 @@ input { font-family: inherit; }
 }
 .match-card:hover { background: var(--surface-2); border-color: var(--border-solid); transform: translateY(-1px); }
 .match-card--live { border-color: rgba(255, 68, 68, 0.3); background: rgba(255, 68, 68, 0.04); }
-.live-pulse {
+.live-indicator-corner {
   position: absolute;
-  top: 12px; right: 12px;
+  top: 10px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.live-pulse {
   width: 8px; height: 8px;
   border-radius: 50%;
   background: #ff4444;
   animation: live-pulse 1.2s ease-in-out infinite;
+  flex-shrink: 0;
 }
 .match-card-teams {
   display: flex;
@@ -1775,13 +1783,16 @@ input { font-family: inherit; }
   justify-content: space-between;
   margin-bottom: 10px;
 }
+.match-card--live .match-card-teams {
+  padding-top: 1.4rem;
+}
 .match-team {
   display: flex;
   align-items: center;
   gap: 8px;
   flex: 1;
 }
-.match-team--away { flex-direction: row-reverse; }
+.match-team--away { flex-direction: row; justify-content: flex-end; }
 .team-logo { width: 28px; height: 28px; object-fit: contain; }
 .team-code {
   font-family: 'Oswald', sans-serif;
@@ -2015,6 +2026,9 @@ input { font-family: inherit; }
 .picker-team-btn.active { background: var(--accent); color: #0a1a0a; border-color: var(--accent); }
 .picker-search { margin-bottom: 10px; }
 .player-list { display: flex; flex-direction: column; gap: 4px; max-height: 320px; overflow-y: auto; }
+.player-list-row { display: block; }
+.player-stats-side { display: none; }
+.card-dual-teams { display: none; }
 .player-row {
   display: flex;
   align-items: center;
@@ -2226,6 +2240,7 @@ input { font-family: inherit; }
 }
 .lineup-reveal-pill--live { color: var(--accent); border-color: var(--border-solid); }
 .lineup-locked { text-align: center; padding: 18px 10px; }
+.lineup-ghost-wrap--desktop { display: none; }
 .lineup-locked-icon { font-size: 26px; display: block; margin-bottom: 6px; filter: grayscale(0.3); }
 .lineup-locked-title { font-family: 'Oswald', sans-serif; font-size: 14px; color: var(--text); margin: 0 0 2px; }
 .lineup-locked-sub { font-size: 12px; color: var(--text-muted); margin: 0; }
@@ -3335,6 +3350,7 @@ input { font-family: inherit; }
 .slot-remove:hover { color: var(--error); border-color: var(--error); }
 
 /* Goal vs own-goal mode switch in the player picker */
+.picker-search-row { display: flex; flex-direction: column-reverse; gap: 8px; }
 .picker-mode-switch { display: flex; gap: 6px; margin: 8px 0; }
 .picker-mode-btn {
   flex: 1; padding: 8px 6px; border-radius: 9px; font-size: 12px; cursor: pointer;
