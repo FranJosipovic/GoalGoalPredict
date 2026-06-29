@@ -7,7 +7,7 @@ namespace GoalGoalPredict.Application.UseCases.Groups;
 public record JoinGroupInput(string InviteCode, Guid UserId);
 public record JoinGroupOutput(GroupDto Group);
 
-public class JoinGroup(IGroupRepository groups)
+public class JoinGroup(IGroupRepository groups, ILeaderboardCache leaderboardCache, IGroupDetailCache groupDetailCache)
 {
     public async Task<JoinGroupOutput> ExecuteAsync(JoinGroupInput input)
     {
@@ -21,6 +21,10 @@ public class JoinGroup(IGroupRepository groups)
 
         var member = new GroupMember(group.Id, input.UserId, GroupRole.Member);
         await groups.AddMemberAsync(member);
+
+        // New member changes both the leaderboard and the members list → drop both caches.
+        leaderboardCache.Invalidate(group.Id);
+        groupDetailCache.Invalidate(group.Id);
 
         return new JoinGroupOutput(new GroupDto(group.Id, group.Name, group.InviteCode, group.CreatedByUserId, group.CreatedAt));
     }

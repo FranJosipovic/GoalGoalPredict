@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
+import GuestPredictor from '../components/GuestPredictor'
 import '../styles/landing.css'
 
 /* Marquee items — the kinetic "prediction wire" under the hero. */
@@ -61,11 +62,11 @@ export default function LandingPage() {
       {/* ── Nav ── */}
       <header className="lp-nav">
         <Link to="/" className="lp-logo">
-          <span className="lp-logo-ball">⚽</span>
           <span className="lp-logo-text">GOAL<span className="lp-accent">GOAL</span></span>
           <span className="lp-logo-sub">PREDICT</span>
         </Link>
         <nav className="lp-nav-links">
+          <a href="#try">Try it</a>
           <a href="#how">How it works</a>
           <a href="#features">Features</a>
           <Link to="/login" className="lp-nav-signin">Sign in</Link>
@@ -159,6 +160,9 @@ export default function LandingPage() {
         </div>
       </div>
 
+      {/* ── Guest predictor (try it, no account) ── */}
+      <GuestPredictor />
+
       {/* ── How it works ── */}
       <section className="lp-section" id="how">
         <div className="lp-section-head">
@@ -235,7 +239,6 @@ export default function LandingPage() {
       {/* ── Footer ── */}
       <footer className="lp-footer">
         <div className="lp-logo">
-          <span className="lp-logo-ball">⚽</span>
           <span className="lp-logo-text">GOAL<span className="lp-accent">GOAL</span></span>
           <span className="lp-logo-sub">PREDICT</span>
         </div>

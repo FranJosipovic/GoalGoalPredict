@@ -1,3 +1,4 @@
+using GoalGoalPredict.Application.Interfaces;
 using GoalGoalPredict.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,7 +9,7 @@ public record KickResult(bool Success, string Message);
 // Lets a group OWNER remove another member from their own group (and that member's
 // predictions/scores in the group). Mirrors the admin RemoveGroupMember use case but
 // authorises against the requesting user being the group owner.
-public class KickGroupMember(AppDbContext db)
+public class KickGroupMember(AppDbContext db, ILeaderboardCache leaderboardCache, IGroupDetailCache groupDetailCache)
 {
     public async Task<KickResult> ExecuteAsync(Guid groupId, Guid requestingUserId, Guid targetUserId, CancellationToken ct = default)
     {
@@ -29,6 +30,9 @@ public class KickGroupMember(AppDbContext db)
         await db.Predictions.Where(p => p.GroupId == groupId && p.UserId == targetUserId).ExecuteDeleteAsync(ct);
         await db.GroupMembers.Where(m => m.GroupId == groupId && m.UserId == targetUserId).ExecuteDeleteAsync(ct);
 
+        // Member (and their scores) gone → drop this group's leaderboard and members caches.
+        leaderboardCache.Invalidate(groupId);
+        groupDetailCache.Invalidate(groupId);
         return new(true, "Member removed");
     }
 }

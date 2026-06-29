@@ -1,3 +1,4 @@
+using GoalGoalPredict.Application.Interfaces;
 using GoalGoalPredict.Domain.Entities;
 using GoalGoalPredict.Domain.Services;
 using GoalGoalPredict.Infrastructure.Data;
@@ -7,7 +8,7 @@ using Microsoft.Extensions.Logging;
 
 namespace GoalGoalPredict.Infrastructure.UseCases.Matches;
 
-public class FinalizeMatch(AppDbContext db, EffectiveRulesService effectiveRules, ILogger<FinalizeMatch> logger)
+public class FinalizeMatch(AppDbContext db, EffectiveRulesService effectiveRules, ILeaderboardCache leaderboardCache, IGroupPredictionsCache groupPredictionsCache, GoalGoalPredict.Infrastructure.UseCases.Guest.GuestMatchScorer guestScorer, ILogger<FinalizeMatch> logger)
 {
     public async Task ExecuteAsync(int matchId, CancellationToken ct = default)
     {
@@ -30,6 +31,9 @@ public class FinalizeMatch(AppDbContext db, EffectiveRulesService effectiveRules
         foreach (var gid in groupIds)
             rulesByGroup[gid] = await effectiveRules.GetForMatchAsync(gid, match, createIfMissing: true, ct);
 
+        // Knockout finish (Regular / Extra time / Penalties) is judged only for knockout ties.
+        var actualFinishType = match.IsKnockout ? match.FinishType : null;
+
         foreach (var prediction in predictions)
         {
             var rules = rulesByGroup[prediction.GroupId];
@@ -40,7 +44,8 @@ public class FinalizeMatch(AppDbContext db, EffectiveRulesService effectiveRules
                 match.HomeGoals!.Value, match.AwayGoals!.Value,
                 prediction.GoalscorerPredictions.Select(g => (g.PlayerId, g.GoalType, g.Player.Position)),
                 prediction.CardPredictions.Select(c => (c.PlayerId, c.Kind)),
-                goals, cards);
+                goals, cards,
+                prediction.FinishType, actualFinishType);
 
             var existing = await db.PredictionScores.FirstOrDefaultAsync(s => s.PredictionId == prediction.Id, ct);
             if (existing is null)
@@ -53,6 +58,14 @@ public class FinalizeMatch(AppDbContext db, EffectiveRulesService effectiveRules
 
         match.SetFinished();
         await db.SaveChangesAsync(ct);
+
+        // Scores just changed for these groups → drop their cached leaderboards, and this match's
+        // cached picks (projected points become the stored final score).
+        leaderboardCache.Invalidate(groupIds);
+        groupPredictionsCache.Invalidate(matchId, groupIds);
         logger.LogInformation("Finalized match {MatchId}: {Count} predictions scored", matchId, predictions.Count);
+
+        // Score landing-page guest predictions for this match and email their results.
+        await guestScorer.ExecuteAsync(matchId, ct);
     }
 }

@@ -9,7 +9,9 @@ public record UpsertPredictionRequest(
     int HomeGoals,
     int AwayGoals,
     List<ScorerPickInput> Scorers,
-    List<CardPickInput> Cards);
+    List<CardPickInput> Cards,
+    // Knockout-only: "Regular" | "ExtraTime" | "Penalties". Null for group-stage matches.
+    string? FinishType = null);
 
 public record PredictionResultDto(
     Guid Id,
@@ -19,7 +21,8 @@ public record PredictionResultDto(
     int AwayGoals,
     List<ScorerPickInput> Scorers,
     List<CardPickInput> Cards,
-    DateTime UpdatedAt);
+    DateTime UpdatedAt,
+    string? FinishType = null);
 
 // A prediction the user already made for this match in another group — offered for copying.
 // Source is the group where they predicted earliest (by CreatedAt).

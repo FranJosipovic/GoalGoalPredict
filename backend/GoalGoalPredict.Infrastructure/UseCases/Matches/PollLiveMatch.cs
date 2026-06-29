@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 
 namespace GoalGoalPredict.Infrastructure.UseCases.Matches;
 
-public class PollLiveMatch(AppDbContext db, IApiFootballClient api, EffectiveRulesService effectiveRules, PushNotificationService push, ILogger<PollLiveMatch> logger)
+public class PollLiveMatch(AppDbContext db, IApiFootballClient api, EffectiveRulesService effectiveRules, PushNotificationService push, IMatchDetailCache matchDetailCache, IGroupPredictionsCache groupPredictionsCache, ILogger<PollLiveMatch> logger)
 {
     public async Task ExecuteAsync(int matchId, CancellationToken ct = default)
     {
@@ -24,6 +24,8 @@ public class PollLiveMatch(AppDbContext db, IApiFootballClient api, EffectiveRul
             await effectiveRules.EnsureSnapshotAsync(gid, match, ct);
 
         var prevStatus = match.Status;
+        var prevHome = match.HomeGoals;
+        var prevAway = match.AwayGoals;
 
         var fixture = await api.GetFixtureAsync(matchId, ct);
         if (fixture is not null)
@@ -180,6 +182,22 @@ public class PollLiveMatch(AppDbContext db, IApiFootballClient api, EffectiveRul
 
         match.TouchSyncedAt();
         await db.SaveChangesAsync(ct);
+
+        // Match detail shows the live minute (ElapsedMinutes), which ticks every poll, so its cache
+        // must refresh on every poll. (Pre-kickoff — when lineups matter most — there's no polling,
+        // so the entry still stays warm through the whole predicting window.)
+        matchDetailCache.Invalidate(matchId);
+
+        // Group picks carry no live clock, only projected points computed from goals/cards/score.
+        // So drop them only when one of those actually changed; a quiet poll keeps the cache warm.
+        var eventsChanged = staleGoals.Count > 0 || newGoalEvents.Count > 0
+            || staleCards.Count > 0 || newCardEvents.Count > 0
+            || staleVars.Count > 0 || newVarEvents.Count > 0
+            || staleSubs.Count > 0 || newSubEvents.Count > 0;
+        var scoreOrStatusChanged = prevStatus != match.Status || prevHome != match.HomeGoals || prevAway != match.AwayGoals;
+
+        if (eventsChanged || scoreOrStatusChanged)
+            groupPredictionsCache.Invalidate(matchId, participatingGroups);
         logger.LogDebug("Polled match {MatchId}: {Status} {Home}-{Away}", matchId, match.Status, match.HomeGoals, match.AwayGoals);
 
         // A corrected minute surfaces as a stale row removed + a "new" row added for the same

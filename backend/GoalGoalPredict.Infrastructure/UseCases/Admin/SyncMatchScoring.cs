@@ -1,3 +1,4 @@
+using GoalGoalPredict.Application.Interfaces;
 using GoalGoalPredict.Domain.Entities;
 using GoalGoalPredict.Domain.Services;
 using GoalGoalPredict.Infrastructure.Data;
@@ -9,7 +10,7 @@ namespace GoalGoalPredict.Infrastructure.UseCases.Admin;
 // Re-scores a played match from the events currently stored in the DB, respecting each
 // group's frozen scoring rules. CompareAsync is a dry run (diff only); ApplyAsync persists.
 // Used to fix scores after event data was corrected (VAR, late goals, etc.).
-public class SyncMatchScoring(AppDbContext db, EffectiveRulesService effectiveRules)
+public class SyncMatchScoring(AppDbContext db, EffectiveRulesService effectiveRules, ILeaderboardCache leaderboardCache, IGroupPredictionsCache groupPredictionsCache)
 {
     public record CategoryDiff(string Category, int Current, int New);
     public record ScoreDiff(
@@ -65,7 +66,8 @@ public class SyncMatchScoring(AppDbContext db, EffectiveRulesService effectiveRu
                 match.HomeGoals!.Value, match.AwayGoals!.Value,
                 p.GoalscorerPredictions.Select(g => (g.PlayerId, g.GoalType, g.Player.Position)),
                 p.CardPredictions.Select(c => (c.PlayerId, c.Kind)),
-                goals, cards);
+                goals, cards,
+                p.FinishType, match.IsKnockout ? match.FinishType : null);
 
             existingScores.TryGetValue(p.Id, out var cur);
             var cats = BuildCategories(cur, bd);
@@ -92,6 +94,9 @@ public class SyncMatchScoring(AppDbContext db, EffectiveRulesService effectiveRu
         {
             if (!match.IsFinished) match.SetFinished();
             await db.SaveChangesAsync(ct);
+            // Re-scored these groups → drop their cached leaderboards and this match's cached picks.
+            leaderboardCache.Invalidate(groupIds);
+            groupPredictionsCache.Invalidate(matchId, groupIds);
         }
 
         var ordered = diffs
@@ -112,6 +117,7 @@ public class SyncMatchScoring(AppDbContext db, EffectiveRulesService effectiveRu
             new("Yellow", cur?.YellowCardPoints ?? 0, b.Yellow),
             new("Red", cur?.RedCardPoints ?? 0, b.Red),
             new("Missed pen", cur?.MissedPenaltyPoints ?? 0, b.MissedPenalty),
+            new("Finish", cur?.FinishTypePoints ?? 0, b.FinishType),
         }
         .Where(c => c.Current != 0 || c.New != 0)
         .ToList();

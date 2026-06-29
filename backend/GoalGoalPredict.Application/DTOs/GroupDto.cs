@@ -1,12 +1,12 @@
 namespace GoalGoalPredict.Application.DTOs;
 
-public record GroupDto(Guid Id, string Name, string InviteCode, Guid CreatedByUserId, DateTime CreatedAt);
+public record GroupDto(Guid Id, string Name, string InviteCode, Guid CreatedByUserId, DateTime CreatedAt, bool IsGlobal = false, bool IsLocked = false);
 
 public record GroupPreviewDto(Guid Id, string Name, int MemberCount);
 
 public record GroupMemberDto(Guid UserId, string FirstName, string LastName, string Email, string Role);
 
-public record GroupDetailDto(Guid Id, string Name, string InviteCode, Guid CreatedByUserId, DateTime CreatedAt, List<GroupMemberDto> Members);
+public record GroupDetailDto(Guid Id, string Name, string InviteCode, Guid CreatedByUserId, DateTime CreatedAt, List<GroupMemberDto> Members, bool IsGlobal = false, bool IsLocked = false);
 
 public record GroupScoringRulesDto(
     bool ExactScoreEnabled, int ExactScorePoints,
@@ -16,6 +16,7 @@ public record GroupScoringRulesDto(
     bool YellowCardEnabled, int YellowCardPoints, int YellowCardMaxPicks,
     bool RedCardEnabled, int RedCardPoints, int RedCardMaxPicks,
     bool MissedPenaltyEnabled, int MissedPenaltyPoints, int MissedPenaltyMaxPicks,
+    bool FinishTypeEnabled, int FinishTypePoints,
     string CardPredictionMode, int WrongPickPenalty,
     bool IsLocked, bool CanEdit);
 
@@ -27,4 +28,5 @@ public record UpdateGroupRulesRequest(
     bool YellowCardEnabled, int YellowCardPoints, int YellowCardMaxPicks,
     bool RedCardEnabled, int RedCardPoints, int RedCardMaxPicks,
     bool MissedPenaltyEnabled, int MissedPenaltyPoints, int MissedPenaltyMaxPicks,
+    bool FinishTypeEnabled, int FinishTypePoints,
     string CardPredictionMode, int WrongPickPenalty);

@@ -13,4 +13,7 @@ public interface IGroupRepository
     Task AddMemberAsync(GroupMember member);
     Task AddScoringRulesAsync(GroupScoringRules rules);
     Task<bool> IsMemberAsync(Guid groupId, Guid userId);
+    Task<Group?> GetGlobalAsync();
+    // Adds the user to the global group if one exists and they're not already a member (idempotent).
+    Task EnsureGlobalMembershipAsync(Guid userId);
 }

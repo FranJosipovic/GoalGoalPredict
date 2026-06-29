@@ -16,10 +16,13 @@ public class AdminController(
     SyncTeamsAndPlayers syncTeams,
     SyncFixtures syncFixtures,
     SyncMissingPlayers syncMissingPlayers,
+    SyncSquad syncSquad,
     PrunePlayers prunePlayers,
     PollLiveMatch pollLiveMatch,
     SyncLineups syncLineups,
     SyncMatchScoring syncScoring,
+    ManageGlobalGroup globalGroup,
+    GoalGoalPredict.Infrastructure.UseCases.Guest.GuestPredictions guestPredictions,
     AppDbContext db) : ControllerBase
 {
     private static readonly string[] FinishedStatuses = ["FT", "AET", "PEN"];
@@ -123,6 +126,19 @@ public class AdminController(
         return Ok(new { message = $"Synced {added} players for teams with missing squads" });
     }
 
+    // Reconcile one team's squad with the API: add missing players + update changed fields
+    // (name/age/number/position/photo). Does not delete — use prune for that.
+    [HttpPost("sync-squad")]
+    public async Task<IActionResult> SyncSquadForTeam([FromQuery] int teamId, CancellationToken ct)
+    {
+        try
+        {
+            var r = await syncSquad.ExecuteAsync(teamId, ct);
+            return Ok(new { message = $"Squad synced — {r.Added} added, {r.Updated} updated.", result = r });
+        }
+        catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
+    }
+
     [HttpPost("sync-fixtures")]
     public async Task<IActionResult> SyncFixtures(CancellationToken ct)
     {
@@ -163,6 +179,31 @@ public class AdminController(
     }
 
     public record SetPlayerActiveBody(bool IsActive);
+
+    // ── Global group (knockout-phase competition everyone joins) ──
+    [HttpGet("global-group")]
+    public async Task<IActionResult> GetGlobalGroup(CancellationToken ct) =>
+        Ok(await globalGroup.GetStatusAsync(ct));
+
+    // Create the global group if missing and backfill all users as members (idempotent).
+    [HttpPost("global-group/ensure")]
+    public async Task<IActionResult> EnsureGlobalGroup(CancellationToken ct) =>
+        Ok(await globalGroup.EnsureAsync(ct));
+
+    // Lock/unlock — unlocking opens predictions for the knockout phase.
+    [HttpPost("global-group/lock")]
+    public async Task<IActionResult> LockGlobalGroup([FromBody] SetLockedBody body, CancellationToken ct)
+    {
+        try { return Ok(await globalGroup.SetLockedAsync(body.Locked, ct)); }
+        catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
+    }
+
+    public record SetLockedBody(bool Locked);
+
+    // ── Guest (landing-page) predictions insight ──
+    [HttpGet("guest-predictions")]
+    public async Task<IActionResult> GuestPredictions(CancellationToken ct) =>
+        Ok(await guestPredictions.GetAdminListAsync(ct));
 
     [HttpGet("status")]
     public async Task<IActionResult> Status(CancellationToken ct)

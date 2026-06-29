@@ -51,7 +51,9 @@ public class ApiFootballClient(HttpClient http, IConfiguration config, ILogger<A
         if (resp is null) return [];
 
         return resp.Response
-            .Where(e => e.Type == "Goal")
+            // Exclude penalty-shootout goals/misses — the judged scoreline is regular + extra time only,
+            // and shootout penalties must never count toward goalscorer picks.
+            .Where(e => e.Type == "Goal" && e.Comments != "Penalty Shootout")
             .Select((e, i) => new ApiGoalEventData(
                 e.Time.Elapsed,
                 e.Time.Extra,

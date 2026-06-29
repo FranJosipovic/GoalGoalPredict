@@ -22,6 +22,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<GoalscorerPrediction> GoalscorerPredictions => Set<GoalscorerPrediction>();
     public DbSet<CardPrediction> CardPredictions => Set<CardPrediction>();
     public DbSet<PredictionScore> PredictionScores => Set<PredictionScore>();
+    public DbSet<GuestPrediction> GuestPredictions => Set<GuestPrediction>();
+    public DbSet<GuestGoalscorerPrediction> GuestGoalscorerPredictions => Set<GuestGoalscorerPrediction>();
+    public DbSet<GuestCardPrediction> GuestCardPredictions => Set<GuestCardPrediction>();
     public DbSet<SimulationEvent> SimulationEvents => Set<SimulationEvent>();
     public DbSet<PushSubscription> PushSubscriptions => Set<PushSubscription>();
     public DbSet<Standing> Standings => Set<Standing>();
@@ -60,6 +63,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             b.Property(g => g.CreatedByUserId).HasColumnName("created_by_user_id");
             b.Property(g => g.CreatedAt).HasColumnName("created_at");
             b.Property(g => g.IsSimulation).HasColumnName("is_simulation").HasDefaultValue(false);
+            b.Property(g => g.IsGlobal).HasColumnName("is_global").HasDefaultValue(false);
+            b.Property(g => g.IsLocked).HasColumnName("is_locked").HasDefaultValue(false);
             b.HasIndex(g => g.InviteCode).IsUnique();
         });
 
@@ -90,6 +95,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             b.Property(r => r.MissedPenaltyEnabled).HasColumnName("missed_penalty_enabled");
             b.Property(r => r.MissedPenaltyPoints).HasColumnName("missed_penalty_points");
             b.Property(r => r.MissedPenaltyMaxPicks).HasColumnName("missed_penalty_max_picks");
+            b.Property(r => r.FinishTypeEnabled).HasColumnName("finish_type_enabled").HasDefaultValue(true);
+            b.Property(r => r.FinishTypePoints).HasColumnName("finish_type_points").HasDefaultValue(3);
             b.Property(r => r.CardPredictionMode).HasColumnName("card_prediction_mode").HasConversion<string>().HasMaxLength(20);
             b.Property(r => r.WrongPickPenalty).HasColumnName("wrong_pick_penalty");
             b.Property(r => r.UpdatedAt).HasColumnName("updated_at");
@@ -301,6 +308,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             b.Property(p => p.GroupId).HasColumnName("group_id");
             b.Property(p => p.HomeGoals).HasColumnName("home_goals");
             b.Property(p => p.AwayGoals).HasColumnName("away_goals");
+            b.Property(p => p.FinishType).HasColumnName("finish_type").HasMaxLength(20);
             b.Property(p => p.CreatedAt).HasColumnName("created_at");
             b.Property(p => p.UpdatedAt).HasColumnName("updated_at");
             b.Property(p => p.IsScored).HasColumnName("is_scored");
@@ -352,9 +360,52 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             b.Property(s => s.YellowCardPoints).HasColumnName("yellow_card_points").HasDefaultValue(0);
             b.Property(s => s.RedCardPoints).HasColumnName("red_card_points").HasDefaultValue(0);
             b.Property(s => s.MissedPenaltyPoints).HasColumnName("missed_penalty_points").HasDefaultValue(0);
+            b.Property(s => s.FinishTypePoints).HasColumnName("finish_type_points").HasDefaultValue(0);
             b.Property(s => s.TotalPoints).HasColumnName("total_points");
             b.Property(s => s.CalculatedAt).HasColumnName("calculated_at");
             b.HasIndex(s => s.PredictionId).IsUnique();
+        });
+
+        modelBuilder.Entity<GuestPrediction>(b =>
+        {
+            b.ToTable("guest_predictions");
+            b.HasKey(g => g.Id);
+            b.Property(g => g.Id).HasColumnName("id");
+            b.Property(g => g.Email).HasColumnName("email").IsRequired().HasMaxLength(256);
+            b.Property(g => g.MatchId).HasColumnName("match_id");
+            b.Property(g => g.HomeGoals).HasColumnName("home_goals");
+            b.Property(g => g.AwayGoals).HasColumnName("away_goals");
+            b.Property(g => g.CreatedAt).HasColumnName("created_at");
+            b.Property(g => g.UpdatedAt).HasColumnName("updated_at");
+            b.Property(g => g.IsScored).HasColumnName("is_scored").HasDefaultValue(false);
+            b.Property(g => g.TotalPoints).HasColumnName("total_points").HasDefaultValue(0);
+            b.Property(g => g.ScoredAt).HasColumnName("scored_at");
+            b.Property(g => g.Notified).HasColumnName("notified").HasDefaultValue(false);
+            b.HasOne<Match>().WithMany().HasForeignKey(g => g.MatchId);
+            b.HasMany(g => g.Scorers).WithOne().HasForeignKey(s => s.GuestPredictionId);
+            b.HasMany(g => g.Cards).WithOne().HasForeignKey(c => c.GuestPredictionId);
+            // One guest prediction per email per match (re-submitting updates it).
+            b.HasIndex(g => new { g.Email, g.MatchId }).IsUnique();
+        });
+
+        modelBuilder.Entity<GuestGoalscorerPrediction>(b =>
+        {
+            b.ToTable("guest_goalscorer_predictions");
+            b.HasKey(g => g.Id);
+            b.Property(g => g.Id).HasColumnName("id");
+            b.Property(g => g.GuestPredictionId).HasColumnName("guest_prediction_id");
+            b.Property(g => g.PlayerId).HasColumnName("player_id");
+            b.Property(g => g.GoalType).HasColumnName("goal_type").HasMaxLength(30).HasDefaultValue("Normal Goal");
+        });
+
+        modelBuilder.Entity<GuestCardPrediction>(b =>
+        {
+            b.ToTable("guest_card_predictions");
+            b.HasKey(c => c.Id);
+            b.Property(c => c.Id).HasColumnName("id");
+            b.Property(c => c.GuestPredictionId).HasColumnName("guest_prediction_id");
+            b.Property(c => c.PlayerId).HasColumnName("player_id");
+            b.Property(c => c.Kind).HasColumnName("kind").HasConversion<string>().HasMaxLength(20);
         });
 
         modelBuilder.Entity<SimulationEvent>(b =>

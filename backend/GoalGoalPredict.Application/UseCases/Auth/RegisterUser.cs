@@ -7,7 +7,7 @@ namespace GoalGoalPredict.Application.UseCases.Auth;
 public record RegisterUserInput(string Email, string FirstName, string LastName, string Password);
 public record RegisterUserOutput(bool RequiresVerification, string Email);
 
-public class RegisterUser(IUserRepository users, IPasswordHasher hasher, IEmailSender email)
+public class RegisterUser(IUserRepository users, IPasswordHasher hasher, IEmailSender email, IGroupRepository groups)
 {
     public async Task<RegisterUserOutput> ExecuteAsync(RegisterUserInput input)
     {
@@ -21,6 +21,7 @@ public class RegisterUser(IUserRepository users, IPasswordHasher hasher, IEmailS
         var token = TokenGenerator.NewToken();
         user.SetEmailVerificationToken(token, DateTime.UtcNow.AddHours(24));
         await users.AddAsync(user);
+        await groups.EnsureGlobalMembershipAsync(user.Id);
 
         await email.SendVerificationEmailAsync(user.Email, user.FirstName, token);
 

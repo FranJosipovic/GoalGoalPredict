@@ -109,6 +109,18 @@ namespace GoalGoalPredict.Infrastructure.Migrations
                         .HasColumnType("character varying(8)")
                         .HasColumnName("invite_code");
 
+                    b.Property<bool>("IsGlobal")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_global");
+
+                    b.Property<bool>("IsLocked")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_locked");
+
                     b.Property<bool>("IsSimulation")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
@@ -183,6 +195,18 @@ namespace GoalGoalPredict.Infrastructure.Migrations
                     b.Property<int>("ExactScorePoints")
                         .HasColumnType("integer")
                         .HasColumnName("exact_score_points");
+
+                    b.Property<bool>("FinishTypeEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("finish_type_enabled");
+
+                    b.Property<int>("FinishTypePoints")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(3)
+                        .HasColumnName("finish_type_points");
 
                     b.Property<bool>("GoalscorerEnabled")
                         .HasColumnType("boolean")
@@ -278,6 +302,133 @@ namespace GoalGoalPredict.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("group_scoring_rules", (string)null);
+                });
+
+            modelBuilder.Entity("GoalGoalPredict.Domain.Entities.GuestCardPrediction", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<Guid>("GuestPredictionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("guest_prediction_id");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("kind");
+
+                    b.Property<int>("PlayerId")
+                        .HasColumnType("integer")
+                        .HasColumnName("player_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GuestPredictionId");
+
+                    b.ToTable("guest_card_predictions", (string)null);
+                });
+
+            modelBuilder.Entity("GoalGoalPredict.Domain.Entities.GuestGoalscorerPrediction", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("GoalType")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasDefaultValue("Normal Goal")
+                        .HasColumnName("goal_type");
+
+                    b.Property<Guid>("GuestPredictionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("guest_prediction_id");
+
+                    b.Property<int>("PlayerId")
+                        .HasColumnType("integer")
+                        .HasColumnName("player_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GuestPredictionId");
+
+                    b.ToTable("guest_goalscorer_predictions", (string)null);
+                });
+
+            modelBuilder.Entity("GoalGoalPredict.Domain.Entities.GuestPrediction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("AwayGoals")
+                        .HasColumnType("integer")
+                        .HasColumnName("away_goals");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("email");
+
+                    b.Property<int>("HomeGoals")
+                        .HasColumnType("integer")
+                        .HasColumnName("home_goals");
+
+                    b.Property<bool>("IsScored")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_scored");
+
+                    b.Property<int>("MatchId")
+                        .HasColumnType("integer")
+                        .HasColumnName("match_id");
+
+                    b.Property<bool>("Notified")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("notified");
+
+                    b.Property<DateTime?>("ScoredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("scored_at");
+
+                    b.Property<int>("TotalPoints")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("total_points");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MatchId");
+
+                    b.HasIndex("Email", "MatchId")
+                        .IsUnique();
+
+                    b.ToTable("guest_predictions", (string)null);
                 });
 
             modelBuilder.Entity("GoalGoalPredict.Domain.Entities.Match", b =>
@@ -817,6 +968,11 @@ namespace GoalGoalPredict.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
+                    b.Property<string>("FinishType")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("finish_type");
+
                     b.Property<Guid>("GroupId")
                         .HasColumnType("uuid")
                         .HasColumnName("group_id");
@@ -869,6 +1025,12 @@ namespace GoalGoalPredict.Infrastructure.Migrations
                     b.Property<int>("ExactScorePoints")
                         .HasColumnType("integer")
                         .HasColumnName("exact_score_points");
+
+                    b.Property<int>("FinishTypePoints")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("finish_type_points");
 
                     b.Property<int>("GoalscorerPoints")
                         .HasColumnType("integer")
@@ -1407,6 +1569,33 @@ namespace GoalGoalPredict.Infrastructure.Migrations
                     b.Navigation("Prediction");
                 });
 
+            modelBuilder.Entity("GoalGoalPredict.Domain.Entities.GuestCardPrediction", b =>
+                {
+                    b.HasOne("GoalGoalPredict.Domain.Entities.GuestPrediction", null)
+                        .WithMany("Cards")
+                        .HasForeignKey("GuestPredictionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("GoalGoalPredict.Domain.Entities.GuestGoalscorerPrediction", b =>
+                {
+                    b.HasOne("GoalGoalPredict.Domain.Entities.GuestPrediction", null)
+                        .WithMany("Scorers")
+                        .HasForeignKey("GuestPredictionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("GoalGoalPredict.Domain.Entities.GuestPrediction", b =>
+                {
+                    b.HasOne("GoalGoalPredict.Domain.Entities.Match", null)
+                        .WithMany()
+                        .HasForeignKey("MatchId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("GoalGoalPredict.Domain.Entities.Match", b =>
                 {
                     b.HasOne("GoalGoalPredict.Domain.Entities.Team", "AwayTeam")
@@ -1616,6 +1805,13 @@ namespace GoalGoalPredict.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Team");
+                });
+
+            modelBuilder.Entity("GoalGoalPredict.Domain.Entities.GuestPrediction", b =>
+                {
+                    b.Navigation("Cards");
+
+                    b.Navigation("Scorers");
                 });
 
             modelBuilder.Entity("GoalGoalPredict.Domain.Entities.Match", b =>

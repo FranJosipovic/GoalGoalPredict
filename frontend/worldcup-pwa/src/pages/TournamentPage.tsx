@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Layout from '../components/Layout'
+import Bracket from '../components/Bracket'
 import { getStandings, getTopScorers } from '../api/tournament'
 import { getTeams } from '../api/teams'
 import type { StandingGroup, TeamInfo, TopScorer } from '../types'
 
-type View = 'groups' | 'scorers' | 'teams'
+type View = 'groups' | 'bracket' | 'scorers' | 'teams'
 
 export default function TournamentPage() {
   const [groups, setGroups] = useState<StandingGroup[]>([])
@@ -51,6 +52,9 @@ export default function TournamentPage() {
         <div className="tournament-toggle">
           <button className={`tt-btn ${view === 'groups' ? 'tt-btn--on' : ''}`} onClick={() => setView('groups')}>
             Groups
+          </button>
+          <button className={`tt-btn ${view === 'bracket' ? 'tt-btn--on' : ''}`} onClick={() => setView('bracket')}>
+            Bracket
           </button>
           <button className={`tt-btn ${view === 'scorers' ? 'tt-btn--on' : ''}`} onClick={() => setView('scorers')}>
             Scorers
@@ -106,6 +110,8 @@ export default function TournamentPage() {
               ))}
             </div>
           )
+        ) : view === 'bracket' ? (
+          <Bracket standings={groups} teams={teams} />
         ) : view === 'scorers' ? (
           scorers.length === 0 ? (
             <div className="empty-state">

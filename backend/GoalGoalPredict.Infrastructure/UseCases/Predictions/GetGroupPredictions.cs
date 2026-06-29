@@ -1,4 +1,5 @@
 using GoalGoalPredict.Application.DTOs;
+using GoalGoalPredict.Application.Interfaces;
 using GoalGoalPredict.Domain.Services;
 using GoalGoalPredict.Infrastructure.Data;
 using GoalGoalPredict.Infrastructure.Services;
@@ -6,10 +7,15 @@ using Microsoft.EntityFrameworkCore;
 
 namespace GoalGoalPredict.Infrastructure.UseCases.Predictions;
 
-public class GetGroupPredictions(AppDbContext db, EffectiveRulesService effectiveRules)
+public class GetGroupPredictions(AppDbContext db, EffectiveRulesService effectiveRules, IGroupPredictionsCache cache)
 {
     public async Task<GroupPredictionsDto?> ExecuteAsync(int matchId, Guid groupId, CancellationToken ct = default)
     {
+        // Shared across the group → serve from cache. A cached entry only ever exists for a valid
+        // post-kickoff result, and a match never reverts to pre-kickoff, so it stays valid.
+        if (cache.TryGet(matchId, groupId, out var cached))
+            return cached;
+
         var match = await db.Matches
             .Include(m => m.Goals)
             .Include(m => m.Cards)
@@ -58,7 +64,8 @@ public class GetGroupPredictions(AppDbContext db, EffectiveRulesService effectiv
                     rules, p.HomeGoals, p.AwayGoals, match.HomeGoals!.Value, match.AwayGoals!.Value,
                     scorerPicks.Select(g => (g.PlayerId, g.GoalType, g.Player.Position)),
                     cardPicks.Select(c => (c.PlayerId, c.Kind)),
-                    goals, cards).Total;
+                    goals, cards,
+                    p.FinishType, match.IsKnockout ? match.FinishType : null).Total;
             else
                 projected = 0;
 
@@ -69,6 +76,8 @@ public class GetGroupPredictions(AppDbContext db, EffectiveRulesService effectiv
                 projected);
         }).OrderByDescending(m => m.ProjectedPoints).ToList();
 
-        return new GroupPredictionsDto(matchId, match.Status, match.HomeGoals, match.AwayGoals, members);
+        var result = new GroupPredictionsDto(matchId, match.Status, match.HomeGoals, match.AwayGoals, members);
+        cache.Set(matchId, groupId, result);
+        return result;
     }
 }
