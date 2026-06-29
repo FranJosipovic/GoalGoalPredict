@@ -219,6 +219,33 @@
     display: none;
   }
 
+  /* ─── My Predictions ─── */
+  .mypred-group-label {
+    justify-content: center;
+  }
+  .mypred-card {
+    max-width: clamp(30%, 45vw, 60%);
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .mypred-logo {
+    width: 42px;
+    height: 42px;
+  }
+  .mypred-side {
+    flex-direction: column;
+    gap: 6px;
+  }
+  .mypred-side--right {
+    flex-direction: column-reverse;
+  }
+  .mypred-score {
+    font-size: 24px;
+  }
+  .mypred-scoreline--actual .mypred-score {
+    font-size: 18px;
+  }
+
   /* ─── Load More Button ─── */
   .load-more-btn {
     max-width: clamp(30%, 45vw, 60%);
