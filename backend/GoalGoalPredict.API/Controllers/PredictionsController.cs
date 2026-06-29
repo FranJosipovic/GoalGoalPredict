@@ -9,7 +9,7 @@ namespace GoalGoalPredict.API.Controllers;
 [ApiController]
 [Route("api/predictions")]
 [Authorize]
-public class PredictionsController(UpsertPrediction upsert, GetGroupLeaderboard leaderboard, GetMyPrediction getMyPrediction, GetMyPredictions getMyPredictions) : ControllerBase
+public class PredictionsController(UpsertPrediction upsert, GetGroupLeaderboard leaderboard, GetMyPrediction getMyPrediction, GetMyPredictions getMyPredictions, CopyPredictionToGroups copyToGroups) : ControllerBase
 {
     private Guid UserId => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
@@ -62,6 +62,22 @@ public class PredictionsController(UpsertPrediction upsert, GetGroupLeaderboard 
     {
         var (result, error) = await upsert.ExecuteAsync(UserId, request, ct);
         if (error is not null) return BadRequest(new { error });
+        return Ok(result);
+    }
+
+    // The user's other groups this match can be copied into (for the post-save prompt).
+    [HttpGet("copy-targets")]
+    public async Task<IActionResult> GetCopyTargets([FromQuery] int matchId, [FromQuery] Guid groupId, CancellationToken ct)
+    {
+        var targets = await copyToGroups.GetTargetsAsync(UserId, matchId, groupId, ct);
+        return Ok(targets);
+    }
+
+    // Mirror a prediction made in one group into a set of the user's other groups.
+    [HttpPost("copy-to-groups")]
+    public async Task<IActionResult> CopyToGroups([FromBody] CopyToGroupsRequest request, CancellationToken ct)
+    {
+        var result = await copyToGroups.ExecuteAsync(UserId, request, ct);
         return Ok(result);
     }
 

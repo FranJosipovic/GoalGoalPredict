@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Layout from '../components/Layout'
 import Bracket from '../components/Bracket'
-import { getStandings, getTopScorers } from '../api/tournament'
+import { getStandings, getTopScorers, getTournamentFixtures } from '../api/tournament'
 import { getTeams } from '../api/teams'
-import type { StandingGroup, TeamInfo, TopScorer } from '../types'
+import type { StandingGroup, TeamInfo, TopScorer, MatchListItem } from '../types'
 
 type View = 'groups' | 'bracket' | 'scorers' | 'teams'
 
@@ -12,6 +12,7 @@ export default function TournamentPage() {
   const [groups, setGroups] = useState<StandingGroup[]>([])
   const [scorers, setScorers] = useState<TopScorer[]>([])
   const [teams, setTeams] = useState<TeamInfo[]>([])
+  const [fixtures, setFixtures] = useState<MatchListItem[]>([])
   const [loading, setLoading] = useState(true)
   const [view, setView] = useState<View>('groups')
   const [search, setSearch] = useState('')
@@ -22,10 +23,12 @@ export default function TournamentPage() {
       getStandings().catch(() => [] as StandingGroup[]),
       getTopScorers().catch(() => [] as TopScorer[]),
       getTeams().catch(() => [] as TeamInfo[]),
-    ]).then(([g, s, t]) => {
+      getTournamentFixtures().catch(() => [] as MatchListItem[]),
+    ]).then(([g, s, t, f]) => {
       setGroups(g)
       setScorers(s)
       setTeams(t)
+      setFixtures(f)
       // Fall back to the team grid if standings haven't synced yet.
       if (g.length === 0) setView('teams')
     }).finally(() => setLoading(false))
@@ -111,7 +114,7 @@ export default function TournamentPage() {
             </div>
           )
         ) : view === 'bracket' ? (
-          <Bracket standings={groups} teams={teams} />
+          <Bracket standings={groups} teams={teams} matches={fixtures} />
         ) : view === 'scorers' ? (
           scorers.length === 0 ? (
             <div className="empty-state">

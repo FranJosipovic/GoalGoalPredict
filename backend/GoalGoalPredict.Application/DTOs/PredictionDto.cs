@@ -32,7 +32,16 @@ public record CopyablePredictionDto(
     int HomeGoals,
     int AwayGoals,
     List<ScorerPickInput> Scorers,
-    List<CardPickInput> Cards);
+    List<CardPickInput> Cards,
+    string? FinishType = null);
+
+// One of the user's other groups this prediction can be copied into.
+public record CopyTargetDto(Guid GroupId, string GroupName, bool AlreadyPredicted);
+
+// Copy the user's prediction for a match from one group into a set of their other groups.
+public record CopyToGroupsRequest(int MatchId, Guid SourceGroupId, List<Guid> TargetGroupIds);
+
+public record CopyToGroupsResultDto(int Copied, int Failed);
 
 public record LeaderboardEntryDto(
     Guid UserId,

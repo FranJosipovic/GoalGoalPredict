@@ -7,7 +7,7 @@ interface Props {
   onMatchClick: (matchId: number, openDetail: boolean) => void
 }
 
-const LIVE_STATUSES = ['1H', 'HT', '2H', 'ET', 'P']
+const LIVE_STATUSES = ['1H', 'HT', '2H', 'ET', 'BT', 'P']
 const FINISHED_STATUSES = ['FT', 'AET', 'PEN']
 
 function formatKickoff(utc: string) {
@@ -36,7 +36,12 @@ function MatchCard({ match, onClick }: { match: MatchListItem; onClick: () => vo
 
   return (
     <div className={`match-card ${isLive ? 'match-card--live' : ''}`} onClick={onClick}>
-      {isLive && <div className="live-pulse" />}
+      {isLive && (
+        <div className="live-indicator-corner">
+          <span className="live-badge">LIVE</span>
+          <div className="live-pulse" />
+        </div>
+      )}
 
       <div className="match-card-teams">
         <div className="match-team">
@@ -47,9 +52,11 @@ function MatchCard({ match, onClick }: { match: MatchListItem; onClick: () => vo
         <div className="match-score-center">
           {isLive ? (
             <div className="score-live">
-              <span className="score-num">{match.homeGoals ?? 0}</span>
-              <span className="score-sep">:</span>
-              <span className="score-num">{match.awayGoals ?? 0}</span>
+              <div className="score-live-nums">
+                <span className="score-num">{match.homeGoals ?? 0}</span>
+                <span className="score-sep">:</span>
+                <span className="score-num">{match.awayGoals ?? 0}</span>
+              </div>
               <div className="elapsed-badge">{match.elapsedMinutes}'</div>
             </div>
           ) : isFinished ? (
@@ -86,7 +93,6 @@ function MatchCard({ match, onClick }: { match: MatchListItem; onClick: () => vo
             <span className="pred-badge pred-badge--empty">No prediction</span>
           )
         )}
-        {isLive && <span className="live-badge">LIVE</span>}
         {isFinished && <span className="ft-badge">FT</span>}
       </div>
     </div>
@@ -168,23 +174,9 @@ export default function MatchesTab({ groupId, onMatchClick }: Props) {
 
   return (
     <div className="matches-tab">
-      {/* Live banner — tap to open the live match (the first, if several) */}
-      {liveMatches.length > 0 && (
-        <button
-          type="button"
-          className="live-banner"
-          onClick={() => onMatchClick(liveMatches[0].id, true)}
-        >
-          <div className="live-banner-dot" />
-          <span>{liveMatches.length} match{liveMatches.length > 1 ? 'es' : ''} live now</span>
-          <svg className="live-banner-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <path d="M9 6l6 6-6 6" />
-          </svg>
-        </button>
-      )}
-
-      {/* Filter pills */}
-      <div className="match-filters">
+      {/* Filter pills + live banner row */}
+      <div className="matches-toolbar">
+        <div className="match-filters">
         {(['today', 'upcoming', 'finished', 'all'] as const).map(f => (
           <button
             key={f}
@@ -197,6 +189,20 @@ export default function MatchesTab({ groupId, onMatchClick }: Props) {
             {f === 'today' ? 'Today' : f === 'upcoming' ? 'Upcoming' : f === 'finished' ? 'Finished' : 'All'}
           </button>
         ))}
+        </div>
+        {liveMatches.length > 0 && (
+          <button
+            type="button"
+            className="live-banner"
+            onClick={() => onMatchClick(liveMatches[0].id, true)}
+          >
+            <div className="live-banner-dot" />
+            <span>{liveMatches.length} match{liveMatches.length > 1 ? 'es' : ''} live now</span>
+            <svg className="live-banner-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path d="M9 6l6 6-6 6" />
+            </svg>
+          </button>
+        )}
       </div>
 
       {/* Match groups */}
