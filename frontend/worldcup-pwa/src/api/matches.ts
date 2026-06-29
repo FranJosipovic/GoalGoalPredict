@@ -56,12 +56,28 @@ export interface CopyablePrediction {
   awayGoals: number
   scorers: ScorerPickInput[]
   cards: CardPickInput[]
+  finishType?: string | null
 }
 
 export const getCopyablePrediction = (matchId: number, groupId: string) =>
   client.get<CopyablePrediction>(`/predictions/copyable`, { params: { matchId, groupId } })
     .then(r => r.status === 204 ? null : r.data)
     .catch(() => null)
+
+export interface CopyTarget {
+  groupId: string
+  groupName: string
+  alreadyPredicted: boolean
+}
+
+// The user's other groups this match can be copied into (for the post-save prompt).
+export const getCopyTargets = (matchId: number, groupId: string) =>
+  client.get<CopyTarget[]>(`/predictions/copy-targets`, { params: { matchId, groupId } })
+    .then(r => r.data)
+    .catch(() => [] as CopyTarget[])
+
+export const copyPredictionToGroups = (data: { matchId: number; sourceGroupId: string; targetGroupIds: string[] }) =>
+  client.post<{ copied: number; failed: number }>(`/predictions/copy-to-groups`, data).then(r => r.data)
 
 export const upsertPrediction = (data: {
   matchId: number

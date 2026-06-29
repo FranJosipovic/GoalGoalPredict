@@ -9,7 +9,7 @@ const POS_ORDER = ['Goalkeeper', 'Defender', 'Midfielder', 'Attacker']
 const POS_LABELS: Record<string, string> = {
   Goalkeeper: 'Goalkeepers', Defender: 'Defenders', Midfielder: 'Midfielders', Attacker: 'Attackers',
 }
-const LIVE = ['1H', 'HT', '2H', 'ET', 'P']
+const LIVE = ['1H', 'HT', '2H', 'ET', 'BT', 'P']
 const FINISHED = ['FT', 'AET', 'PEN']
 
 function formatDay(utc: string) {

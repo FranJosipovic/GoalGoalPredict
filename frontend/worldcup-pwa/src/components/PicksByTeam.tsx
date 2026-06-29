@@ -23,11 +23,7 @@ export default function PicksByTeam({ scorers, cards, home, away }: {
         const cd = cards.filter(c => c.teamId === t.id)
         return (
           <div key={t.id} className={`picks-team ${ti === 1 ? 'picks-team--away' : ''}`}>
-            <div className="picks-team-label">
-              <img src={t.logoUrl} className="picks-team-logo" alt="" />
-              {t.code || t.name}
-            </div>
-            {sc.length === 0 && cd.length === 0 && <span className="picks-team-empty">—</span>}
+{sc.length === 0 && cd.length === 0 && <span className="picks-team-empty">—</span>}
             <div className="picks-team-chips">
               {sc.map((s, i) => {
                 const hit = s.pointsAwarded > 0
