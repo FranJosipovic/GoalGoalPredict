@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, type ReactNode } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import Layout from '../components/Layout'
+import MatchLivePage from './MatchLivePage'
 import PredictionPitch, { type PlayerBadge } from '../components/PredictionPitch'
 import avatarPlaceholder from '../assets/avatar-placeholder.svg'
 import PlayerStats from '../components/PlayerStats'
@@ -139,19 +140,21 @@ export default function MatchPredictPage() {
 
   useEffect(() => {
     if (!matchId || !groupId) return
-    Promise.all([
-      getMatchDetail(Number(matchId)),
-      getMyPrediction(Number(matchId), groupId),
-      getGroupRules(groupId).catch(() => null),
-    ]).then(async ([m, existing, r]) => {
-      // Load squads first so we can resolve which side each pick counts toward.
-      const [homeSquad, awaySquad] = await Promise.all([
+    getMatchDetail(Number(matchId)).then(async (m) => {
+      setMatch(m)
+      // Once kickoff has passed the prediction editor is gone — this page delegates to
+      // MatchLivePage (see below). Skip the editor-only squad/rules/prediction fetches then.
+      if (new Date(m.kickoffUtc) <= new Date()) return
+
+      // Load squads so we can resolve which side each pick counts toward.
+      const [existing, r, homeSquad, awaySquad] = await Promise.all([
+        getMyPrediction(Number(matchId), groupId),
+        getGroupRules(groupId).catch(() => null),
         getTeamSquad(m.homeTeam.id),
         getTeamSquad(m.awayTeam.id),
       ])
       setHomePlayers(homeSquad.players)
       setAwayPlayers(awaySquad.players)
-      setMatch(m)
       setRules(r)
 
       if (existing) {
@@ -162,17 +165,18 @@ export default function MatchPredictPage() {
         setExtras(f.extras)
         setFinishType(existing.finishType ?? null)
         setSaved({ home: f.home, away: f.away, scorers: f.scorers, extras: f.extras, finishType: existing.finishType ?? null })
-      } else if (new Date(m.kickoffUtc) > new Date()) {
+      } else {
         // No prediction in this group yet — offer to copy from the earliest group where they did.
         const copy = await getCopyablePrediction(Number(matchId), groupId)
         if (copy) setCopyable(copy)
       }
-    }).finally(() => setLoading(false))
+    }).catch(() => {}).finally(() => setLoading(false))
   }, [matchId, groupId])
 
-  // Refresh score / goals every 30s while the match is live
+  // Refresh score / goals every 30s while the match is live. Skip once locked — the page then
+  // delegates to MatchLivePage, which runs its own polling.
   useEffect(() => {
-    if (!matchId || !match || !LIVE_STATUSES.includes(match.status)) return
+    if (!matchId || !match || isLocked || !LIVE_STATUSES.includes(match.status)) return
     const t = setInterval(() => {
       getMatchDetail(Number(matchId)).then(setMatch).catch(() => {})
     }, 30000)
@@ -324,6 +328,11 @@ export default function MatchPredictPage() {
 
   if (loading) return <Layout showBack><div className="loading-state"><span className="loading-ball">⚽</span></div></Layout>
   if (!match) return <Layout showBack><div className="empty-state"><p>Match not found</p></div></Layout>
+
+  // Once locked (kickoff passed), the match is no longer predictable — show the canonical
+  // match view (events / lineups / picks) instead of the legacy read-only timeline. This makes
+  // /groups/:g/match/:m render identically to /groups/:g/match/:m/live for live & finished games.
+  if (isLocked) return <MatchLivePage />
 
   const allSquad = [...homePlayers, ...awayPlayers]
   const nameOf = (id: number) => allSquad.find(p => p.id === id)?.name ?? 'Player'

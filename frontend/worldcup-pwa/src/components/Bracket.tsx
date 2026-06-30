@@ -35,7 +35,7 @@ const ChevronRight = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M9 18l6-6-6-6" /></svg>
 )
 
-function Slot({ slot, score, won }: { slot: ResolvedSlot; score?: number | null; won?: boolean }) {
+function Slot({ slot, score, pen, won }: { slot: ResolvedSlot; score?: number | null; pen?: number | null; won?: boolean }) {
   const resolved = !!slot.teamName
   return (
     <div className={`bkt-slot ${resolved ? 'bkt-slot--team' : 'bkt-slot--tbd'} ${won ? 'bkt-slot--won' : ''}`}>
@@ -43,6 +43,7 @@ function Slot({ slot, score, won }: { slot: ResolvedSlot; score?: number | null;
         ? <img src={slot.logoUrl} className="bkt-logo" alt="" />
         : <span className="bkt-logo bkt-logo--ph" />}
       <span className="bkt-slot-name">{slot.teamName ?? slot.label}</span>
+      {pen != null && <span className="bkt-slot-pen">({pen})</span>}
       {score != null && <span className="bkt-slot-score">{score}</span>}
     </div>
   )
@@ -57,6 +58,7 @@ interface CardData {
   s1: ResolvedSlot; s2: ResolvedSlot
   matchId?: number; kickoffUtc?: string
   score1?: number | null; score2?: number | null
+  pen1?: number | null; pen2?: number | null
   winner?: 1 | 2; statusTag?: string
 }
 type CardBuilder = (m: BracketMatch) => CardData
@@ -65,7 +67,7 @@ function MatchCard({ m, build, final, hl, onOpen }: {
   m: BracketMatch; build: CardBuilder; final?: boolean; hl?: boolean
   onOpen?: (matchId: number) => void
 }) {
-  const { s1, s2, matchId, kickoffUtc, score1, score2, winner, statusTag } = build(m)
+  const { s1, s2, matchId, kickoffUtc, score1, score2, pen1, pen2, winner, statusTag } = build(m)
   const clickable = matchId != null && !!onOpen
   const open = () => { if (matchId != null) onOpen?.(matchId) }
   const when = kickoffUtc
@@ -83,8 +85,8 @@ function MatchCard({ m, build, final, hl, onOpen }: {
         <span className="bkt-match-time">{when}</span>
         {statusTag && <span className="bkt-match-tag">{statusTag}</span>}
       </div>
-      <Slot slot={s1} score={score1} won={winner === 1} />
-      <Slot slot={s2} score={score2} won={winner === 2} />
+      <Slot slot={s1} score={score1} pen={pen1} won={winner === 1} />
+      <Slot slot={s2} score={score2} pen={pen2} won={winner === 2} />
     </div>
   )
 }
@@ -202,6 +204,7 @@ export default function Bracket({ standings, teams, matches, onMatchClick }: Pro
 
         let fx: MatchListItem | undefined
         let g1: number | null = null, g2: number | null = null
+        let p1: number | null = null, p2: number | null = null
         if (n1 || n2) {
           for (const cand of fixturesByRound.get(m.round) ?? []) {
             const h = cand.homeTeam.name.toLowerCase()
@@ -215,6 +218,8 @@ export default function Bracket({ standings, teams, matches, onMatchClick }: Pro
             s2 = toSlot(swap ? cand.homeTeam : cand.awayTeam)
             g1 = swap ? cand.awayGoals : cand.homeGoals
             g2 = swap ? cand.homeGoals : cand.awayGoals
+            p1 = (swap ? cand.penaltyAwayGoals : cand.penaltyHomeGoals) ?? null
+            p2 = (swap ? cand.penaltyHomeGoals : cand.penaltyAwayGoals) ?? null
             fx = cand
             break
           }
@@ -231,9 +236,13 @@ export default function Bracket({ standings, teams, matches, onMatchClick }: Pro
             card.score2 = g2
             if (finished) {
               card.statusTag = fx.status === 'PEN' ? 'Pens' : fx.status === 'AET' ? 'AET' : 'FT'
-              // Winner from goals (penalty shoot-outs leave goals level — defer to the API fixture).
-              if (g1 > g2) { card.winner = 1; winnerByNum.set(m.num, slotTeam(s1)); loserByNum.set(m.num, slotTeam(s2)) }
-              else if (g2 > g1) { card.winner = 2; winnerByNum.set(m.num, slotTeam(s2)); loserByNum.set(m.num, slotTeam(s1)) }
+              if (fx.status === 'PEN') { card.pen1 = p1; card.pen2 = p2 }
+              // Winner from goals; a penalty shoot-out leaves goals level, so fall back to the
+              // shoot-out tally to decide who advanced.
+              const w1 = g1 > g2 || (g1 === g2 && p1 != null && p2 != null && p1 > p2)
+              const w2 = g2 > g1 || (g1 === g2 && p1 != null && p2 != null && p2 > p1)
+              if (w1) { card.winner = 1; winnerByNum.set(m.num, slotTeam(s1)); loserByNum.set(m.num, slotTeam(s2)) }
+              else if (w2) { card.winner = 2; winnerByNum.set(m.num, slotTeam(s2)); loserByNum.set(m.num, slotTeam(s1)) }
             } else {
               card.statusTag = fx.elapsedMinutes != null ? `${fx.elapsedMinutes}'` : 'LIVE'
             }
@@ -345,29 +354,58 @@ export default function Bracket({ standings, teams, matches, onMatchClick }: Pro
     )
   }
 
-  // ── Desktop: connected tree ──
-  return (
-    <div className="bracket-wrap">
-      <div className="bracket-scroll bracket-tree">
-        {ROUND_ORDER.map(round => (
-          <div key={round} className="bkt-col">
-            <div className="bkt-col-head">{ROUND_LABEL[round]}</div>
-            <div className="bkt-col-body">
-              {roundMatches[round].map(m => (
-                <div key={m.num} className="bkt-cell">
-                  <MatchCard m={m} build={cardData} final={round === 'Final'} onOpen={onMatchClick} />
-                </div>
-              ))}
-            </div>
+  // ── Desktop: two-sided connected tree (left half ┃ Final ┃ right half) ──
+  // Each round's matches are sorted top-to-bottom in true bracket order, so the first half
+  // belongs under the upper semi-final (→ left) and the second half under the lower one (→ right).
+  const innerRounds: KnockoutRound[] = ['Round of 32', 'Round of 16', 'Quarter-final', 'Semi-final']
+  const finalMatch = roundMatches['Final'][0]
+  const halfOf = (round: KnockoutRound, side: 0 | 1) => {
+    const arr = roundMatches[round]
+    const mid = Math.ceil(arr.length / 2)
+    return side === 0 ? arr.slice(0, mid) : arr.slice(mid)
+  }
+  const renderCol = (round: KnockoutRound, ms: BracketMatch[]) => (
+    <div key={round} className="bkt-col">
+      <div className="bkt-col-head">{ROUND_LABEL[round]}</div>
+      <div className="bkt-col-body">
+        {ms.map(m => (
+          <div key={m.num} className="bkt-cell">
+            <MatchCard m={m} build={cardData} onOpen={onMatchClick} />
           </div>
         ))}
       </div>
-      {thirdPlace && (
-        <div className="bkt-third-block bkt-third-block--desktop">
-          <div className="bkt-third-tag">3rd place play-off</div>
-          <MatchCard m={thirdPlace} build={cardData} onOpen={onMatchClick} />
+    </div>
+  )
+
+  return (
+    <div className="bracket-wrap">
+      <div className="bracket-scroll bracket-twoside">
+        <div className="bkt-side bracket-tree">
+          {innerRounds.map(round => renderCol(round, halfOf(round, 0)))}
         </div>
-      )}
+
+        <div className="bkt-center">
+          <div className="bkt-col-head bkt-col-head--center">{ROUND_LABEL['Final']}</div>
+          <div className="bkt-center-body">
+            {finalMatch && (
+              <div className="bkt-cell bkt-cell--final">
+                <MatchCard m={finalMatch} build={cardData} final onOpen={onMatchClick} />
+              </div>
+            )}
+          </div>
+          {thirdPlace && (
+            <div className="bkt-third-block bkt-third-block--center">
+              <div className="bkt-third-tag">3rd place play-off</div>
+              <MatchCard m={thirdPlace} build={cardData} onOpen={onMatchClick} />
+            </div>
+          )}
+        </div>
+
+        {/* Right half is the mirror image — flipped in CSS so rounds progress inward to the Final. */}
+        <div className="bkt-side bkt-side--mirror bracket-tree">
+          {innerRounds.map(round => renderCol(round, halfOf(round, 1)))}
+        </div>
+      </div>
       <p className="bracket-hint">Group slots fill in as standings settle · winners advance once knockout matches are played</p>
     </div>
   )
