@@ -180,6 +180,38 @@ public class PollLiveMatch(AppDbContext db, IApiFootballClient api, EffectiveRul
         foreach (var e in newSubEvents)
             db.MatchSubstitutions.Add(MatchSubstitution.Create(matchId, e.TeamId, e.Minute, e.ExtraMinute, ResolveSub(e.PlayerInId), ResolveSub(e.PlayerOutId), nextSubOrder++));
 
+        // Penalty shootout kicks — informational only (never scored). Reconciled by the API feed
+        // order, which is stable: a shootout is terminal so its events don't reorder mid-feed.
+        var shootoutEvents = await api.GetShootoutEventsAsync(matchId, ct);
+        var existingShootout = await db.MatchShootoutPenalties.Where(s => s.MatchId == matchId).ToListAsync(ct);
+
+        static (int, int, int?, bool) ShootoutKey(int order, int teamId, int? player, bool scored)
+            => (order, teamId, player, scored);
+        var apiShootoutKeys = shootoutEvents
+            .Select(e => ShootoutKey(e.Order, e.TeamId, e.PlayerId, e.Scored)).ToHashSet();
+        var dbShootoutKeys = existingShootout
+            .Select(s => ShootoutKey(s.ApiEventOrder, s.TeamId, s.PlayerId, s.Scored)).ToHashSet();
+
+        var staleShootout = existingShootout
+            .Where(s => !apiShootoutKeys.Contains(ShootoutKey(s.ApiEventOrder, s.TeamId, s.PlayerId, s.Scored)))
+            .ToList();
+        if (staleShootout.Count > 0)
+            db.MatchShootoutPenalties.RemoveRange(staleShootout);
+
+        var newShootoutEvents = shootoutEvents
+            .Where(e => !dbShootoutKeys.Contains(ShootoutKey(e.Order, e.TeamId, e.PlayerId, e.Scored)))
+            .ToList();
+        if (newShootoutEvents.Count > 0)
+        {
+            var shootoutKnown = await EnsurePlayersExistAsync(
+                newShootoutEvents.Select(e => (e.PlayerId, e.TeamId)), ct);
+            foreach (var e in newShootoutEvents)
+            {
+                var pid = e.PlayerId is int sp && shootoutKnown.Contains(sp) ? sp : (int?)null;
+                db.MatchShootoutPenalties.Add(MatchShootoutPenalty.Create(matchId, pid, e.TeamId, e.Scored, e.Order));
+            }
+        }
+
         match.TouchSyncedAt();
         await db.SaveChangesAsync(ct);
 
@@ -322,6 +354,10 @@ public class PollLiveMatch(AppDbContext db, IApiFootballClient api, EffectiveRul
         // Status transitions — kickoff / half time / second half / extra time / full time.
         if (prevStatus != match.Status)
         {
+            // When a tie is decided on penalties, announce who actually won the match (and the
+            // shootout tally) rather than the level reg+ET scoreline.
+            var penBody = ShootoutResultBody(match, home, away);
+
             var (title, body) = match.Status switch
             {
                 "1H" => ("🏈 Kick off!", $"{home?.Name} vs {away?.Name}"),
@@ -329,11 +365,22 @@ public class PollLiveMatch(AppDbContext db, IApiFootballClient api, EffectiveRul
                 "2H" => ("▶️ Second half started", $"{home?.Name} vs {away?.Name}"),
                 "ET" => ("⏱ Extra time", scoreline),
                 "P"  => ("🎯 Penalty shootout", scoreline),
-                "FT" or "AET" or "PEN" => ("🏁 Full time!", scoreline),
+                "PEN" => ("🏁 Full time!", penBody ?? scoreline),
+                "FT" or "AET" => ("🏁 Full time!", scoreline),
                 _ => (null, (string?)null),
             };
             if (title is not null)
                 await push.SendToMatchGroupsAsync(match.Id, title, body!, ct);
         }
+    }
+
+    // "Brazil win 4-3 on penalties" — the decisive result of a shootout. Null if the tally
+    // isn't available yet (the very first PEN poll can land before the penalty score syncs).
+    private static string? ShootoutResultBody(Match match, Team? home, Team? away)
+    {
+        if (match.PenaltyHomeGoals is not int ph || match.PenaltyAwayGoals is not int pa)
+            return null;
+        var (winner, hi, lo) = ph >= pa ? (home?.Name, ph, pa) : (away?.Name, pa, ph);
+        return $"{winner} win {hi}-{lo} on penalties";
     }
 }

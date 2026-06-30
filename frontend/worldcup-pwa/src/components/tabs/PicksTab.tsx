@@ -7,7 +7,14 @@ import type {
   MyPredictionItem,
   GroupPredictions,
   TeamSummary,
+  FinishType,
 } from "../../types";
+
+const FINISH_LABEL: Record<FinishType, string> = {
+  Regular: "Regular time",
+  ExtraTime: "Extra time",
+  Penalties: "Penalties",
+};
 
 interface Props {
   groupId: string;
@@ -103,6 +110,9 @@ function GroupPicksPanel({
             </span>
 
             <div className="picks-row-picks">
+              {p.finishType && (
+                <span className="picks-finish">🏁 {FINISH_LABEL[p.finishType]}</span>
+              )}
               <PicksByTeam
                 scorers={p.scorers}
                 cards={p.cards}

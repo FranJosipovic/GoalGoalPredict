@@ -66,6 +66,8 @@ export interface MatchListItem {
   awayTeam: TeamSummary
   homeGoals: number | null
   awayGoals: number | null
+  penaltyHomeGoals?: number | null
+  penaltyAwayGoals?: number | null
   myPrediction: MyPrediction | null
 }
 
@@ -116,12 +118,23 @@ export interface VarDecisionEvent {
   detail: string
 }
 
+export interface ShootoutPenalty {
+  teamId: number
+  playerId: number | null
+  playerName: string | null
+  scored: boolean
+  order: number
+}
+
 export interface MatchDetail extends MatchListItem {
   lineup: LineupPlayer[]
   goals: GoalEvent[]
   cards: CardEvent[]
   substitutions: SubstitutionEvent[]
   varDecisions: VarDecisionEvent[]
+  shootoutPenalties: ShootoutPenalty[]
+  penaltyHomeGoals: number | null
+  penaltyAwayGoals: number | null
   lineupsRevealed: boolean
   lineupRevealUtc: string
 }
@@ -171,6 +184,7 @@ export interface MemberPrediction {
   scorers: ScorerPick[]
   cards: CardPick[]
   projectedPoints: number
+  finishType: FinishType | null
 }
 
 export interface GroupPredictions {

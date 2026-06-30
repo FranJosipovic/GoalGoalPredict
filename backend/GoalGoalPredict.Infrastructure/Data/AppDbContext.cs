@@ -16,6 +16,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<MatchLineupPlayer> MatchLineupPlayers => Set<MatchLineupPlayer>();
     public DbSet<MatchGoal> MatchGoals => Set<MatchGoal>();
     public DbSet<MatchCard> MatchCards => Set<MatchCard>();
+    public DbSet<MatchShootoutPenalty> MatchShootoutPenalties => Set<MatchShootoutPenalty>();
     public DbSet<MatchVarDecision> MatchVarDecisions => Set<MatchVarDecision>();
     public DbSet<MatchSubstitution> MatchSubstitutions => Set<MatchSubstitution>();
     public DbSet<Prediction> Predictions => Set<Prediction>();
@@ -242,6 +243,21 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             b.HasOne(g => g.Scorer).WithMany().HasForeignKey(g => g.ScorerPlayerId);
             b.Ignore(g => g.CountsForScorer);
             b.HasIndex(g => new { g.MatchId, g.ApiEventOrder }).IsUnique();
+        });
+
+        modelBuilder.Entity<MatchShootoutPenalty>(b =>
+        {
+            b.ToTable("match_shootout_penalties");
+            b.HasKey(s => s.Id);
+            b.Property(s => s.Id).HasColumnName("id");
+            b.Property(s => s.MatchId).HasColumnName("match_id");
+            b.Property(s => s.PlayerId).HasColumnName("player_id");
+            b.Property(s => s.TeamId).HasColumnName("team_id");
+            b.Property(s => s.Scored).HasColumnName("scored");
+            b.Property(s => s.ApiEventOrder).HasColumnName("api_event_order");
+            b.HasOne(s => s.Match).WithMany(m => m.ShootoutPenalties).HasForeignKey(s => s.MatchId);
+            b.HasOne(s => s.Player).WithMany().HasForeignKey(s => s.PlayerId);
+            b.HasIndex(s => new { s.MatchId, s.ApiEventOrder }).IsUnique();
         });
 
         modelBuilder.Entity<MatchCard>(b =>

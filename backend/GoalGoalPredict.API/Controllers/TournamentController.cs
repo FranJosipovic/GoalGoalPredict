@@ -63,7 +63,8 @@ public class TournamentController(AppDbContext db, SyncTeamStatistics syncTeamSt
                 m.Id, m.Round, m.KickoffUtc, m.Status, m.ElapsedMinutes,
                 new TeamSummaryDto(m.HomeTeam.Id, m.HomeTeam.Name, m.HomeTeam.Code, m.HomeTeam.LogoUrl),
                 new TeamSummaryDto(m.AwayTeam.Id, m.AwayTeam.Name, m.AwayTeam.Code, m.AwayTeam.LogoUrl),
-                m.HomeGoals, m.AwayGoals, null))
+                m.HomeGoals, m.AwayGoals, null,
+                m.PenaltyHomeGoals, m.PenaltyAwayGoals))
             .ToList();
 
         return Ok(dto);

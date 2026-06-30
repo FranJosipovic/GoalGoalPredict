@@ -56,7 +56,8 @@ public class GetMatches(AppDbContext db, IMatchDetailCache matchDetailCache, IMa
                 m.Id, m.Round, m.KickoffUtc, m.Status, m.ElapsedMinutes,
                 new TeamSummaryDto(m.HomeTeam.Id, m.HomeTeam.Name, m.HomeTeam.Code, m.HomeTeam.LogoUrl),
                 new TeamSummaryDto(m.AwayTeam.Id, m.AwayTeam.Name, m.AwayTeam.Code, m.AwayTeam.LogoUrl),
-                m.HomeGoals, m.AwayGoals, myPred);
+                m.HomeGoals, m.AwayGoals, myPred,
+                m.PenaltyHomeGoals, m.PenaltyAwayGoals);
         }).ToList();
 
         return new PagedMatchesDto(items, finishedTotal);
@@ -79,6 +80,7 @@ public class GetMatches(AppDbContext db, IMatchDetailCache matchDetailCache, IMa
             .Include(m => m.Substitutions).ThenInclude(s => s.PlayerIn)
             .Include(m => m.Substitutions).ThenInclude(s => s.PlayerOut)
             .Include(m => m.VarDecisions).ThenInclude(v => v.Player)
+            .Include(m => m.ShootoutPenalties).ThenInclude(s => s.Player)
             .AsSplitQuery()
             .FirstOrDefaultAsync(m => m.Id == matchId, ct);
 
@@ -118,11 +120,17 @@ public class GetMatches(AppDbContext db, IMatchDetailCache matchDetailCache, IMa
             .Select(v => new VarDecisionEventDto(v.Minute, v.ExtraMinute, v.TeamId, v.PlayerId, v.Player?.Name, v.Detail))
             .ToList();
 
+        var shootout = m.ShootoutPenalties
+            .OrderBy(s => s.ApiEventOrder)
+            .Select(s => new ShootoutPenaltyDto(s.TeamId, s.PlayerId, s.Player?.Name, s.Scored, s.ApiEventOrder))
+            .ToList();
+
         var dto = new MatchDetailDto(
             m.Id, m.Round, m.KickoffUtc, m.Status, m.ElapsedMinutes,
             new TeamSummaryDto(m.HomeTeam.Id, m.HomeTeam.Name, m.HomeTeam.Code, m.HomeTeam.LogoUrl),
             new TeamSummaryDto(m.AwayTeam.Id, m.AwayTeam.Name, m.AwayTeam.Code, m.AwayTeam.LogoUrl),
-            m.HomeGoals, m.AwayGoals, lineup, goals, cards, substitutions, varDecisions, lineupsRevealed, revealUtc);
+            m.HomeGoals, m.AwayGoals, lineup, goals, cards, substitutions, varDecisions,
+            shootout, m.PenaltyHomeGoals, m.PenaltyAwayGoals, lineupsRevealed, revealUtc);
 
         // Cache from the moment lineups are revealed (the predicting window, live play, and the
         // post-match browse peak). Before reveal we must NOT cache — lineupsRevealed would be

@@ -11,6 +11,7 @@ public record ApiFixtureData(
     int? PenHomeGoals, int? PenAwayGoals);
 public record ApiGoalEventData(int Minute, int? ExtraMinute, int TeamId, int? ScorerPlayerId, string GoalType, int Order);
 public record ApiCardEventData(int Minute, int? ExtraMinute, int TeamId, int? PlayerId, string CardType, int Order);
+public record ApiShootoutEventData(int TeamId, int? PlayerId, bool Scored, int Order);
 public record ApiSubstitutionEventData(int Minute, int? ExtraMinute, int TeamId, int? PlayerInId, int? PlayerOutId, int Order);
 public record ApiVarEventData(int Minute, int? ExtraMinute, int TeamId, int? PlayerId, string Detail, int Order);
 public record ApiLineupPlayerData(int PlayerId, int TeamId, bool IsStarting, string Position, int ShirtNumber);
@@ -47,6 +48,7 @@ public interface IApiFootballClient
     Task<ApiFixtureData?> GetFixtureAsync(int fixtureId, CancellationToken ct = default);
     Task<List<ApiGoalEventData>> GetGoalEventsAsync(int fixtureId, CancellationToken ct = default);
     Task<List<ApiCardEventData>> GetCardEventsAsync(int fixtureId, CancellationToken ct = default);
+    Task<List<ApiShootoutEventData>> GetShootoutEventsAsync(int fixtureId, CancellationToken ct = default);
     Task<List<ApiSubstitutionEventData>> GetSubstitutionEventsAsync(int fixtureId, CancellationToken ct = default);
     Task<List<ApiVarEventData>> GetVarEventsAsync(int fixtureId, CancellationToken ct = default);
     Task<List<ApiLineupPlayerData>> GetLineupsAsync(int fixtureId, CancellationToken ct = default);
