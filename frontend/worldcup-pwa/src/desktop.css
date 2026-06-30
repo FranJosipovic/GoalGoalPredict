@@ -1,4 +1,32 @@
 @media (min-width: 1024px) {
+  /* ─── Content column ─── */
+  /* Constrain the page body to a centred column so cards/buttons stop spanning the whole
+     screen, while the sticky header keeps its full-width background (its content is padded
+     to line up with the column edges). */
+  .main-content {
+    width: 100%;
+    max-width: 960px;
+    margin-inline: auto;
+  }
+  .header {
+    padding-inline: max(20px, calc((100% - 960px) / 2));
+  }
+  /* The knockout bracket breaks out of the column to use the full viewport width. */
+  .bracket-wrap {
+    width: 100vw;
+    max-width: 100vw;
+    margin-left: calc(50% - 50vw);
+  }
+
+  /* ─── Action buttons ─── */
+  /* A primary call-to-action shouldn't stretch the full column width — cap and centre the
+     common standalone save/submit wrappers. */
+  .predict-save,
+  .rules-save {
+    max-width: 360px;
+    margin-inline: auto;
+  }
+
   /* ─── Modals ─── */
   .modal-overlay {
     align-items: center;

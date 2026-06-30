@@ -73,7 +73,8 @@ public class GetGroupPredictions(AppDbContext db, EffectiveRulesService effectiv
                 p.UserId, p.User.FirstName, p.User.LastName,
                 p.HomeGoals, p.AwayGoals,
                 scorerDtos, cardDtos,
-                projected);
+                projected,
+                match.IsKnockout ? p.FinishType : null);
         }).OrderByDescending(m => m.ProjectedPoints).ToList();
 
         var result = new GroupPredictionsDto(matchId, match.Status, match.HomeGoals, match.AwayGoals, members);

@@ -12,7 +12,10 @@ public record MatchListItemDto(
     TeamSummaryDto AwayTeam,
     int? HomeGoals,
     int? AwayGoals,
-    MyPredictionDto? MyPrediction);
+    MyPredictionDto? MyPrediction,
+    // Penalty-shootout tally, set only for knockout ties decided on penalties (status PEN).
+    int? PenaltyHomeGoals = null,
+    int? PenaltyAwayGoals = null);
 
 // Paged match list: all active (live + upcoming) matches plus a most-recent window of
 // finished matches. FinishedTotal lets the client show a "load more" control.
@@ -61,8 +64,19 @@ public record MatchDetailDto(
     List<CardEventDto> Cards,
     List<SubstitutionEventDto> Substitutions,
     List<VarDecisionEventDto> VarDecisions,
+    List<ShootoutPenaltyDto> ShootoutPenalties,
+    int? PenaltyHomeGoals,
+    int? PenaltyAwayGoals,
     bool LineupsRevealed,
     DateTime LineupRevealUtc);
+
+// One kick in a penalty shootout, in the order taken. Informational only (not scored).
+public record ShootoutPenaltyDto(
+    int TeamId,
+    int? PlayerId,
+    string? PlayerName,
+    bool Scored,
+    int Order);
 
 public record VarDecisionEventDto(
     int Minute,
@@ -121,7 +135,9 @@ public record MemberPredictionDto(
     int PredAway,
     List<ScorerPickDto> Scorers,
     List<CardPickDto> Cards,
-    int ProjectedPoints);
+    int ProjectedPoints,
+    // Knockout-only finish pick: "Regular" | "ExtraTime" | "Penalties". Null for group-stage.
+    string? FinishType = null);
 
 public record ScorerPickDto(int PlayerId, string Name, string Position, string GoalType, int TeamId, int PointsAwarded = 0);
 

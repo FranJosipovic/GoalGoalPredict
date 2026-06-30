@@ -1083,6 +1083,40 @@ input { font-family: inherit; }
   text-align: center;
 }
 
+/* ─── Desktop: two-sided bracket (left half ┃ Final ┃ right half) ─── */
+.bracket-twoside { justify-content: safe center; }
+.bkt-side { display: flex; gap: var(--bkt-gap); align-items: stretch; }
+.bkt-center {
+  flex: 0 0 auto;
+  width: 188px;
+  display: flex;
+  flex-direction: column;
+}
+.bkt-col-head--center { text-align: center; color: var(--gold); }
+.bkt-center-body { flex: 1; display: flex; align-items: center; }
+.bkt-cell--final { width: 100%; min-height: 0; }
+.bkt-third-block--center { margin-top: 20px; width: 100%; }
+
+/* Short stubs bridging each semi-final to the central Final. */
+.bkt-cell--final::before,
+.bkt-cell--final::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: calc(var(--bkt-gap) / 2 + var(--bkt-half));
+  height: 2px;
+  background: var(--bkt-line);
+}
+.bkt-cell--final::before { right: 100%; }
+.bkt-cell--final::after { left: 100%; }
+
+/* Mirror the right half: flip the whole side so its rounds run inward toward the Final, then
+   un-flip the cards + headers so logos/text read normally (including the hover lift). */
+.bkt-side--mirror { transform: scaleX(-1); }
+.bkt-side--mirror .bkt-match,
+.bkt-side--mirror .bkt-col-head { transform: scaleX(-1); }
+.bkt-side--mirror .bkt-match--clickable:hover { transform: scaleX(-1) translateY(-1px); }
+
 /* Mobile: one round per tab */
 .bkt-round-tabs {
   display: flex;
@@ -1253,6 +1287,16 @@ input { font-family: inherit; }
   min-width: 14px;
   text-align: right;
 }
+/* Penalty shoot-out tally, shown in parentheses before the reg+ET score. */
+.bkt-slot-pen {
+  flex-shrink: 0;
+  font-family: 'Oswald', sans-serif;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+.bkt-slot--won .bkt-slot-pen { color: var(--accent); }
+
 /* The winning side of a decided tie. */
 .bkt-slot--won { background: color-mix(in srgb, var(--accent) 16%, transparent); }
 .bkt-slot--won .bkt-slot-name { font-weight: 700; color: var(--text); }
@@ -2162,6 +2206,34 @@ input { font-family: inherit; }
 .my-pred-pts em { font-size: 9px; font-style: normal; color: var(--text-muted); letter-spacing: 0.06em; text-transform: uppercase; margin-left: 3px; }
 .my-pred-score { display: flex; align-items: center; justify-content: center; gap: 12px; margin: 10px 0; font-size: 13px; color: var(--text-muted); }
 .my-pred-score strong { font-family: 'Oswald', sans-serif; font-size: 24px; color: var(--text); }
+.my-pred-finish {
+  display: flex; align-items: center; justify-content: center; gap: 5px;
+  margin: -2px 0 10px;
+  font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* Penalty shootout — rendered as a continuation of the events timeline */
+.ev-shootout-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin: 6px 16px 2px; padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+.ev-shootout-label {
+  display: flex; align-items: center; gap: 6px;
+  font-family: 'Oswald', sans-serif; font-size: 12px; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--text-muted);
+}
+.ev-shootout-score { font-family: 'Oswald', sans-serif; font-size: 14px; color: var(--text); }
+.ev-min--pen { font-size: 11px; color: var(--text-muted); }
+.shootout-mark { font-weight: 700; }
+.shootout-mark.is-scored { color: var(--success, #36c275); }
+.shootout-mark.is-missed { color: var(--danger, #e5484d); }
+.picks-finish {
+  display: inline-block; margin-bottom: 6px;
+  font-size: 10px; letter-spacing: 0.04em; text-transform: uppercase;
+  color: var(--text-muted);
+}
 /* Everyone's picks list: neutral cards, with the current user's highlighted. */
 .match-picks { padding-top: 4px; }
 .match-picks .my-pred { background: var(--surface-2); border-color: var(--border); }

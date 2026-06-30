@@ -7,7 +7,7 @@ import { useAuthStore } from "../store/authStore";
 import PicksByTeam from "../components/PicksByTeam";
 import Icon, { FootballCard, type IconName } from "../components/Icon";
 import PlayerStats from "../components/PlayerStats";
-import type { MatchDetail, GroupPredictions } from "../types";
+import type { MatchDetail, GroupPredictions, FinishType } from "../types";
 
 type Tab = "events" | "lineups" | "picks";
 const MATCH_TABS: [Tab, IconName, string][] = [
@@ -16,6 +16,11 @@ const MATCH_TABS: [Tab, IconName, string][] = [
   ["picks", "target", "Picks"],
 ];
 type Side = "home" | "away";
+const FINISH_LABEL: Record<FinishType, string> = {
+  Regular: "Regular time",
+  ExtraTime: "Extra time",
+  Penalties: "Penalties",
+};
 
 export default function MatchLivePage() {
   const { groupId, matchId } = useParams<{
@@ -127,6 +132,11 @@ export default function MatchLivePage() {
       a.minute - b.minute || (a.extraMinute ?? 0) - (b.extraMinute ?? 0),
   );
 
+  // ---- Penalty shootout (knockout decider) — informational, never scored ----
+  const shootout = [...(match.shootoutPenalties ?? [])].sort((a, b) => a.order - b.order);
+  const penHome = match.penaltyHomeGoals ?? shootout.filter((s) => s.teamId === match.homeTeam.id && s.scored).length;
+  const penAway = match.penaltyAwayGoals ?? shootout.filter((s) => s.teamId === match.awayTeam.id && s.scored).length;
+
   // ---- Lineup tab: graphical pitch with goal/card/sub markers ----
   const hasLineup = match.lineup.length > 0;
   const goalsByPlayer = new Map<number, number>();
@@ -214,7 +224,7 @@ export default function MatchLivePage() {
 
         {/* TAB: Match events */}
         {tab === "events" && (
-          events.length === 0 ? (
+          events.length === 0 && shootout.length === 0 ? (
             <div className="empty-state"><p>No events yet</p></div>
           ) : (
             <div className="events-timeline">
@@ -269,6 +279,37 @@ export default function MatchLivePage() {
                   </div>
                 );
               })}
+
+              {/* Penalty shootout — continues the timeline below the in-play events */}
+              {shootout.length > 0 && (
+                <>
+                  <div className="ev-shootout-head">
+                    <span className="ev-shootout-label">
+                      <Icon name="target" size={13} /> Penalty Shootout
+                    </span>
+                    <span className="ev-shootout-score">{penHome}–{penAway}</span>
+                  </div>
+                  {shootout.map((s, i) => {
+                    const home = s.teamId === match.homeTeam.id;
+                    return (
+                      <div
+                        key={`pen${i}`}
+                        className={`ev-row ${home ? "ev-row--home" : "ev-row--away"}`}
+                      >
+                        <span className="ev-min ev-min--pen">P</span>
+                        <span className="ev-icon">
+                          <span className={`shootout-mark ${s.scored ? "is-scored" : "is-missed"}`}>
+                            {s.scored ? "✓" : "✗"}
+                          </span>
+                        </span>
+                        <div className="ev-text">
+                          <span className="ev-main">{(s.playerName ?? "Unknown").split(" ").pop()}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </>
+              )}
             </div>
           )
         )}
@@ -338,6 +379,11 @@ export default function MatchLivePage() {
                       </strong>
                       <span>{match.awayTeam.code || match.awayTeam.name}</span>
                     </div>
+                    {p.finishType && (
+                      <div className="my-pred-finish">
+                        🏁 {FINISH_LABEL[p.finishType]}
+                      </div>
+                    )}
                     <PicksByTeam
                       scorers={p.scorers}
                       cards={p.cards}

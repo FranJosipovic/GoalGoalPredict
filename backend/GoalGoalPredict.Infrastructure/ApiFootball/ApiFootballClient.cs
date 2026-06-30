@@ -82,6 +82,25 @@ public class ApiFootballClient(HttpClient http, IConfiguration config, ILogger<A
             )).ToList();
     }
 
+    public async Task<List<ApiShootoutEventData>> GetShootoutEventsAsync(int fixtureId, CancellationToken ct = default)
+    {
+        // Shootout kicks are Goal-type events tagged comments="Penalty Shootout". Detail is
+        // "Penalty" for a scored kick and "Missed Penalty" for a miss. These are informational
+        // only — they never feed scoring (goalscorer picks + judged scoreline are reg+ET).
+        var json = await GetAsync($"fixtures/events?fixture={fixtureId}&type=Goal", ct);
+        var resp = Deserialize<ApiResponse<EventResponse>>(json);
+        if (resp is null) return [];
+
+        return resp.Response
+            .Where(e => e.Comments == "Penalty Shootout")
+            .Select((e, i) => new ApiShootoutEventData(
+                e.Team.Id,
+                e.Player.Id,
+                e.Detail == "Penalty",
+                i
+            )).ToList();
+    }
+
     public async Task<List<ApiSubstitutionEventData>> GetSubstitutionEventsAsync(int fixtureId, CancellationToken ct = default)
     {
         var json = await GetAsync($"fixtures/events?fixture={fixtureId}&type=subst", ct);

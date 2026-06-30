@@ -29,6 +29,7 @@ public class Match
     public ICollection<MatchCard> Cards { get; private set; } = [];
     public ICollection<MatchSubstitution> Substitutions { get; private set; } = [];
     public ICollection<MatchVarDecision> VarDecisions { get; private set; } = [];
+    public ICollection<MatchShootoutPenalty> ShootoutPenalties { get; private set; } = [];
 
     private Match() { }
 
