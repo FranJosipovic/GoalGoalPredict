@@ -8,9 +8,11 @@
     "userInterfaceStyle": "dark",
     "backgroundColor": "#060c09",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.goalgoalpredict.app"
     },
     "android": {
+      "package": "com.goalgoalpredict.app",
       "backgroundColor": "#060c09",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
@@ -25,7 +27,13 @@
     },
     "plugins": [
       "expo-secure-store",
-      "expo-font"
+      "expo-font",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.235532034931-q0vo5ld1cvuouti0u0svgeaqfho81os0"
+        }
+      ]
     ]
   }
 }

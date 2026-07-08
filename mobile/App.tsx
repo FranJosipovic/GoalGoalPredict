@@ -8,6 +8,7 @@ import { useFonts } from 'expo-font'
 import { Oswald_600SemiBold, Oswald_700Bold } from '@expo-google-fonts/oswald'
 import { DMSans_400Regular, DMSans_500Medium, DMSans_600SemiBold } from '@expo-google-fonts/dm-sans'
 import { useAuthStore } from './src/store/authStore'
+import { configureGoogleSignin } from './src/lib/google'
 import { LoginScreen } from './src/screens/LoginScreen'
 import { GroupsScreen } from './src/screens/GroupsScreen'
 import { GroupDetailScreen } from './src/screens/GroupDetailScreen'
@@ -17,6 +18,8 @@ import { MemberDetailScreen } from './src/screens/MemberDetailScreen'
 import { makePlaceholder } from './src/screens/PlaceholderScreen'
 import { colors } from './src/theme'
 import type { RootStackParamList } from './src/navigation'
+
+configureGoogleSignin()
 
 const Stack = createNativeStackNavigator<RootStackParamList>()
 const TournamentScreen = makePlaceholder('tournament', 'Tournament')
