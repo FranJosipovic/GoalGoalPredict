@@ -5,6 +5,8 @@ export interface User {
   lastName: string
   isAdmin?: boolean
   emailVerified?: boolean
+  hasOnboarded?: boolean
+  preferredLanguage?: string | null
 }
 
 export interface Group {

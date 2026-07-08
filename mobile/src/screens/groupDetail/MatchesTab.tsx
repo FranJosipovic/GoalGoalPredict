@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { getMatches } from '../../api/matches'
 import { getStandings } from '../../api/tournament'
 import { getTeams } from '../../api/teams'
@@ -31,6 +32,7 @@ const isToday = (utc: string) => new Date(utc).toDateString() === new Date().toD
 type Filter = 'today' | 'upcoming' | 'finished' | 'all'
 
 function MatchCard({ match, onPress }: { match: MatchListItem; onPress: () => void }) {
+  const { t } = useTranslation()
   const isLive = LIVE_STATUSES.includes(match.status)
   const isFinished = FINISHED_STATUSES.includes(match.status)
   const hasPred = match.myPrediction !== null
@@ -44,7 +46,7 @@ function MatchCard({ match, onPress }: { match: MatchListItem; onPress: () => vo
       {isLive && (
         <View style={styles.liveCorner}>
           <View style={styles.liveBadge}>
-            <Text style={styles.liveBadgeText}>LIVE</Text>
+            <Text style={styles.liveBadgeText}>{t('groupDetail.live')}</Text>
           </View>
           <View style={styles.livePulse} />
         </View>
@@ -103,13 +105,13 @@ function MatchCard({ match, onPress }: { match: MatchListItem; onPress: () => vo
           !isFinished &&
           !isLive && (
             <View style={[styles.predBadge, styles.predBadgeEmpty]}>
-              <Text style={styles.predBadgeEmptyText}>No prediction</Text>
+              <Text style={styles.predBadgeEmptyText}>{t('groupDetail.noPrediction')}</Text>
             </View>
           )
         )}
         {isFinished && (
           <View style={styles.ftBadge}>
-            <Text style={styles.ftBadgeText}>FT</Text>
+            <Text style={styles.ftBadgeText}>{t('groupDetail.ft')}</Text>
           </View>
         )}
       </View>
@@ -126,6 +128,7 @@ export default function MatchesTab({
   isGlobal?: boolean
   onMatchClick: (matchId: number, openDetail: boolean) => void
 }) {
+  const { t: tr } = useTranslation()
   const [matches, setMatches] = useState<MatchListItem[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -239,7 +242,7 @@ export default function MatchesTab({
               onPress={() => setFilter(f)}
             >
               <Text style={[styles.pillText, active && styles.pillTextActive]}>
-                {f === 'today' ? 'Today' : f === 'upcoming' ? 'Upcoming' : f === 'finished' ? 'Finished' : 'All'}
+                {f === 'today' ? tr('groupDetail.filterToday') : f === 'upcoming' ? tr('groupDetail.filterUpcoming') : f === 'finished' ? tr('groupDetail.filterFinished') : tr('groupDetail.filterAll')}
               </Text>
             </TouchableOpacity>
           )
@@ -250,7 +253,7 @@ export default function MatchesTab({
         <TouchableOpacity style={styles.liveBanner} onPress={() => onMatchClick(liveMatches[0].id, true)}>
           <View style={styles.liveBannerDot} />
           <Text style={styles.liveBannerText}>
-            {liveMatches.length} match{liveMatches.length > 1 ? 'es' : ''} live now
+            {tr('groupDetail.liveNow', { count: liveMatches.length })}
           </Text>
           <Icon name="chevronRight" size={16} color={colors.error} />
         </TouchableOpacity>
@@ -259,13 +262,13 @@ export default function MatchesTab({
       {groups.length === 0 ? (
         <View style={styles.empty}>
           <Text style={styles.emptyIcon}>📅</Text>
-          <Text style={styles.emptyTitle}>No matches</Text>
-          <Text style={styles.emptySub}>Try "All" to see the full schedule</Text>
+          <Text style={styles.emptyTitle}>{tr('groupDetail.noMatchesTitle')}</Text>
+          <Text style={styles.emptySub}>{tr('groupDetail.noMatchesSub')}</Text>
         </View>
       ) : (
         groups.map(([date, dayMatches]) => (
           <View key={date} style={styles.dayGroup}>
-            <Text style={styles.dayLabel}>{isToday(dayMatches[0].kickoffUtc) ? 'TODAY' : date.toUpperCase()}</Text>
+            <Text style={styles.dayLabel}>{isToday(dayMatches[0].kickoffUtc) ? tr('groupDetail.filterToday').toUpperCase() : date.toUpperCase()}</Text>
             {dayMatches.map((m) => (
               <MatchCard
                 key={m.id}
@@ -291,7 +294,7 @@ export default function MatchesTab({
           {loadingMore ? (
             <ActivityIndicator size="small" color={colors.accent} />
           ) : (
-            <Text style={styles.loadMoreText}>Load more</Text>
+            <Text style={styles.loadMoreText}>{tr('groupDetail.loadMore')}</Text>
           )}
         </TouchableOpacity>
       )}
@@ -307,7 +310,7 @@ export default function MatchesTab({
           const on = view === v
           return (
             <TouchableOpacity key={v} style={[styles.subBtn, on && styles.subBtnOn]} onPress={() => setView(v)}>
-              <Text style={[styles.subText, on && styles.subTextOn]}>{v === 'bracket' ? 'Bracket' : 'Upcoming'}</Text>
+              <Text style={[styles.subText, on && styles.subTextOn]}>{v === 'bracket' ? tr('groupDetail.bracket') : tr('groupDetail.upcoming')}</Text>
             </TouchableOpacity>
           )
         })}

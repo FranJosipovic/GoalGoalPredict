@@ -1,19 +1,35 @@
 import { useState } from 'react'
 import { Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../store/authStore'
+import { completeOnboarding } from '../api/auth'
+import { SUPPORTED_LANGUAGES, type LanguageCode } from '../i18n/config'
+import { setLanguage } from '../i18n/language'
 import { colors, fonts, radius } from '../theme'
 import Icon from './Icon'
 
 // Top-right account menu, ported from the PWA's TopBarMenu. Profile + logout for
 // now; theme toggle and notifications land with their own features later.
 export default function AccountMenu() {
-  const { user, signOut } = useAuthStore()
+  const { t, i18n } = useTranslation()
+  const { user, signOut, setUser } = useAuthStore()
   const insets = useSafeAreaInsets()
   const [open, setOpen] = useState(false)
 
   if (!user) return null
   const initial = (user.firstName?.[0] ?? '?').toUpperCase()
+  const currentLang = i18n.resolvedLanguage ?? i18n.language
+
+  const changeLang = async (code: LanguageCode) => {
+    await setLanguage(code)
+    try {
+      const updated = await completeOnboarding(code)
+      setUser(updated)
+    } catch {
+      // Non-fatal — UI already switched; account sync retries next change.
+    }
+  }
 
   return (
     <>
@@ -34,6 +50,24 @@ export default function AccountMenu() {
                 </Text>
                 <Text style={styles.sub}>{user.email}</Text>
               </View>
+            </View>
+
+            <View style={styles.divider} />
+
+            <Text style={styles.sectionLabel}>{t('common.language')}</Text>
+            <View style={styles.langWrap}>
+              {SUPPORTED_LANGUAGES.map((l) => {
+                const active = l.code === currentLang
+                return (
+                  <TouchableOpacity
+                    key={l.code}
+                    style={[styles.langPill, active && styles.langPillActive]}
+                    onPress={() => changeLang(l.code)}
+                  >
+                    <Text style={[styles.langPillText, active && styles.langPillTextActive]}>{l.label}</Text>
+                  </TouchableOpacity>
+                )
+              })}
             </View>
 
             <View style={styles.divider} />
@@ -100,4 +134,26 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 11, borderRadius: radius.sm },
   rowIcon: {},
   rowLabel: { flex: 1, fontFamily: fonts.bodyMedium, fontSize: 13 },
+  sectionLabel: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 11,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    color: colors.textMuted,
+    paddingHorizontal: 11,
+    paddingTop: 4,
+    paddingBottom: 8,
+  },
+  langWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingHorizontal: 8, paddingBottom: 4 },
+  langPill: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface2,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  langPillActive: { borderColor: colors.accent, backgroundColor: colors.surface3 },
+  langPillText: { fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.text },
+  langPillTextActive: { color: colors.accent },
 })

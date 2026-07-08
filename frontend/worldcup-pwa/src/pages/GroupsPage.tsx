@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { getGroups, createGroup, joinGroup } from '../api/groups'
 import { useAuthStore } from '../store/authStore'
 import { useInstallPrompt } from '../hooks/useInstallPrompt'
@@ -8,6 +9,7 @@ import type { Group } from '../types'
 
 export default function GroupsPage() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const user = useAuthStore((s) => s.user)
 
   const { canInstall, install } = useInstallPrompt()
@@ -46,7 +48,7 @@ export default function GroupsPage() {
       setGroups((g) => [group, ...g])
       closeModal()
     } catch (err: any) {
-      setActionError(err.response?.data?.error ?? 'Something went wrong.')
+      setActionError(err.response?.data?.error ?? t('groups.genericError'))
     } finally {
       setActionLoading(false)
     }
@@ -57,11 +59,11 @@ export default function GroupsPage() {
       <div className="groups-page">
         <div className="groups-hero">
           <div className="hero-greeting">
-            WELCOME BACK,{' '}
+            {t('groups.welcomeBack').toUpperCase()},{' '}
             <span className="hero-name">{user?.firstName?.toUpperCase()}</span>
           </div>
-          <h2 className="hero-title">Your Competitions</h2>
-          <p className="hero-sub">Predict. Compete. Win.</p>
+          <h2 className="hero-title">{t('groups.title')}</h2>
+          <p className="hero-sub">{t('groups.subtitle')}</p>
         </div>
 
         {canInstall && (
@@ -69,11 +71,11 @@ export default function GroupsPage() {
             <div className="install-banner-left">
               <span className="install-banner-icon">📲</span>
               <div>
-                <div className="install-banner-title">Install app</div>
-                <div className="install-banner-sub">Add GoalGoalPredict to home screen</div>
+                <div className="install-banner-title">{t('groups.installTitle')}</div>
+                <div className="install-banner-sub">{t('groups.installSub')}</div>
               </div>
             </div>
-            <button className="install-banner-btn">Install</button>
+            <button className="install-banner-btn">{t('groups.install')}</button>
           </div>
         )}
 
@@ -82,13 +84,13 @@ export default function GroupsPage() {
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <path d="M12 5v14M5 12h14" />
             </svg>
-            Create group
+            {t('groups.createGroup')}
           </button>
           <button className="btn-secondary" onClick={() => openModal('join')}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
             </svg>
-            Join group
+            {t('groups.joinGroup')}
           </button>
         </div>
 
@@ -102,8 +104,8 @@ export default function GroupsPage() {
           {!loading && groups.length === 0 && (
             <div className="empty-state">
               <div className="empty-icon">🏆</div>
-              <p className="empty-title">No competitions yet</p>
-              <p className="empty-sub">Create one or join with an invite code</p>
+              <p className="empty-title">{t('groups.emptyTitle')}</p>
+              <p className="empty-sub">{t('groups.emptySub')}</p>
             </div>
           )}
 
@@ -127,10 +129,10 @@ export default function GroupsPage() {
                   <div>
                     <div className="group-card-name">
                       {group.name}
-                      <span className="global-badge">GLOBAL</span>
+                      <span className="global-badge">{t('groups.globalBadge')}</span>
                     </div>
                     <div className="group-card-sub--global">
-                      {group.isLocked ? 'Unlocks at the knockout phase' : 'Everyone competes · live now'}
+                      {group.isLocked ? t('groups.globalLocked') : t('groups.globalLive')}
                     </div>
                   </div>
                 </div>
@@ -167,28 +169,26 @@ export default function GroupsPage() {
         <div className="modal-overlay" onClick={closeModal}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <h3 className="modal-title">
-              {modal === 'create' ? 'New Competition' : 'Join Competition'}
+              {modal === 'create' ? t('groups.newTitle') : t('groups.joinTitle')}
             </h3>
             <p className="modal-sub">
-              {modal === 'create'
-                ? 'Give your group a name'
-                : 'Enter the 6-character invite code'}
+              {modal === 'create' ? t('groups.newSub') : t('groups.joinSub')}
             </p>
             <input
               className="field-input"
               type="text"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
-              placeholder={modal === 'create' ? 'Champions League Pub League' : 'ABC123'}
+              placeholder={modal === 'create' ? t('groups.namePlaceholder') : 'ABC123'}
               maxLength={modal === 'join' ? 6 : 60}
               autoFocus
               onKeyDown={(e) => e.key === 'Enter' && handleAction()}
             />
             {actionError && <div className="error-msg">{actionError}</div>}
             <div className="modal-actions">
-              <button className="btn-ghost" onClick={closeModal}>Cancel</button>
+              <button className="btn-ghost" onClick={closeModal}>{t('common.cancel')}</button>
               <button className="btn-primary" onClick={handleAction} disabled={actionLoading}>
-                {actionLoading ? <span className="spinner" /> : modal === 'create' ? 'Create' : 'Join'}
+                {actionLoading ? <span className="spinner" /> : modal === 'create' ? t('groups.create') : t('groups.join')}
               </button>
             </div>
           </div>

@@ -13,6 +13,7 @@ import {
   View,
 } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
+import { useTranslation } from 'react-i18next'
 import { getGroups, createGroup, joinGroup } from '../api/groups'
 import { useAuthStore } from '../store/authStore'
 import { colors, fonts, radius } from '../theme'
@@ -23,6 +24,7 @@ import type { Group } from '../types'
 import type { ScreenProps } from '../navigation'
 
 export function GroupsScreen({ navigation }: ScreenProps<'Groups'>) {
+  const { t } = useTranslation()
   const user = useAuthStore((s) => s.user)
   const [groups, setGroups] = useState<Group[]>([])
   const [loading, setLoading] = useState(true)
@@ -60,7 +62,7 @@ export function GroupsScreen({ navigation }: ScreenProps<'Groups'>) {
       setGroups((g) => [group, ...g])
       closeModal()
     } catch (err: any) {
-      setActionError(err?.response?.data?.error ?? 'Something went wrong.')
+      setActionError(err?.response?.data?.error ?? t('groups.genericError'))
     } finally {
       setActionLoading(false)
     }
@@ -77,21 +79,21 @@ export function GroupsScreen({ navigation }: ScreenProps<'Groups'>) {
         {/* Hero */}
         <LinearGradient colors={[colors.surface, 'transparent']} style={styles.hero}>
           <Text style={styles.heroGreeting}>
-            WELCOME BACK, <Text style={styles.heroName}>{user?.firstName?.toUpperCase()}</Text>
+            {t('groups.welcomeBack').toUpperCase()}, <Text style={styles.heroName}>{user?.firstName?.toUpperCase()}</Text>
           </Text>
-          <Text style={styles.heroTitle}>Your Competitions</Text>
-          <Text style={styles.heroSub}>Predict. Compete. Win.</Text>
+          <Text style={styles.heroTitle}>{t('groups.title')}</Text>
+          <Text style={styles.heroSub}>{t('groups.subtitle')}</Text>
         </LinearGradient>
 
         {/* Actions */}
         <View style={styles.actions}>
           <TouchableOpacity style={[styles.btn, styles.btnPrimary]} onPress={() => openModal('create')}>
             <Icon name="plus" size={16} color={colors.onAccent} />
-            <Text style={[styles.btnText, styles.btnPrimaryText]}>Create group</Text>
+            <Text style={[styles.btnText, styles.btnPrimaryText]}>{t('groups.createGroup')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.btn, styles.btnSecondary]} onPress={() => openModal('join')}>
             <Icon name="users" size={16} color={colors.text} />
-            <Text style={[styles.btnText, styles.btnSecondaryText]}>Join group</Text>
+            <Text style={[styles.btnText, styles.btnSecondaryText]}>{t('groups.joinGroup')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -106,8 +108,8 @@ export function GroupsScreen({ navigation }: ScreenProps<'Groups'>) {
           {!loading && groups.length === 0 && (
             <View style={styles.emptyState}>
               <Text style={styles.emptyIcon}>🏆</Text>
-              <Text style={styles.emptyTitle}>No competitions yet</Text>
-              <Text style={styles.emptySub}>Create one or join with an invite code</Text>
+              <Text style={styles.emptyTitle}>{t('groups.emptyTitle')}</Text>
+              <Text style={styles.emptySub}>{t('groups.emptySub')}</Text>
             </View>
           )}
 
@@ -132,16 +134,16 @@ export function GroupsScreen({ navigation }: ScreenProps<'Groups'>) {
           >
             <Pressable style={styles.modal} onPress={() => {}}>
               <Text style={styles.modalTitle}>
-                {modal === 'create' ? 'New Competition' : 'Join Competition'}
+                {modal === 'create' ? t('groups.newTitle') : t('groups.joinTitle')}
               </Text>
               <Text style={styles.modalSub}>
-                {modal === 'create' ? 'Give your group a name' : 'Enter the 6-character invite code'}
+                {modal === 'create' ? t('groups.newSub') : t('groups.joinSub')}
               </Text>
               <TextInput
                 style={styles.field}
                 value={inputValue}
                 onChangeText={setInputValue}
-                placeholder={modal === 'create' ? 'Champions League Pub League' : 'ABC123'}
+                placeholder={modal === 'create' ? t('groups.namePlaceholder') : 'ABC123'}
                 placeholderTextColor={colors.textMuted}
                 maxLength={modal === 'join' ? 6 : 60}
                 autoCapitalize={modal === 'join' ? 'characters' : 'sentences'}
@@ -155,7 +157,7 @@ export function GroupsScreen({ navigation }: ScreenProps<'Groups'>) {
               )}
               <View style={styles.modalActions}>
                 <TouchableOpacity style={styles.btnGhost} onPress={closeModal}>
-                  <Text style={styles.btnGhostText}>Cancel</Text>
+                  <Text style={styles.btnGhostText}>{t('common.cancel')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.btn, styles.btnPrimary, { flex: 1 }, actionLoading && { opacity: 0.5 }]}
@@ -166,7 +168,7 @@ export function GroupsScreen({ navigation }: ScreenProps<'Groups'>) {
                     <ActivityIndicator color={colors.onAccent} />
                   ) : (
                     <Text style={[styles.btnText, styles.btnPrimaryText]}>
-                      {modal === 'create' ? 'Create' : 'Join'}
+                      {modal === 'create' ? t('groups.create') : t('groups.join')}
                     </Text>
                   )}
                 </TouchableOpacity>
@@ -197,6 +199,7 @@ function RegularCard({ group, onPress }: { group: Group; onPress: () => void }) 
 }
 
 function GlobalCard({ group, onPress }: { group: Group; onPress: () => void }) {
+  const { t } = useTranslation()
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.85}>
       <LinearGradient
@@ -217,11 +220,11 @@ function GlobalCard({ group, onPress }: { group: Group; onPress: () => void }) {
             <View style={styles.globalNameRow}>
               <Text style={styles.cardNameGlobal}>{group.name}</Text>
               <View style={styles.globalBadge}>
-                <Text style={styles.globalBadgeText}>GLOBAL</Text>
+                <Text style={styles.globalBadgeText}>{t('groups.globalBadge')}</Text>
               </View>
             </View>
             <Text style={styles.cardSubGlobal}>
-              {group.isLocked ? 'Unlocks at the knockout phase' : 'Everyone competes · live now'}
+              {group.isLocked ? t('groups.globalLocked') : t('groups.globalLive')}
             </Text>
           </View>
         </View>

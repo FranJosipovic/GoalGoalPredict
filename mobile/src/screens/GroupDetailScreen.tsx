@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ActivityIndicator, PanResponder, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useTranslation } from 'react-i18next'
 import { getGroupDetail } from '../api/groups'
 import { colors, fonts } from '../theme'
 import Icon, { type IconName } from '../components/Icon'
@@ -14,12 +15,12 @@ import type { ScreenProps } from '../navigation'
 
 type Tab = 'matches' | 'mypicks' | 'leaderboard' | 'members' | 'rules'
 
-const TAB_META: Record<Tab, { icon: IconName; label: string }> = {
-  matches: { icon: 'ball', label: 'Matches' },
-  mypicks: { icon: 'target', label: 'Picks' },
-  leaderboard: { icon: 'trophy', label: 'Board' },
-  members: { icon: 'users', label: 'Members' },
-  rules: { icon: 'sliders', label: 'Rules' },
+const TAB_META: Record<Tab, { icon: IconName; labelKey: string }> = {
+  matches: { icon: 'ball', labelKey: 'groupDetail.tabMatches' },
+  mypicks: { icon: 'target', labelKey: 'groupDetail.tabPicks' },
+  leaderboard: { icon: 'trophy', labelKey: 'groupDetail.tabBoard' },
+  members: { icon: 'users', labelKey: 'groupDetail.tabMembers' },
+  rules: { icon: 'sliders', labelKey: 'groupDetail.tabRules' },
 }
 
 const FULL_TABS: Tab[] = ['matches', 'mypicks', 'leaderboard', 'members', 'rules']
@@ -28,6 +29,7 @@ const GLOBAL_TABS_UNLOCKED: Tab[] = ['matches', 'mypicks', 'leaderboard', 'rules
 
 export function GroupDetailScreen({ route, navigation }: ScreenProps<'GroupDetail'>) {
   const { groupId, groupName } = route.params
+  const { t: tr } = useTranslation()
   const insets = useSafeAreaInsets()
   const [group, setGroup] = useState<GroupDetail | null>(null)
   const [loading, setLoading] = useState(true)
@@ -91,7 +93,7 @@ export function GroupDetailScreen({ route, navigation }: ScreenProps<'GroupDetai
           return (
             <TouchableOpacity key={t} style={styles.tab} onPress={() => setTab(t)} activeOpacity={0.7}>
               <Icon name={TAB_META[t].icon} size={18} color={color} />
-              <Text style={[styles.tabLabel, { color }]}>{TAB_META[t].label}</Text>
+              <Text style={[styles.tabLabel, { color }]}>{tr(TAB_META[t].labelKey)}</Text>
               {active && <View style={styles.tabIndicator} />}
             </TouchableOpacity>
           )
@@ -113,7 +115,7 @@ export function GroupDetailScreen({ route, navigation }: ScreenProps<'GroupDetai
         ) : tab === 'rules' ? (
           <RulesTab groupId={groupId} />
         ) : (
-          <ComingSoon label={TAB_META[tab].label} />
+          <ComingSoon label={tr(TAB_META[tab].labelKey)} />
         )}
       </View>
     </View>

@@ -33,7 +33,8 @@
         {
           "iosUrlScheme": "com.googleusercontent.apps.235532034931-q0vo5ld1cvuouti0u0svgeaqfho81os0"
         }
-      ]
+      ],
+      "expo-localization"
     ]
   }
 }

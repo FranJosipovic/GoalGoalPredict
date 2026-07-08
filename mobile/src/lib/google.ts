@@ -30,6 +30,9 @@ export function configureGoogleSignin() {
 export async function signInWithGoogle(): Promise<string | null> {
   try {
     await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true })
+    // Clear any cached session so the account picker is shown every time, rather
+    // than silently reusing the last-signed-in Google account.
+    await GoogleSignin.signOut()
     const response = await GoogleSignin.signIn()
     if (isSuccessResponse(response)) {
       return response.data.idToken ?? null

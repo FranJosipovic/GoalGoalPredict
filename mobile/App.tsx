@@ -9,7 +9,10 @@ import { Oswald_600SemiBold, Oswald_700Bold } from '@expo-google-fonts/oswald'
 import { DMSans_400Regular, DMSans_500Medium, DMSans_600SemiBold } from '@expo-google-fonts/dm-sans'
 import { useAuthStore } from './src/store/authStore'
 import { configureGoogleSignin } from './src/lib/google'
+import './src/i18n/config'
 import { LoginScreen } from './src/screens/LoginScreen'
+import { SignupScreen } from './src/screens/SignupScreen'
+import { OnboardingScreen } from './src/screens/OnboardingScreen'
 import { GroupsScreen } from './src/screens/GroupsScreen'
 import { GroupDetailScreen } from './src/screens/GroupDetailScreen'
 import { MatchDetailScreen } from './src/screens/MatchDetailScreen'
@@ -47,7 +50,10 @@ const screenOptions = {
 export default function App() {
   const hydrating = useAuthStore((s) => s.hydrating)
   const token = useAuthStore((s) => s.token)
+  const user = useAuthStore((s) => s.user)
   const hydrate = useAuthStore((s) => s.hydrate)
+  // Signed in but hasn't finished onboarding yet → show the onboarding flow.
+  const needsOnboarding = !!token && user?.hasOnboarded === false
 
   const [fontsLoaded] = useFonts({
     Oswald_600SemiBold,
@@ -72,7 +78,11 @@ export default function App() {
         </View>
       ) : (
         <NavigationContainer theme={navTheme}>
-          {token ? (
+          {needsOnboarding ? (
+            <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }}>
+              <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+            </Stack.Navigator>
+          ) : token ? (
             <Stack.Navigator screenOptions={screenOptions}>
               <Stack.Screen name="Groups" component={GroupsScreen} options={{ headerShown: false }} />
               <Stack.Screen
@@ -102,7 +112,8 @@ export default function App() {
             <Stack.Navigator
               screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }}
             >
-              <Stack.Screen name="Groups" component={LoginScreen} />
+              <Stack.Screen name="Login" component={LoginScreen} />
+              <Stack.Screen name="Signup" component={SignupScreen} />
             </Stack.Navigator>
           )}
         </NavigationContainer>

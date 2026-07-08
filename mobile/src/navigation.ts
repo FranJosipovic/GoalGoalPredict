@@ -2,6 +2,9 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 
 // Central route map. Add screens here as we build them (MatchPredict, Live, ...).
 export type RootStackParamList = {
+  Login: undefined
+  Signup: undefined
+  Onboarding: undefined
   Groups: undefined
   GroupDetail: { groupId: string; groupName: string }
   MatchDetail: { matchId: number; groupId: string }

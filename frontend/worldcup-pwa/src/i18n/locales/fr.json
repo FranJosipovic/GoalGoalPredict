@@ -1,0 +1,133 @@
+{
+  "language": {
+    "title": "Choisis ta langue",
+    "subtitle": "Tu pourras la changer plus tard dans les réglages."
+  },
+  "onboarding": {
+    "welcome": {
+      "title": "Bienvenue sur GG Predict",
+      "body": "Pronostique des matchs de foot, affronte tes amis et grimpe dans le classement."
+    },
+    "leagues": {
+      "title": "Ligues auxquelles tu peux jouer",
+      "body": "Pronostique dans les plus grandes compétitions. D'autres ligues arrivent bientôt.",
+      "soon": "Bientôt disponible"
+    },
+    "groups": {
+      "title": "Joue avec tes amis",
+      "body": "Crée un groupe et partage le lien d'invitation, ou rejoins le groupe d'un ami avec son code. Tout le monde dans le groupe pronostique les mêmes matchs."
+    },
+    "predict": {
+      "title": "Fais tes pronostics",
+      "body": "Avant le coup d'envoi, pronostique le score final. Dès que les compositions tombent, touche les joueurs pour choisir buteurs et cartons."
+    },
+    "scoring": {
+      "title": "Comment ça se compte",
+      "body": "Gagne des points pour le bon résultat, le score exact et les bons buteurs. Le propriétaire de chaque groupe peut ajuster les règles de points."
+    },
+    "leaderboard": {
+      "title": "Grimpe dans le classement",
+      "body": "Les points de chaque match s'additionnent. Suis ton rang face au reste de ton groupe en temps réel."
+    }
+  },
+  "common": {
+    "skip": "Passer",
+    "next": "Suivant",
+    "back": "Retour",
+    "getStarted": "Commencer",
+    "cancel": "Annuler",
+    "or": "ou",
+    "email": "E-mail",
+    "password": "Mot de passe",
+    "firstName": "Prénom",
+    "lastName": "Nom",
+    "language": "Langue"
+  },
+  "auth": {
+    "googleBtn": "Continuer avec Google",
+    "login": {
+      "title": "Bon retour",
+      "subtitle": "Connecte-toi à ta compétition",
+      "submit": "Se connecter",
+      "failed": "Échec de la connexion. Vérifie tes identifiants.",
+      "noAccount": "Pas de compte ?",
+      "createOne": "Crées-en un",
+      "unverifiedTitle": "Vérifie ton e-mail pour continuer",
+      "unverifiedText": "Nous avons renforcé la sécurité des comptes. Vérifie {{email}} — envoie-toi le lien et ouvre-le, ou connecte-toi avec Google pour confirmer instantanément (tes points sont conservés).",
+      "linkSent": "✓ Lien de vérification envoyé. Vérifie ta boîte mail.",
+      "sendLink": "Envoyer le lien de vérification",
+      "resendLink": "Renvoyer le lien de vérification",
+      "backToSignIn": "← Retour à la connexion"
+    },
+    "register": {
+      "title": "Rejoins le jeu",
+      "subtitle": "Crée ton compte",
+      "submit": "Créer un compte",
+      "failed": "Échec de l'inscription. Réessaie.",
+      "passwordTooShort": "Le mot de passe doit comporter au moins 6 caractères.",
+      "alreadyPlaying": "Déjà joueur ?",
+      "signIn": "Se connecter",
+      "checkEmailTitle": "Vérifie ton e-mail",
+      "checkEmailText": "Nous avons envoyé un lien de vérification à {{email}}. Clique dessus pour activer ton compte, puis connecte-toi.",
+      "resend": "Renvoyer l'e-mail",
+      "resentText": "✓ Renvoyé. Laisse-lui une minute pour arriver."
+    },
+    "googleFailed": "Échec de la connexion Google. Réessaie."
+  },
+  "profile": {
+    "title": "Profil",
+    "heading": "Modifier le profil",
+    "subtitle": "Mets à jour ton nom",
+    "required": "Le prénom et le nom sont obligatoires.",
+    "saveFailed": "Impossible d'enregistrer les modifications. Réessaie.",
+    "updated": "Profil mis à jour ✓",
+    "save": "Enregistrer"
+  },
+  "groups": {
+    "welcomeBack": "Bon retour",
+    "title": "Tes compétitions",
+    "subtitle": "Pronostique. Affronte. Gagne.",
+    "installTitle": "Installer l'app",
+    "installSub": "Ajoute GoalGoalPredict à l'écran d'accueil",
+    "install": "Installer",
+    "createGroup": "Créer un groupe",
+    "joinGroup": "Rejoindre un groupe",
+    "emptyTitle": "Pas encore de compétitions",
+    "emptySub": "Crées-en une ou rejoins avec un code d'invitation",
+    "globalBadge": "GLOBAL",
+    "globalLocked": "Se débloque en phase à élimination",
+    "globalLive": "Tout le monde participe · en direct",
+    "newTitle": "Nouvelle compétition",
+    "joinTitle": "Rejoindre la compétition",
+    "newSub": "Donne un nom à ton groupe",
+    "joinSub": "Saisis le code d'invitation à 6 caractères",
+    "namePlaceholder": "Ligue des champions du bar",
+    "create": "Créer",
+    "join": "Rejoindre",
+    "genericError": "Une erreur s'est produite."
+  },
+  "groupDetail": {
+    "tabMatches": "Matchs",
+    "tabPicks": "Pronos",
+    "tabBoard": "Classement",
+    "tabMembers": "Membres",
+    "tabRules": "Règles",
+    "notFound": "Groupe introuvable",
+    "globalLock": "Le classement global se débloque en phase à élimination — tout le monde démarre à 0. En attendant, parcours le tableau et le classement.",
+    "bracket": "Tableau",
+    "upcoming": "À venir",
+    "filterToday": "Aujourd'hui",
+    "filterUpcoming": "À venir",
+    "filterFinished": "Terminés",
+    "filterAll": "Tous",
+    "live": "EN DIRECT",
+    "ft": "FIN",
+    "noPrediction": "Pas de prono",
+    "liveNow_one": "{{count}} match en direct",
+    "liveNow_other": "{{count}} matchs en direct",
+    "noMatchesTitle": "Aucun match",
+    "noMatchesSub": "Essaie \"Tous\" pour voir tout le calendrier",
+    "loadMore": "Charger plus",
+    "loading": "Chargement…"
+  }
+}

@@ -17,6 +17,11 @@ public class User
     public DateTime? EmailVerificationTokenExpiresAt { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public bool IsAdmin { get; private set; }
+    // False until the user completes the in-app onboarding flow (server-authoritative
+    // so it survives reinstalls / new devices and is shared across web + mobile).
+    public bool HasOnboarded { get; private set; }
+    // Preferred UI language as a two-letter code (hr, en, de, es, fr, it). Null = use device/default.
+    public string? PreferredLanguage { get; private set; }
 
     private User() { }
 
@@ -81,4 +86,14 @@ public class User
         FirstName = firstName;
         LastName = lastName;
     }
+
+    // Marks onboarding done and optionally records the language chosen during it.
+    public void CompleteOnboarding(string? language)
+    {
+        HasOnboarded = true;
+        if (!string.IsNullOrWhiteSpace(language))
+            PreferredLanguage = language.ToLowerInvariant();
+    }
+
+    public void SetPreferredLanguage(string language) => PreferredLanguage = language?.ToLowerInvariant();
 }

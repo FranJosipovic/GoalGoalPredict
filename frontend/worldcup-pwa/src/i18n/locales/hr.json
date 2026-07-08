@@ -1,0 +1,133 @@
+{
+  "language": {
+    "title": "Odaberi jezik",
+    "subtitle": "Ovo možeš promijeniti kasnije u postavkama."
+  },
+  "onboarding": {
+    "welcome": {
+      "title": "Dobrodošao u GG Predict",
+      "body": "Predviđaj nogometne utakmice, natječi se s prijateljima i penji se na ljestvici."
+    },
+    "leagues": {
+      "title": "Lige koje možeš igrati",
+      "body": "Predviđaj u najvećim natjecanjima. Uskoro stižu i nove lige.",
+      "soon": "Uskoro"
+    },
+    "groups": {
+      "title": "Igraj s prijateljima",
+      "body": "Napravi grupu i podijeli pozivnicu ili se pridruži grupi prijatelja pomoću koda. Svi u grupi predviđaju iste utakmice."
+    },
+    "predict": {
+      "title": "Postavi svoja predviđanja",
+      "body": "Prije početka predvidi konačni rezultat. Kad izađu postave, dodirni igrače da odabereš strijelce i kartone."
+    },
+    "scoring": {
+      "title": "Kako se boduje",
+      "body": "Skupljaj bodove za točan ishod, točan rezultat i točne strijelce. Vlasnik svake grupe može prilagoditi pravila bodovanja."
+    },
+    "leaderboard": {
+      "title": "Popni se na ljestvici",
+      "body": "Bodovi iz svake utakmice se zbrajaju. Prati svoj poredak u odnosu na ostatak grupe u stvarnom vremenu."
+    }
+  },
+  "common": {
+    "skip": "Preskoči",
+    "next": "Dalje",
+    "back": "Natrag",
+    "getStarted": "Započni",
+    "cancel": "Odustani",
+    "or": "ili",
+    "email": "E-mail",
+    "password": "Lozinka",
+    "firstName": "Ime",
+    "lastName": "Prezime",
+    "language": "Jezik"
+  },
+  "auth": {
+    "googleBtn": "Nastavi s Googleom",
+    "login": {
+      "title": "Dobrodošao natrag",
+      "subtitle": "Prijavi se u svoje natjecanje",
+      "submit": "Prijava",
+      "failed": "Prijava nije uspjela. Provjeri podatke.",
+      "noAccount": "Nemaš račun?",
+      "createOne": "Napravi ga",
+      "unverifiedTitle": "Potvrdi e-mail za nastavak",
+      "unverifiedText": "Poboljšali smo sigurnost računa. Potvrdi {{email}} — pošalji si poveznicu i otvori je, ili se prijavi Googleom za trenutnu potvrdu (bodovi ostaju tvoji).",
+      "linkSent": "✓ Poveznica za potvrdu poslana. Provjeri sandučić.",
+      "sendLink": "Pošalji poveznicu za potvrdu",
+      "resendLink": "Ponovno pošalji poveznicu",
+      "backToSignIn": "← Natrag na prijavu"
+    },
+    "register": {
+      "title": "Uđi u igru",
+      "subtitle": "Napravi svoj račun",
+      "submit": "Napravi račun",
+      "failed": "Registracija nije uspjela. Pokušaj ponovno.",
+      "passwordTooShort": "Lozinka mora imati barem 6 znakova.",
+      "alreadyPlaying": "Već igraš?",
+      "signIn": "Prijavi se",
+      "checkEmailTitle": "Provjeri e-mail",
+      "checkEmailText": "Poslali smo poveznicu za potvrdu na {{email}}. Klikni je da aktiviraš račun, zatim se prijavi.",
+      "resend": "Pošalji ponovno",
+      "resentText": "✓ Ponovno poslano. Pričekaj koju minutu."
+    },
+    "googleFailed": "Prijava Googleom nije uspjela. Pokušaj ponovno."
+  },
+  "profile": {
+    "title": "Profil",
+    "heading": "Uredi profil",
+    "subtitle": "Ažuriraj svoje ime",
+    "required": "Ime i prezime su obavezni.",
+    "saveFailed": "Spremanje nije uspjelo. Pokušaj ponovno.",
+    "updated": "Profil ažuriran ✓",
+    "save": "Spremi promjene"
+  },
+  "groups": {
+    "welcomeBack": "Dobrodošao natrag",
+    "title": "Tvoja natjecanja",
+    "subtitle": "Predviđaj. Natječi se. Pobjeđuj.",
+    "installTitle": "Instaliraj aplikaciju",
+    "installSub": "Dodaj GoalGoalPredict na početni zaslon",
+    "install": "Instaliraj",
+    "createGroup": "Napravi grupu",
+    "joinGroup": "Pridruži se grupi",
+    "emptyTitle": "Još nema natjecanja",
+    "emptySub": "Napravi ga ili se pridruži pomoću pozivnog koda",
+    "globalBadge": "GLOBALNO",
+    "globalLocked": "Otključava se u knockout fazi",
+    "globalLive": "Svi se natječu · uživo",
+    "newTitle": "Novo natjecanje",
+    "joinTitle": "Pridruži se natjecanju",
+    "newSub": "Daj grupi ime",
+    "joinSub": "Unesi 6-znamenkasti pozivni kod",
+    "namePlaceholder": "Liga prvaka - kvartovska liga",
+    "create": "Napravi",
+    "join": "Pridruži se",
+    "genericError": "Nešto je pošlo po zlu."
+  },
+  "groupDetail": {
+    "tabMatches": "Utakmice",
+    "tabPicks": "Tipovi",
+    "tabBoard": "Ljestvica",
+    "tabMembers": "Članovi",
+    "tabRules": "Pravila",
+    "notFound": "Grupa nije pronađena",
+    "globalLock": "Globalna ljestvica otključava se u knockout fazi — svi kreću od 0. Do tada pregledavaj ždrijeb i poredak.",
+    "bracket": "Ždrijeb",
+    "upcoming": "Nadolazeće",
+    "filterToday": "Danas",
+    "filterUpcoming": "Nadolazeće",
+    "filterFinished": "Odigrano",
+    "filterAll": "Sve",
+    "live": "UŽIVO",
+    "ft": "KRAJ",
+    "noPrediction": "Nema tipa",
+    "liveNow_one": "{{count}} utakmica uživo",
+    "liveNow_other": "{{count}} utakmica uživo",
+    "noMatchesTitle": "Nema utakmica",
+    "noMatchesSub": "Odaberi \"Sve\" za cijeli raspored",
+    "loadMore": "Učitaj još",
+    "loading": "Učitavanje…"
+  }
+}
