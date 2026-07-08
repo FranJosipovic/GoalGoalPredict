@@ -130,7 +130,10 @@ public class ApiFootballClient(HttpClient http, IConfiguration config, ILogger<A
         if (resp is null) return [];
 
         return resp.Response
-            .Where(e => e.Type == "Var")
+            // Skip VAR events with no detail — the feed occasionally emits `detail: null`,
+            // which carries no meaning, NREs the push/reconcile paths, and (since Detail maps
+            // to a NOT NULL column) would crash the whole poll's SaveChanges on insert.
+            .Where(e => e.Type == "Var" && !string.IsNullOrWhiteSpace(e.Detail))
             .Select((e, i) => new ApiVarEventData(
                 e.Time.Elapsed,
                 e.Time.Extra,
