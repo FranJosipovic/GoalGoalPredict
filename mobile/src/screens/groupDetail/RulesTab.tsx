@@ -8,15 +8,16 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { getGroupRules, updateGroupRules, type GroupRulesUpdate } from '../../api/groups'
 import { colors, fonts, radius } from '../../theme'
 import Icon from '../../components/Icon'
 import type { GroupScoringRules, CardPredictionMode } from '../../types'
 
-const MODES: { value: CardPredictionMode; label: string }[] = [
-  { value: 'Limited', label: 'Limited' },
-  { value: 'Single', label: 'Single' },
-  { value: 'Net', label: 'Net' },
+const MODES: { value: CardPredictionMode; labelKey: string }[] = [
+  { value: 'Limited', labelKey: 'rules.modeLimited' },
+  { value: 'Single', labelKey: 'rules.modeSingle' },
+  { value: 'Net', labelKey: 'rules.modeNet' },
 ]
 
 function stripMeta(r: GroupScoringRules): GroupRulesUpdate {
@@ -63,6 +64,7 @@ function NumberField({
 }
 
 export default function RulesTab({ groupId }: { groupId: string }) {
+  const { t } = useTranslation()
   const [rules, setRules] = useState<GroupScoringRules | null>(null)
   const [draft, setDraft] = useState<GroupRulesUpdate | null>(null)
   const [loading, setLoading] = useState(true)
@@ -83,7 +85,7 @@ export default function RulesTab({ groupId }: { groupId: string }) {
   if (!rules || !draft)
     return (
       <View style={styles.emptyState}>
-        <Text style={styles.emptyTitle}>Rules unavailable</Text>
+        <Text style={styles.emptyTitle}>{t('rules.unavailable')}</Text>
       </View>
     )
 
@@ -102,7 +104,7 @@ export default function RulesTab({ groupId }: { groupId: string }) {
       setSavedFlash(true)
       setTimeout(() => setSavedFlash(false), 1800)
     } catch (e: any) {
-      setError(e?.response?.data?.error ?? 'Failed to save rules')
+      setError(e?.response?.data?.error ?? t('rules.saveFailed'))
     } finally {
       setSaving(false)
     }
@@ -115,73 +117,73 @@ export default function RulesTab({ groupId }: { groupId: string }) {
           <>
             <Icon name="edit" size={15} color={colors.textMuted} />
             <Text style={styles.bannerText}>
-              Edits apply to matches that haven't kicked off yet. Played matches keep the points they were scored with.
+              {t('rules.banner')}
             </Text>
           </>
         ) : (
-          <Text style={styles.bannerText}>👀 Only the group owner can edit the scoring rules.</Text>
+          <Text style={styles.bannerText}>{t('rules.bannerLocked')}</Text>
         )}
       </View>
 
       {/* Match result */}
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Match result</Text>
+        <Text style={styles.cardTitle}>{t('rules.matchResult')}</Text>
         <View style={styles.row}>
           <Toggle on={draft.exactScoreEnabled} disabled={!editable} onChange={(v) => set('exactScoreEnabled', v)} />
-          <Text style={styles.label}>Exact score</Text>
+          <Text style={styles.label}>{t('rules.exactScore')}</Text>
           <NumberField value={draft.exactScorePoints} disabled={!editable} onChange={(v) => set('exactScorePoints', v)} />
-          <Text style={styles.unit}>pts</Text>
+          <Text style={styles.unit}>{t('rules.pts')}</Text>
         </View>
         <View style={styles.row}>
           <Toggle on={draft.outcomeEnabled} disabled={!editable} onChange={(v) => set('outcomeEnabled', v)} />
-          <Text style={styles.label}>Correct outcome (W/D/L)</Text>
+          <Text style={styles.label}>{t('rules.correctOutcome')}</Text>
           <NumberField value={draft.outcomePoints} disabled={!editable} onChange={(v) => set('outcomePoints', v)} />
-          <Text style={styles.unit}>pts</Text>
+          <Text style={styles.unit}>{t('rules.pts')}</Text>
         </View>
         <View style={styles.row}>
           <Toggle on={draft.finishTypeEnabled} disabled={!editable} onChange={(v) => set('finishTypeEnabled', v)} />
-          <Text style={styles.label}>Knockout finish (Reg / ET / Pens)</Text>
+          <Text style={styles.label}>{t('rules.knockoutFinish')}</Text>
           <NumberField value={draft.finishTypePoints} disabled={!editable} onChange={(v) => set('finishTypePoints', v)} />
-          <Text style={styles.unit}>pts</Text>
+          <Text style={styles.unit}>{t('rules.pts')}</Text>
         </View>
-        <Text style={styles.cardSub}>Knockout-only: guess whether a tie ends in regular time, extra time or penalties.</Text>
+        <Text style={styles.cardSub}>{t('rules.knockoutSub')}</Text>
       </View>
 
       {/* Goalscorers */}
       <View style={styles.card}>
         <View style={styles.cardHead}>
-          <Text style={styles.cardTitle}>Goalscorers</Text>
+          <Text style={styles.cardTitle}>{t('rules.goalscorers')}</Text>
           <Toggle on={draft.goalscorerEnabled} disabled={!editable} onChange={(v) => set('goalscorerEnabled', v)} />
         </View>
-        <Text style={styles.cardSub}>A goal is a goal — pick who scores, any goal counts. Points by position:</Text>
+        <Text style={styles.cardSub}>{t('rules.goalscorersSub')}</Text>
         <View style={styles.grid}>
           {(
             [
-              ['Goalkeeper', 'scorerGkPoints'],
-              ['Defender', 'scorerDefPoints'],
-              ['Midfielder', 'scorerMidPoints'],
-              ['Attacker', 'scorerAttPoints'],
+              ['rules.goalkeeper', 'scorerGkPoints'],
+              ['rules.defender', 'scorerDefPoints'],
+              ['rules.midfielder', 'scorerMidPoints'],
+              ['rules.attacker', 'scorerAttPoints'],
             ] as const
-          ).map(([label, key]) => (
+          ).map(([labelKey, key]) => (
             <View key={key} style={styles.mini}>
-              <Text style={styles.miniLabel}>{label}</Text>
+              <Text style={styles.miniLabel}>{t(labelKey)}</Text>
               <NumberField value={draft[key]} disabled={!editable} onChange={(v) => set(key, v)} />
             </View>
           ))}
         </View>
         <View style={styles.row}>
           <Toggle on={draft.ownGoalEnabled} disabled={!editable} onChange={(v) => set('ownGoalEnabled', v)} />
-          <Text style={styles.label}>Own goal (flat, any position)</Text>
+          <Text style={styles.label}>{t('rules.ownGoal')}</Text>
           <NumberField value={draft.ownGoalPoints} disabled={!editable} onChange={(v) => set('ownGoalPoints', v)} />
-          <Text style={styles.unit}>pts</Text>
+          <Text style={styles.unit}>{t('rules.pts')}</Text>
         </View>
       </View>
 
       {/* Cards & penalties */}
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Cards & penalties</Text>
+        <Text style={styles.cardTitle}>{t('rules.cardsPenalties')}</Text>
         <View style={styles.mode}>
-          <Text style={styles.label}>Anti-spam mode</Text>
+          <Text style={styles.label}>{t('rules.antiSpamMode')}</Text>
           <View style={styles.modeOpts}>
             {MODES.map((m) => {
               const on = draft.cardPredictionMode === m.value
@@ -192,7 +194,7 @@ export default function RulesTab({ groupId }: { groupId: string }) {
                   disabled={!editable}
                   onPress={() => set('cardPredictionMode', m.value)}
                 >
-                  <Text style={[styles.modeBtnText, on && styles.modeBtnTextOn]}>{m.label}</Text>
+                  <Text style={[styles.modeBtnText, on && styles.modeBtnTextOn]}>{t(m.labelKey)}</Text>
                 </TouchableOpacity>
               )
             })}
@@ -200,30 +202,32 @@ export default function RulesTab({ groupId }: { groupId: string }) {
         </View>
         {draft.cardPredictionMode === 'Net' && (
           <View style={styles.row}>
-            <Text style={[styles.label, { paddingLeft: 46 }]}>Wrong pick penalty</Text>
+            <Text style={[styles.label, { paddingLeft: 46 }]}>{t('rules.wrongPickPenalty')}</Text>
             <NumberField value={draft.wrongPickPenalty} disabled={!editable} onChange={(v) => set('wrongPickPenalty', v)} />
-            <Text style={styles.unit}>pts</Text>
+            <Text style={styles.unit}>{t('rules.pts')}</Text>
           </View>
         )}
 
         <CardRow
-          label="Yellow card"
+          label={t('rules.yellowCard')}
           enabled={draft.yellowCardEnabled}
           points={draft.yellowCardPoints}
           max={draft.yellowCardMaxPicks}
           mode={draft.cardPredictionMode}
           editable={editable}
+          t={t}
           onEnabled={(v) => set('yellowCardEnabled', v)}
           onPoints={(v) => set('yellowCardPoints', v)}
           onMax={(v) => set('yellowCardMaxPicks', v)}
         />
         <CardRow
-          label="Red card"
+          label={t('rules.redCard')}
           enabled={draft.redCardEnabled}
           points={draft.redCardPoints}
           max={draft.redCardMaxPicks}
           mode={draft.cardPredictionMode}
           editable={editable}
+          t={t}
           onEnabled={(v) => set('redCardEnabled', v)}
           onPoints={(v) => set('redCardPoints', v)}
           onMax={(v) => set('redCardMaxPicks', v)}
@@ -241,7 +245,7 @@ export default function RulesTab({ groupId }: { groupId: string }) {
           {saving ? (
             <ActivityIndicator color={colors.onAccent} />
           ) : (
-            <Text style={styles.saveText}>{savedFlash ? 'Saved ✓' : 'Save rules'}</Text>
+            <Text style={styles.saveText}>{savedFlash ? `${t('rules.saved')} ✓` : t('rules.saveRules')}</Text>
           )}
         </TouchableOpacity>
       )}
@@ -256,21 +260,22 @@ function CardRow(props: {
   max: number
   mode: CardPredictionMode
   editable: boolean
+  t: (k: string) => string
   onEnabled: (v: boolean) => void
   onPoints: (v: number) => void
   onMax: (v: number) => void
 }) {
-  const { label, enabled, points, max, mode, editable, onEnabled, onPoints, onMax } = props
+  const { label, enabled, points, max, mode, editable, t, onEnabled, onPoints, onMax } = props
   return (
     <View style={[styles.row, { flexWrap: 'wrap' }]}>
       <Toggle on={enabled} disabled={!editable} onChange={onEnabled} />
       <Text style={styles.label}>{label}</Text>
       <NumberField value={points} disabled={!editable} onChange={onPoints} />
-      <Text style={styles.unit}>pts</Text>
+      <Text style={styles.unit}>{t('rules.pts')}</Text>
       {mode === 'Limited' && (
         <>
           <NumberField value={max} min={1} disabled={!editable} onChange={(v) => onMax(Math.max(1, v))} />
-          <Text style={styles.unit}>max</Text>
+          <Text style={styles.unit}>{t('rules.max')}</Text>
         </>
       )}
     </View>

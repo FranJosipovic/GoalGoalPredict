@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { getLeaderboard } from '../../api/matches'
 import { useAuthStore } from '../../store/authStore'
 import Icon from '../Icon'
@@ -12,6 +13,7 @@ export default function LeaderboardTab({ groupId }: { groupId: string }) {
   const [loading, setLoading] = useState(true)
   const { user } = useAuthStore()
   const navigate = useNavigate()
+  const { t } = useTranslation()
 
   useEffect(() => {
     getLeaderboard(groupId).then(setEntries).finally(() => setLoading(false))
@@ -23,8 +25,8 @@ export default function LeaderboardTab({ groupId }: { groupId: string }) {
     return (
       <div className="empty-state">
         <Icon name="trophy" size={40} className="empty-icon-svg" />
-        <p className="empty-title">No scores yet</p>
-        <p className="empty-sub">Leaderboard updates after matches finish</p>
+        <p className="empty-title">{t('groupDetail.boardEmptyTitle')}</p>
+        <p className="empty-sub">{t('groupDetail.boardEmptySub')}</p>
       </div>
     )
   }
@@ -51,10 +53,10 @@ export default function LeaderboardTab({ groupId }: { groupId: string }) {
               <div className="lb-info">
                 <div className="lb-name">
                   {e.firstName} {e.lastName}
-                  {isMe && <span className="you-badge">you</span>}
+                  {isMe && <span className="you-badge">{t('groupDetail.you')}</span>}
                 </div>
               </div>
-              <div className="lb-pts">{e.totalPoints}<span className="lb-pts-label">pts</span></div>
+              <div className="lb-pts">{e.totalPoints}<span className="lb-pts-label">{t('groupDetail.pts')}</span></div>
               <Icon name="chevron-right" size={18} className="lb-chevron" />
             </button>
           )

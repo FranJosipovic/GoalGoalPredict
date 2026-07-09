@@ -39,7 +39,7 @@ public class PollLiveMatch(AppDbContext db, IApiFootballClient api, EffectiveRul
         // delete the now-stale row too — otherwise a disallowed goal lingers forever.
         // Identity is the event's natural key (team/player/minute/type), since the
         // positional Order shifts whenever an earlier event is added or removed.
-        var goalEvents = await api.GetGoalEventsAsync(matchId, ct);
+        var goalEvents = await api.GetGoalEventsAsync(matchId, ct);//THIS
         var existingGoals = await db.MatchGoals.Where(g => g.MatchId == matchId).ToListAsync(ct);
 
         static (int, int?, int, int?, string) GoalKey(int teamId, int? player, int minute, int? extra, string type)
@@ -64,7 +64,7 @@ public class PollLiveMatch(AppDbContext db, IApiFootballClient api, EffectiveRul
             .Where(e => !dbGoalKeys.Contains(GoalKey(e.TeamId, e.ScorerPlayerId, e.Minute, e.ExtraMinute, e.GoalType)))
             .ToList();
 
-        var cardEvents = await api.GetCardEventsAsync(matchId, ct);
+        var cardEvents = await api.GetCardEventsAsync(matchId, ct);//THIS
         var existingCards = await db.MatchCards.Where(c => c.MatchId == matchId).ToListAsync(ct);
 
         static (int, int?, int, int?, string) CardKey(int teamId, int? player, int minute, int? extra, string type)
@@ -118,7 +118,7 @@ public class PollLiveMatch(AppDbContext db, IApiFootballClient api, EffectiveRul
         // VAR decisions (type "Var", e.g. "Goal Disallowed - offside", "Penalty confirmed").
         // Reconciled like goals/cards but keyed without the player — the player id can be
         // nulled below when unknown, and team+minute+detail already identifies the decision.
-        var varEvents = await api.GetVarEventsAsync(matchId, ct);
+        var varEvents = await api.GetVarEventsAsync(matchId, ct);//THIS
         var existingVars = await db.MatchVarDecisions.Where(v => v.MatchId == matchId).ToListAsync(ct);
 
         static (int, int, int?, string) VarKey(int teamId, int minute, int? extra, string detail)
@@ -149,7 +149,7 @@ public class PollLiveMatch(AppDbContext db, IApiFootballClient api, EffectiveRul
 
         // Substitutions — reconcile against the feed (insert new + delete stale) like the other
         // events, so a settled minute or a removed sub doesn't leave a stale/duplicate row.
-        var subEvents = await api.GetSubstitutionEventsAsync(matchId, ct);
+        var subEvents = await api.GetSubstitutionEventsAsync(matchId, ct);//THIS
         var existingSubs = await db.MatchSubstitutions.Where(s => s.MatchId == matchId).ToListAsync(ct);
 
         // Resolve player ids first so the FK holds and the reconcile keys line up with the API
@@ -182,7 +182,7 @@ public class PollLiveMatch(AppDbContext db, IApiFootballClient api, EffectiveRul
 
         // Penalty shootout kicks — informational only (never scored). Reconciled by the API feed
         // order, which is stable: a shootout is terminal so its events don't reorder mid-feed.
-        var shootoutEvents = await api.GetShootoutEventsAsync(matchId, ct);
+        var shootoutEvents = await api.GetShootoutEventsAsync(matchId, ct);//THIS
         var existingShootout = await db.MatchShootoutPenalties.Where(s => s.MatchId == matchId).ToListAsync(ct);
 
         static (int, int, int?, bool) ShootoutKey(int order, int teamId, int? player, bool scored)

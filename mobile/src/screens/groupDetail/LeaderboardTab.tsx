@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
+import { useTranslation } from 'react-i18next'
 import { getLeaderboard } from '../../api/matches'
 import { useAuthStore } from '../../store/authStore'
 import { colors, fonts, radius } from '../../theme'
@@ -14,6 +15,7 @@ const MEDALS = ['🥇', '🥈', '🥉']
 export default function LeaderboardTab({ groupId }: { groupId: string }) {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
   const user = useAuthStore((s) => s.user)
+  const { t } = useTranslation()
   const [entries, setEntries] = useState<LeaderboardEntry[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -29,8 +31,8 @@ export default function LeaderboardTab({ groupId }: { groupId: string }) {
     return (
       <View style={styles.empty}>
         <Text style={styles.emptyIcon}>🏆</Text>
-        <Text style={styles.emptyTitle}>No scores yet</Text>
-        <Text style={styles.emptySub}>Leaderboard updates after matches finish</Text>
+        <Text style={styles.emptyTitle}>{t('groupDetail.boardEmptyTitle')}</Text>
+        <Text style={styles.emptySub}>{t('groupDetail.boardEmptySub')}</Text>
       </View>
     )
   }
@@ -63,12 +65,12 @@ export default function LeaderboardTab({ groupId }: { groupId: string }) {
             <View style={styles.info}>
               <Text style={styles.name} numberOfLines={1}>
                 {e.firstName} {e.lastName}
-                {isMe && <Text style={styles.youBadge}>  you</Text>}
+                {isMe && <Text style={styles.youBadge}>  {t('groupDetail.you')}</Text>}
               </Text>
             </View>
             <Text style={styles.pts}>
               {e.totalPoints}
-              <Text style={styles.ptsLabel}> pts</Text>
+              <Text style={styles.ptsLabel}> {t('groupDetail.pts')}</Text>
             </Text>
             <Icon name="chevronRight" size={18} color={colors.textMuted} />
           </TouchableOpacity>

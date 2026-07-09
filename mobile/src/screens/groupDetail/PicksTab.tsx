@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { getMyPredictions, getMatchPredictions } from '../../api/matches'
 import { useAuthStore } from '../../store/authStore'
 import { colors, fonts, radius } from '../../theme'
@@ -17,10 +18,10 @@ import type { MyPredictionItem, GroupPredictions, TeamSummary, FinishType } from
 
 const LIVE_STATUSES = ['1H', 'HT', '2H', 'ET', 'BT', 'P']
 const FINISHED_STATUSES = ['FT', 'AET', 'PEN']
-const FINISH_LABEL: Record<FinishType, string> = {
-  Regular: 'Regular time',
-  ExtraTime: 'Extra time',
-  Penalties: 'Penalties',
+const FINISH_KEY: Record<FinishType, string> = {
+  Regular: 'picks.finishRegular',
+  ExtraTime: 'picks.finishExtraTime',
+  Penalties: 'picks.finishPenalties',
 }
 
 type Bucket = 'live' | 'upcoming' | 'finished'
@@ -45,6 +46,7 @@ function GroupPicksPanel({
 }) {
   const [data, setData] = useState<GroupPredictions | null>(null)
   const [state, setState] = useState<'loading' | 'ready' | 'hidden'>('loading')
+  const { t } = useTranslation()
 
   useEffect(() => {
     let alive = true
@@ -56,17 +58,17 @@ function GroupPicksPanel({
     }
   }, [matchId, groupId])
 
-  if (state === 'loading') return <Text style={styles.panelHint}>Loading picks…</Text>
+  if (state === 'loading') return <Text style={styles.panelHint}>{t('picks.loadingPicks')}</Text>
   if (state === 'hidden' || !data)
     return (
       <View style={styles.panelHiddenRow}>
         <Icon name="lock" size={14} color={colors.textMuted} />
-        <Text style={styles.panelHint}>Other picks reveal at kickoff</Text>
+        <Text style={styles.panelHint}>{t('picks.othersReveal')}</Text>
       </View>
     )
 
   const others = data.predictions.filter((p) => p.userId !== meId)
-  if (others.length === 0) return <Text style={styles.panelHint}>No other picks yet</Text>
+  if (others.length === 0) return <Text style={styles.panelHint}>{t('picks.noOtherPicks')}</Text>
 
   return (
     <View style={styles.panel}>
@@ -87,10 +89,10 @@ function GroupPicksPanel({
             </Text>
             <Text style={styles.picksPts}>
               {p.projectedPoints}
-              <Text style={styles.picksPtsSmall}> pts</Text>
+              <Text style={styles.picksPtsSmall}> {t('picks.pts')}</Text>
             </Text>
           </View>
-          {p.finishType && <Text style={styles.picksFinish}>🏁 {FINISH_LABEL[p.finishType]}</Text>}
+          {p.finishType && <Text style={styles.picksFinish}>🏁 {t(FINISH_KEY[p.finishType])}</Text>}
           <PicksByTeam scorers={p.scorers} cards={p.cards} home={home} away={away} />
         </View>
       ))}
@@ -111,6 +113,7 @@ function PredictionCard({
 }) {
   const bucket = bucketOf(p.status)
   const [expanded, setExpanded] = useState(false)
+  const { t } = useTranslation()
   const hasResult = p.actualHome !== null && p.actualAway !== null
   const exact = hasResult && p.predHome === p.actualHome && p.predAway === p.actualAway
   const points = p.isScored ? p.points : hasResult ? p.projectedPoints : null
@@ -125,12 +128,12 @@ function PredictionCard({
           {bucket === 'live' && (
             <View style={styles.flagLive}>
               <View style={styles.liveDot} />
-              <Text style={styles.flagLiveText}>LIVE</Text>
+              <Text style={styles.flagLiveText}>{t('picks.live')}</Text>
             </View>
           )}
           {bucket === 'finished' && (
             <View style={styles.flagFt}>
-              <Text style={styles.flagFtText}>FT</Text>
+              <Text style={styles.flagFtText}>{t('picks.ft')}</Text>
             </View>
           )}
         </View>
@@ -142,14 +145,14 @@ function PredictionCard({
           </View>
           <View style={styles.scores}>
             <View style={styles.scoreline}>
-              <Text style={styles.scoreTag}>PICK</Text>
+              <Text style={styles.scoreTag}>{t('picks.pick')}</Text>
               <Text style={[styles.score, exact && styles.scoreExact]}>
                 {p.predHome}–{p.predAway}
               </Text>
             </View>
             {hasResult && (
               <View style={styles.scoreline}>
-                <Text style={styles.scoreTag}>REAL</Text>
+                <Text style={styles.scoreTag}>{t('picks.real')}</Text>
                 <Text style={[styles.score, styles.scoreActual]}>
                   {p.actualHome}–{p.actualAway}
                 </Text>
@@ -167,17 +170,17 @@ function PredictionCard({
         </View>
 
         <View style={styles.foot}>
-          {exact && <Text style={styles.exactBadge}>✓ Exact score</Text>}
+          {exact && <Text style={styles.exactBadge}>✓ {t('picks.exactScore')}</Text>}
           {points !== null ? (
             <Text style={styles.points}>
               <Text style={[styles.pointsStrong, !p.isScored && styles.pointsProj]}>
                 {points >= 0 ? '+' : ''}
                 {points}
               </Text>{' '}
-              pts {!p.isScored && <Text style={styles.pointsLive}>LIVE</Text>}
+              {t('picks.pts')} {!p.isScored && <Text style={styles.pointsLive}>{t('picks.live')}</Text>}
             </Text>
           ) : (
-            <Text style={styles.pointsPending}>Awaiting kickoff</Text>
+            <Text style={styles.pointsPending}>{t('picks.awaitingKickoff')}</Text>
           )}
         </View>
       </TouchableOpacity>
@@ -193,7 +196,7 @@ function PredictionCard({
           color={expanded ? colors.accent : colors.textMuted}
         />
         <Text style={[styles.revealText, expanded && { color: colors.accent }]}>
-          {canReveal ? (expanded ? 'Hide group picks' : 'Show group picks') : 'Group picks reveal at kickoff'}
+          {canReveal ? (expanded ? t('picks.hideGroupPicks') : t('picks.showGroupPicks')) : t('picks.groupPicksReveal')}
         </Text>
       </TouchableOpacity>
 
@@ -212,6 +215,7 @@ export default function PicksTab({
   onMatchClick: (matchId: number, openDetail: boolean) => void
 }) {
   const user = useAuthStore((s) => s.user)
+  const { t } = useTranslation()
   const [items, setItems] = useState<MyPredictionItem[]>([])
   const [loading, setLoading] = useState(true)
   const [finishedLimit, setFinishedLimit] = useState(3)
@@ -250,14 +254,18 @@ export default function PicksTab({
     return (
       <View style={styles.empty}>
         <Icon name="target" size={40} color={colors.textMuted} />
-        <Text style={styles.emptyTitle}>No picks yet</Text>
-        <Text style={styles.emptySub}>Head to Matches and place your first pick</Text>
+        <Text style={styles.emptyTitle}>{t('picks.emptyTitle')}</Text>
+        <Text style={styles.emptySub}>{t('picks.emptySub')}</Text>
       </View>
     )
   }
 
   const order: Bucket[] = ['live', 'upcoming', 'finished']
-  const labels: Record<Bucket, string> = { live: 'Live now', upcoming: 'Upcoming', finished: 'Finished' }
+  const labels: Record<Bucket, string> = {
+    live: t('picks.bucketLive'),
+    upcoming: t('picks.bucketUpcoming'),
+    finished: t('picks.bucketFinished'),
+  }
   const grouped = order
     .map((b) => {
       let list = items.filter((i) => bucketOf(i.status) === b)
@@ -271,9 +279,9 @@ export default function PicksTab({
     <ScrollView style={styles.scroll} contentContainerStyle={{ padding: 16, paddingBottom: 80 }}>
       <View style={styles.summary}>
         {[
-          [stats.totalPoints, 'Points'],
-          [stats.totalPicks, 'Picks'],
-          [stats.exactCount, 'Exact'],
+          [stats.totalPoints, t('picks.statPoints')],
+          [stats.totalPicks, t('picks.statPicks')],
+          [stats.exactCount, t('picks.statExact')],
         ].map(([num, label]) => (
           <View key={label} style={styles.stat}>
             <Text style={styles.statNum}>{num}</Text>
@@ -316,7 +324,7 @@ export default function PicksTab({
                 {loadingMore ? (
                   <ActivityIndicator size="small" color={colors.accent} />
                 ) : (
-                  <Text style={styles.loadMoreText}>Load more</Text>
+                  <Text style={styles.loadMoreText}>{t('picks.loadMore')}</Text>
                 )}
               </TouchableOpacity>
             )}

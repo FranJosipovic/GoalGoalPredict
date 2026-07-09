@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Alert, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import * as Clipboard from 'expo-clipboard'
+import { useTranslation } from 'react-i18next'
 import { resetInviteCode, kickGroupMember } from '../../api/groups'
 import { useAuthStore } from '../../store/authStore'
 import { colors, fonts, radius } from '../../theme'
@@ -12,6 +13,7 @@ const WEB_ORIGIN = process.env.EXPO_PUBLIC_WEB_URL ?? 'https://goalgoalpredict.c
 
 export default function MembersTab({ group }: { group: GroupDetail }) {
   const user = useAuthStore((s) => s.user)
+  const { t } = useTranslation()
   const isOwner = group.createdByUserId === user?.id
 
   const [inviteCode, setInviteCode] = useState(group.inviteCode)
@@ -31,7 +33,7 @@ export default function MembersTab({ group }: { group: GroupDetail }) {
   const handleShare = async () => {
     try {
       await Share.share({
-        message: `Join "${group.name}" on GoalGoalPredict! ${inviteLink}`,
+        message: `${t('groupDetail.shareText', { name: group.name })} ${inviteLink}`,
       })
     } catch {
       /* cancelled */
@@ -40,23 +42,23 @@ export default function MembersTab({ group }: { group: GroupDetail }) {
 
   const handleCopyCode = async () => {
     await Clipboard.setStringAsync(inviteCode)
-    flash('Code copied!')
+    flash(t('groupDetail.codeCopied'))
   }
 
   const handleReset = () => {
-    Alert.alert('Reset invite link?', 'The old link will stop working.', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('groupDetail.confirmResetTitle'), t('groupDetail.confirmResetBody'), [
+      { text: t('groupDetail.cancel'), style: 'cancel' },
       {
-        text: 'Reset',
+        text: t('groupDetail.reset'),
         style: 'destructive',
         onPress: async () => {
           setResetting(true)
           try {
             const updated = await resetInviteCode(group.id)
             setInviteCode(updated.inviteCode)
-            flash('New invite link generated.')
+            flash(t('groupDetail.newLinkGenerated'))
           } catch {
-            flash('Could not reset link.')
+            flash(t('groupDetail.resetLinkFailed'))
           } finally {
             setResetting(false)
           }
@@ -66,19 +68,19 @@ export default function MembersTab({ group }: { group: GroupDetail }) {
   }
 
   const handleKick = (userId: string, name: string) => {
-    Alert.alert('Remove member?', `Remove ${name}? Their predictions and points here will be deleted.`, [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('groupDetail.confirmRemoveTitle'), t('groupDetail.confirmRemoveBody', { name }), [
+      { text: t('groupDetail.cancel'), style: 'cancel' },
       {
-        text: 'Remove',
+        text: t('groupDetail.remove'),
         style: 'destructive',
         onPress: async () => {
           setKicking(userId)
           try {
             await kickGroupMember(group.id, userId)
             setMembers((prev) => prev.filter((m) => m.userId !== userId))
-            flash(`${name} removed.`)
+            flash(t('groupDetail.memberRemoved', { name }))
           } catch (e: any) {
-            flash(e?.response?.data?.error ?? 'Could not remove member.')
+            flash(e?.response?.data?.error ?? t('groupDetail.removeMemberFailed'))
           } finally {
             setKicking(null)
           }
@@ -91,12 +93,12 @@ export default function MembersTab({ group }: { group: GroupDetail }) {
     <ScrollView style={styles.scroll} contentContainerStyle={styles.section}>
       <TouchableOpacity style={styles.inviteBtn} onPress={handleShare}>
         <Icon name="link" size={18} color={colors.onAccent} />
-        <Text style={styles.inviteBtnText}>Invite people</Text>
+        <Text style={styles.inviteBtnText}>{t('groupDetail.invitePeople')}</Text>
       </TouchableOpacity>
 
       <TouchableOpacity style={styles.codeBtn} onPress={handleCopyCode}>
         <View>
-          <Text style={styles.codeLabel}>INVITE CODE</Text>
+          <Text style={styles.codeLabel}>{t('groupDetail.inviteCodeLabel')}</Text>
           <Text style={styles.code}>{inviteCode}</Text>
         </View>
         <Icon name="copy" size={18} color={colors.textMuted} />
@@ -104,14 +106,14 @@ export default function MembersTab({ group }: { group: GroupDetail }) {
 
       {isOwner && (
         <TouchableOpacity style={styles.resetBtn} onPress={handleReset} disabled={resetting}>
-          <Text style={styles.resetText}>{resetting ? 'Resetting…' : 'Reset invite link'}</Text>
+          <Text style={styles.resetText}>{resetting ? t('groupDetail.resetting') : t('groupDetail.resetLink')}</Text>
         </TouchableOpacity>
       )}
 
       {!!feedback && <Text style={styles.feedback}>{feedback}</Text>}
 
       <View style={styles.membersHeader}>
-        <Text style={styles.membersTitle}>MEMBERS</Text>
+        <Text style={styles.membersTitle}>{t('groupDetail.membersHeader')}</Text>
         <Text style={styles.membersCount}>{members.length}</Text>
       </View>
 
@@ -127,12 +129,12 @@ export default function MembersTab({ group }: { group: GroupDetail }) {
             <View style={styles.memberInfo}>
               <Text style={styles.memberName} numberOfLines={1}>
                 {m.firstName} {m.lastName}
-                {m.userId === user?.id && <Text style={styles.memberYou}> (you)</Text>}
+                {m.userId === user?.id && <Text style={styles.memberYou}> {t('groupDetail.youParen')}</Text>}
               </Text>
             </View>
             {m.role === 'Owner' && (
               <View style={styles.roleBadge}>
-                <Text style={styles.roleBadgeText}>OWNER</Text>
+                <Text style={styles.roleBadgeText}>{t('groupDetail.roleOwner')}</Text>
               </View>
             )}
             {isOwner && m.role !== 'Owner' && m.userId !== user?.id && (
