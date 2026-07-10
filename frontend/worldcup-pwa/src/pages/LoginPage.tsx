@@ -1,5 +1,6 @@
 import { useState, useEffect, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { login, resendVerification, linkGoogleWithCredentials } from '../api/auth'
 import { useAuthStore } from '../store/authStore'
 import { consumePendingInvite } from '../lib/invite'
@@ -7,6 +8,7 @@ import GoogleSignInButton from '../components/GoogleSignInButton'
 
 export default function LoginPage() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const setAuth = useAuthStore((s) => s.setAuth)
 
   // Already authenticated (e.g. navigated back here)? Send them home, not to a
@@ -39,7 +41,7 @@ export default function LoginPage() {
       if (err.response?.status === 403 && err.response?.data?.code === 'email_not_verified') {
         setUnverified(true)
       } else {
-        setError(err.response?.data?.error ?? 'Login failed. Check your credentials.')
+        setError(err.response?.data?.error ?? t('auth.login.failed'))
       }
     } finally {
       setLoading(false)
@@ -70,20 +72,17 @@ export default function LoginPage() {
           <p className="brand-sub">PREDICT</p>
         </div>
 
-        <h2 className="auth-heading">Welcome back</h2>
-        <p className="auth-sub">Sign in to your competition</p>
+        <h2 className="auth-heading">{t('auth.login.title')}</h2>
+        <p className="auth-sub">{t('auth.login.subtitle')}</p>
 
         {unverified ? (
           <div className="verify-prompt">
             <div className="verify-icon">📧</div>
-            <p className="verify-title">Verify your email to continue</p>
-            <p className="verify-text">
-              We've upgraded account security. Verify <strong>{email}</strong> — send yourself the
-              link and open it, or sign in with Google to confirm instantly (your points stay with you).
-            </p>
-            {resent && <p className="verify-sent">✓ Verification link sent. Check your inbox.</p>}
+            <p className="verify-title">{t('auth.login.unverifiedTitle')}</p>
+            <p className="verify-text">{t('auth.login.unverifiedText', { email })}</p>
+            {resent && <p className="verify-sent">{t('auth.login.linkSent')}</p>}
             <button type="button" className="btn-secondary" onClick={handleResend}>
-              {resent ? 'Resend verification link' : 'Send verification link'}
+              {resent ? t('auth.login.resendLink') : t('auth.login.sendLink')}
             </button>
             <div className="auth-divider"><span>or</span></div>
             <GoogleSignInButton
@@ -99,14 +98,14 @@ export default function LoginPage() {
               }}
             />
             <button type="button" className="auth-link back-link" onClick={() => setUnverified(false)}>
-              ← Back to sign in
+              {t('auth.login.backToSignIn')}
             </button>
           </div>
         ) : (
           <>
             <form onSubmit={handleSubmit} className="auth-form">
               <div className="field">
-                <label className="field-label">Email</label>
+                <label className="field-label">{t('common.email')}</label>
                 <input
                   className="field-input"
                   type="email"
@@ -119,7 +118,7 @@ export default function LoginPage() {
               </div>
 
               <div className="field">
-                <label className="field-label">Password</label>
+                <label className="field-label">{t('common.password')}</label>
                 <input
                   className="field-input"
                   type="password"
@@ -133,17 +132,17 @@ export default function LoginPage() {
 
               {error && <div className="error-msg">{error}</div>}
 
-              <button className="btn-primary" type="submit" disabled={loading}>
-                {loading ? <span className="spinner" /> : 'SIGN IN'}
+              <button className="btn-primary" type="submit" disabled={loading} style={{ textTransform: 'uppercase' }}>
+                {loading ? <span className="spinner" /> : t('auth.login.submit')}
               </button>
             </form>
 
-            <div className="auth-divider"><span>or</span></div>
+            <div className="auth-divider"><span>{t('common.or')}</span></div>
             <GoogleSignInButton onError={setError} />
 
             <p className="auth-switch">
-              No account?{' '}
-              <Link to="/register" className="auth-link">Create one</Link>
+              {t('auth.login.noAccount')}{' '}
+              <Link to="/register" className="auth-link">{t('auth.login.createOne')}</Link>
             </p>
           </>
         )}

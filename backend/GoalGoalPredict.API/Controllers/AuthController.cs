@@ -18,6 +18,7 @@ public class AuthController(
     VerifyEmail verifyEmail,
     ResendVerification resendVerification,
     UpdateProfile updateProfile,
+    CompleteOnboarding completeOnboarding,
     IUserRepository users) : ControllerBase
 {
     [HttpPost("register")]
@@ -143,6 +144,27 @@ public class AuthController(
         return Ok(new { ok = true });
     }
 
+    // Marks the current user as onboarded and stores the language they chose. Called
+    // once when the user finishes the in-app onboarding flow.
+    [HttpPost("onboarding")]
+    [Authorize]
+    public async Task<IActionResult> CompleteOnboardingEndpoint([FromBody] OnboardingRequest req)
+    {
+        var sub = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+        if (sub is null || !Guid.TryParse(sub, out var userId))
+            return Unauthorized();
+
+        try
+        {
+            var result = await completeOnboarding.ExecuteAsync(new CompleteOnboardingInput(userId, req.Language));
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
     [HttpGet("me")]
     [Authorize]
     public async Task<IActionResult> Me()
@@ -189,3 +211,4 @@ public record GoogleLinkCredentialsRequest(string Email, string Password, string
 public record VerifyEmailRequest(string Token);
 public record ResendVerificationRequest(string Email);
 public record UpdateProfileRequest(string FirstName, string LastName);
+public record OnboardingRequest(string? Language);

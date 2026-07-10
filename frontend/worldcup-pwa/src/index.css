@@ -570,6 +570,120 @@ input { font-family: inherit; }
 /* Let Google's button keep its own (centered) width — forcing the inner wrapper to
    100% leaves the fixed-width iframe stranded on the left. */
 
+/* ─── Onboarding ─── */
+.onb-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 520px;
+}
+.onb-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.onb-dots { display: flex; gap: 6px; }
+.onb-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 4px;
+  background: var(--surface-3);
+  transition: width 0.2s, background 0.2s;
+}
+.onb-dot.active { width: 20px; background: var(--accent); }
+.onb-skip {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: pointer;
+}
+.onb-skip:hover { color: var(--text); }
+
+.onb-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 16px 0;
+}
+.onb-emoji { font-size: 56px; margin-bottom: 16px; line-height: 1; }
+.onb-title {
+  font-family: 'Oswald', sans-serif;
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 10px;
+}
+.onb-sub {
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  max-width: 340px;
+}
+
+.onb-lang-list {
+  width: 100%;
+  margin-top: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.onb-lang {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 13px 16px;
+  font-size: 16px;
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.onb-lang:hover { border-color: var(--border-solid); }
+.onb-lang.active { border-color: var(--accent); background: var(--surface-3); color: var(--accent); }
+.onb-lang-check { color: var(--accent); font-weight: 700; }
+
+.onb-leagues {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 22px;
+}
+.onb-league {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 7px 12px;
+  font-size: 13px;
+  color: var(--text);
+}
+.onb-league-emoji { font-size: 14px; }
+.onb-league-soon {
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-left: 2px;
+}
+
+.onb-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 16px;
+}
+.onb-next { flex: 1; }
+
 /* ─── Email verification panels ─── */
 .verify-prompt {
   display: flex;

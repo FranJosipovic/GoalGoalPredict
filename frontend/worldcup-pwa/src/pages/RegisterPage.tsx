@@ -1,11 +1,13 @@
 import { useState, useEffect, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { register, resendVerification } from '../api/auth'
 import { useAuthStore } from '../store/authStore'
 import GoogleSignInButton from '../components/GoogleSignInButton'
 
 export default function RegisterPage() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
 
   // Already authenticated (e.g. navigated back here)? Send them home instead of
   // showing a registration form that looks like they were logged out.
@@ -27,7 +29,7 @@ export default function RegisterPage() {
     e.preventDefault()
     setError('')
     if (form.password.length < 6) {
-      setError('Password must be at least 6 characters.')
+      setError(t('auth.register.passwordTooShort'))
       return
     }
     setLoading(true)
@@ -35,7 +37,7 @@ export default function RegisterPage() {
       const data = await register(form)
       setRegisteredEmail(data.email)
     } catch (err: any) {
-      setError(err.response?.data?.error ?? 'Registration failed. Try again.')
+      setError(err.response?.data?.error ?? t('auth.register.failed'))
     } finally {
       setLoading(false)
     }
@@ -68,29 +70,26 @@ export default function RegisterPage() {
         {registeredEmail ? (
           <div className="verify-prompt">
             <div className="verify-icon">📧</div>
-            <p className="verify-title">Check your email</p>
-            <p className="verify-text">
-              We sent a verification link to <strong>{registeredEmail}</strong>. Click it to
-              activate your account, then sign in.
-            </p>
+            <p className="verify-title">{t('auth.register.checkEmailTitle')}</p>
+            <p className="verify-text">{t('auth.register.checkEmailText', { email: registeredEmail })}</p>
             {resent ? (
-              <p className="verify-sent">✓ Sent again. Give it a minute to arrive.</p>
+              <p className="verify-sent">{t('auth.register.resentText')}</p>
             ) : (
               <button type="button" className="btn-secondary" onClick={handleResend}>
-                Resend email
+                {t('auth.register.resend')}
               </button>
             )}
-            <Link to="/login" className="auth-link back-link">← Back to sign in</Link>
+            <Link to="/login" className="auth-link back-link">{t('auth.login.backToSignIn')}</Link>
           </div>
         ) : (
           <>
-            <h2 className="auth-heading">Join the game</h2>
-            <p className="auth-sub">Create your account</p>
+            <h2 className="auth-heading">{t('auth.register.title')}</h2>
+            <p className="auth-sub">{t('auth.register.subtitle')}</p>
 
             <form onSubmit={handleSubmit} className="auth-form">
               <div className="field-row">
                 <div className="field">
-                  <label className="field-label">First name</label>
+                  <label className="field-label">{t('common.firstName')}</label>
                   <input
                     className="field-input"
                     type="text"
@@ -101,7 +100,7 @@ export default function RegisterPage() {
                   />
                 </div>
                 <div className="field">
-                  <label className="field-label">Last name</label>
+                  <label className="field-label">{t('common.lastName')}</label>
                   <input
                     className="field-input"
                     type="text"
@@ -114,7 +113,7 @@ export default function RegisterPage() {
               </div>
 
               <div className="field">
-                <label className="field-label">Email</label>
+                <label className="field-label">{t('common.email')}</label>
                 <input
                   className="field-input"
                   type="email"
@@ -127,7 +126,7 @@ export default function RegisterPage() {
               </div>
 
               <div className="field">
-                <label className="field-label">Password</label>
+                <label className="field-label">{t('common.password')}</label>
                 <input
                   className="field-input"
                   type="password"
@@ -141,17 +140,17 @@ export default function RegisterPage() {
 
               {error && <div className="error-msg">{error}</div>}
 
-              <button className="btn-primary" type="submit" disabled={loading}>
-                {loading ? <span className="spinner" /> : 'CREATE ACCOUNT'}
+              <button className="btn-primary" type="submit" disabled={loading} style={{ textTransform: 'uppercase' }}>
+                {loading ? <span className="spinner" /> : t('auth.register.submit')}
               </button>
             </form>
 
-            <div className="auth-divider"><span>or</span></div>
+            <div className="auth-divider"><span>{t('common.or')}</span></div>
             <GoogleSignInButton onError={setError} />
 
             <p className="auth-switch">
-              Already playing?{' '}
-              <Link to="/login" className="auth-link">Sign in</Link>
+              {t('auth.register.alreadyPlaying')}{' '}
+              <Link to="/login" className="auth-link">{t('auth.register.signIn')}</Link>
             </p>
           </>
         )}

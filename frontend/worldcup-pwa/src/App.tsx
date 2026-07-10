@@ -4,6 +4,7 @@ import AdminRoute from './components/AdminRoute'
 import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
+import OnboardingPage from './pages/OnboardingPage'
 import VerifyEmailPage from './pages/VerifyEmailPage'
 import InvitePage from './pages/InvitePage'
 import GroupsPage from './pages/GroupsPage'
@@ -37,6 +38,7 @@ export default function App() {
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
         <Route path="/invite/:code" element={<InvitePage />} />
+        <Route path="/onboarding" element={<ProtectedRoute allowOnboarding><OnboardingPage /></ProtectedRoute>} />
         <Route path="/groups" element={<P><GroupsPage /></P>} />
         <Route path="/profile" element={<P><ProfilePage /></P>} />
         <Route path="/groups/:id" element={<P><GroupDetailPage /></P>} />

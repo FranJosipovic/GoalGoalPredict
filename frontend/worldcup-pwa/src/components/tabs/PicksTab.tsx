@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { getMyPredictions, getMatchPredictions } from "../../api/matches";
 import { useAuthStore } from "../../store/authStore";
 import PicksByTeam from "../PicksByTeam";
@@ -10,10 +11,10 @@ import type {
   FinishType,
 } from "../../types";
 
-const FINISH_LABEL: Record<FinishType, string> = {
-  Regular: "Regular time",
-  ExtraTime: "Extra time",
-  Penalties: "Penalties",
+const FINISH_KEY: Record<FinishType, string> = {
+  Regular: "picks.finishRegular",
+  ExtraTime: "picks.finishExtraTime",
+  Penalties: "picks.finishPenalties",
 };
 
 interface Props {
@@ -56,6 +57,7 @@ function GroupPicksPanel({
 }) {
   const [data, setData] = useState<GroupPredictions | null>(null);
   const [state, setState] = useState<"loading" | "ready" | "hidden">("loading");
+  const { t } = useTranslation();
 
   useEffect(() => {
     let alive = true;
@@ -76,12 +78,12 @@ function GroupPicksPanel({
 
   if (state === "loading")
     return (
-      <div className="picks-panel picks-panel--loading">Loading picks…</div>
+      <div className="picks-panel picks-panel--loading">{t("picks.loadingPicks")}</div>
     );
   if (state === "hidden" || !data)
     return (
       <div className="picks-panel picks-panel--hidden">
-        <Icon name="lock" size={14} /> Other picks reveal at kickoff
+        <Icon name="lock" size={14} /> {t("picks.othersReveal")}
       </div>
     );
 
@@ -106,12 +108,12 @@ function GroupPicksPanel({
 
             <span className="picks-pts">
               {p.projectedPoints}
-              <small>pts</small>
+              <small>{t("picks.pts")}</small>
             </span>
 
             <div className="picks-row-picks">
               {p.finishType && (
-                <span className="picks-finish">🏁 {FINISH_LABEL[p.finishType]}</span>
+                <span className="picks-finish">🏁 {t(FINISH_KEY[p.finishType])}</span>
               )}
               <PicksByTeam
                 scorers={p.scorers}
@@ -139,6 +141,7 @@ function PredictionCard({
 }) {
   const bucket = bucketOf(p.status);
   const [expanded, setExpanded] = useState(false);
+  const { t } = useTranslation();
   const hasResult = p.actualHome !== null && p.actualAway !== null;
   const exact =
     hasResult && p.predHome === p.actualHome && p.predAway === p.actualAway;
@@ -154,11 +157,11 @@ function PredictionCard({
           {bucket === "live" && (
             <span className="mypred-flag mypred-flag--live">
               <span className="live-dot" />
-              LIVE
+              {t("picks.live")}
             </span>
           )}
           {bucket === "finished" && (
-            <span className="mypred-flag mypred-flag--ft">FT</span>
+            <span className="mypred-flag mypred-flag--ft">{t("picks.ft")}</span>
           )}
         </div>
 
@@ -169,7 +172,7 @@ function PredictionCard({
           </div>
           <div className="mypred-scores">
             <div className="mypred-scoreline">
-              <span className="mypred-score-tag">PICK</span>
+              <span className="mypred-score-tag">{t("picks.pick")}</span>
               <span
                 className={`mypred-score ${exact ? "mypred-score--exact" : ""}`}
               >
@@ -178,7 +181,7 @@ function PredictionCard({
             </div>
             {hasResult && (
               <div className="mypred-scoreline mypred-scoreline--actual">
-                <span className="mypred-score-tag">REAL</span>
+                <span className="mypred-score-tag">{t("picks.real")}</span>
                 <span className="mypred-score">
                   {p.actualHome}–{p.actualAway}
                 </span>
@@ -201,7 +204,7 @@ function PredictionCard({
         <div className="mypred-foot">
           {exact && (
             <span className="mypred-badge mypred-badge--exact">
-              ✓ Exact score
+              ✓ {t("picks.exactScore")}
             </span>
           )}
           {points !== null ? (
@@ -212,11 +215,11 @@ function PredictionCard({
                 {points >= 0 ? "+" : ""}
                 {points}
               </strong>{" "}
-              pts {!p.isScored && <em>live</em>}
+              {t("picks.pts")} {!p.isScored && <em>{t("picks.liveShort")}</em>}
             </span>
           ) : (
             <span className="mypred-points mypred-points--pending">
-              Awaiting kickoff
+              {t("picks.awaitingKickoff")}
             </span>
           )}
         </div>
@@ -230,10 +233,10 @@ function PredictionCard({
         {canReveal ? (
           <>
             <Icon name={expanded ? "chevron-up" : "chevron-down"} size={15} />
-            {expanded ? "Hide group picks" : "Show group picks"}
+            {expanded ? t("picks.hideGroupPicks") : t("picks.showGroupPicks")}
           </>
         ) : (
-          <><Icon name="lock" size={14} /> Group picks reveal at kickoff</>
+          <><Icon name="lock" size={14} /> {t("picks.groupPicksReveal")}</>
         )}
       </button>
 
@@ -252,6 +255,7 @@ function PredictionCard({
 
 export default function PicksTab({ groupId, onMatchClick }: Props) {
   const { user } = useAuthStore();
+  const { t } = useTranslation();
   const [items, setItems] = useState<MyPredictionItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [finishedLimit, setFinishedLimit] = useState(3);
@@ -295,17 +299,17 @@ export default function PicksTab({ groupId, onMatchClick }: Props) {
     return (
       <div className="empty-state">
         <Icon name="target" size={40} className="empty-icon-svg" />
-        <p className="empty-title">No picks yet</p>
-        <p className="empty-sub">Head to Matches and place your first pick</p>
+        <p className="empty-title">{t("picks.emptyTitle")}</p>
+        <p className="empty-sub">{t("picks.emptySub")}</p>
       </div>
     );
   }
 
   const order: Bucket[] = ["live", "upcoming", "finished"];
   const labels: Record<Bucket, string> = {
-    live: "Live now",
-    upcoming: "Upcoming",
-    finished: "Finished",
+    live: t("picks.bucketLive"),
+    upcoming: t("picks.bucketUpcoming"),
+    finished: t("picks.bucketFinished"),
   };
   const grouped = order
     .map((b) => {
@@ -324,15 +328,15 @@ export default function PicksTab({ groupId, onMatchClick }: Props) {
       <div className="mypred-summary">
         <div className="mypred-stat">
           <span className="mypred-stat-num">{stats.totalPoints}</span>
-          <span className="mypred-stat-label">Points</span>
+          <span className="mypred-stat-label">{t("picks.statPoints")}</span>
         </div>
         <div className="mypred-stat">
           <span className="mypred-stat-num">{stats.totalPicks}</span>
-          <span className="mypred-stat-label">Picks</span>
+          <span className="mypred-stat-label">{t("picks.statPicks")}</span>
         </div>
         <div className="mypred-stat">
           <span className="mypred-stat-num">{stats.exactCount}</span>
-          <span className="mypred-stat-label">Exact</span>
+          <span className="mypred-stat-label">{t("picks.statExact")}</span>
         </div>
       </div>
 
@@ -376,10 +380,10 @@ export default function PicksTab({ groupId, onMatchClick }: Props) {
                 {loadingMore ? (
                   <>
                     <span className="load-more-spinner" />
-                    Loading…
+                    {t("picks.loading")}
                   </>
                 ) : (
-                  "Load more"
+                  t("picks.loadMore")
                 )}
               </button>
             )}

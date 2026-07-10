@@ -44,102 +44,81 @@ public class ApiFootballClient(HttpClient http, IConfiguration config, ILogger<A
         return list.FirstOrDefault();
     }
 
-    public async Task<List<ApiGoalEventData>> GetGoalEventsAsync(int fixtureId, CancellationToken ct = default)
+    public async Task<ApiFixtureEvents> GetFixtureEventsAsync(int fixtureId, CancellationToken ct = default)
     {
-        var json = await GetAsync($"fixtures/events?fixture={fixtureId}&type=Goal", ct);
+        // One untyped fetch returns the full event superset (goals, cards, subst, var, shootout
+        // kicks). The API's `type` filter is pure server-side narrowing, so we can split the same
+        // list into the 5 per-category projections client-side — saving 4 API calls per poll.
+        var json = await GetAsync($"fixtures/events?fixture={fixtureId}", ct);
         var resp = Deserialize<ApiResponse<EventResponse>>(json);
-        if (resp is null) return [];
-
-        return resp.Response
-            // Exclude penalty-shootout goals/misses — the judged scoreline is regular + extra time only,
-            // and shootout penalties must never count toward goalscorer picks.
-            .Where(e => e.Type == "Goal" && e.Comments != "Penalty Shootout")
-            .Select((e, i) => new ApiGoalEventData(
-                e.Time.Elapsed,
-                e.Time.Extra,
-                e.Team.Id,
-                e.Player.Id,
-                e.Detail,
-                i
-            )).ToList();
+        var events = resp?.Response ?? [];
+        return new ApiFixtureEvents(
+            MapGoals(events), MapCards(events), MapShootout(events),
+            MapSubstitutions(events), MapVar(events));
     }
 
-    public async Task<List<ApiCardEventData>> GetCardEventsAsync(int fixtureId, CancellationToken ct = default)
-    {
-        var json = await GetAsync($"fixtures/events?fixture={fixtureId}&type=Card", ct);
-        var resp = Deserialize<ApiResponse<EventResponse>>(json);
-        if (resp is null) return [];
+    private static List<ApiGoalEventData> MapGoals(List<EventResponse> events) => events
+        // Exclude penalty-shootout goals/misses — the judged scoreline is regular + extra time only,
+        // and shootout penalties must never count toward goalscorer picks.
+        .Where(e => e.Type == "Goal" && e.Comments != "Penalty Shootout")
+        .Select((e, i) => new ApiGoalEventData(
+            e.Time.Elapsed,
+            e.Time.Extra,
+            e.Team.Id,
+            e.Player.Id,
+            e.Detail,
+            i
+        )).ToList();
 
-        return resp.Response
-            .Where(e => e.Type == "Card")
-            .Select((e, i) => new ApiCardEventData(
-                e.Time.Elapsed,
-                e.Time.Extra,
-                e.Team.Id,
-                e.Player.Id,
-                e.Detail,
-                i
-            )).ToList();
-    }
+    private static List<ApiCardEventData> MapCards(List<EventResponse> events) => events
+        .Where(e => e.Type == "Card")
+        .Select((e, i) => new ApiCardEventData(
+            e.Time.Elapsed,
+            e.Time.Extra,
+            e.Team.Id,
+            e.Player.Id,
+            e.Detail,
+            i
+        )).ToList();
 
-    public async Task<List<ApiShootoutEventData>> GetShootoutEventsAsync(int fixtureId, CancellationToken ct = default)
-    {
+    private static List<ApiShootoutEventData> MapShootout(List<EventResponse> events) => events
         // Shootout kicks are Goal-type events tagged comments="Penalty Shootout". Detail is
         // "Penalty" for a scored kick and "Missed Penalty" for a miss. These are informational
         // only — they never feed scoring (goalscorer picks + judged scoreline are reg+ET).
-        var json = await GetAsync($"fixtures/events?fixture={fixtureId}&type=Goal", ct);
-        var resp = Deserialize<ApiResponse<EventResponse>>(json);
-        if (resp is null) return [];
+        .Where(e => e.Type == "Goal" && e.Comments == "Penalty Shootout")
+        .Select((e, i) => new ApiShootoutEventData(
+            e.Team.Id,
+            e.Player.Id,
+            e.Detail == "Penalty",
+            i
+        )).ToList();
 
-        return resp.Response
-            .Where(e => e.Comments == "Penalty Shootout")
-            .Select((e, i) => new ApiShootoutEventData(
-                e.Team.Id,
-                e.Player.Id,
-                e.Detail == "Penalty",
-                i
-            )).ToList();
-    }
-
-    public async Task<List<ApiSubstitutionEventData>> GetSubstitutionEventsAsync(int fixtureId, CancellationToken ct = default)
-    {
-        var json = await GetAsync($"fixtures/events?fixture={fixtureId}&type=subst", ct);
-        var resp = Deserialize<ApiResponse<EventResponse>>(json);
-        if (resp is null) return [];
-
+    private static List<ApiSubstitutionEventData> MapSubstitutions(List<EventResponse> events) => events
         // API-Football substitution events: `assist` is the player coming ON,
         // `player` is the player going OFF.
-        return resp.Response
-            .Where(e => e.Type == "subst")
-            .Select((e, i) => new ApiSubstitutionEventData(
-                e.Time.Elapsed,
-                e.Time.Extra,
-                e.Team.Id,
-                e.Assist?.Id,
-                e.Player?.Id,
-                i
-            )).ToList();
-    }
+        .Where(e => e.Type == "subst")
+        .Select((e, i) => new ApiSubstitutionEventData(
+            e.Time.Elapsed,
+            e.Time.Extra,
+            e.Team.Id,
+            e.Assist?.Id,
+            e.Player?.Id,
+            i
+        )).ToList();
 
-    public async Task<List<ApiVarEventData>> GetVarEventsAsync(int fixtureId, CancellationToken ct = default)
-    {
-        // API-Football's `type` filter only accepts goal/card/subst — VAR events come back
-        // in the unfiltered events list, so fetch everything and pick out the "Var" ones.
-        var json = await GetAsync($"fixtures/events?fixture={fixtureId}", ct);
-        var resp = Deserialize<ApiResponse<EventResponse>>(json);
-        if (resp is null) return [];
-
-        return resp.Response
-            .Where(e => e.Type == "Var")
-            .Select((e, i) => new ApiVarEventData(
-                e.Time.Elapsed,
-                e.Time.Extra,
-                e.Team.Id,
-                e.Player?.Id,
-                e.Detail,
-                i
-            )).ToList();
-    }
+    private static List<ApiVarEventData> MapVar(List<EventResponse> events) => events
+        // Skip VAR events with no detail — the feed occasionally emits `detail: null`,
+        // which carries no meaning, NREs the push/reconcile paths, and (since Detail maps
+        // to a NOT NULL column) would crash the whole poll's SaveChanges on insert.
+        .Where(e => e.Type == "Var" && !string.IsNullOrWhiteSpace(e.Detail))
+        .Select((e, i) => new ApiVarEventData(
+            e.Time.Elapsed,
+            e.Time.Extra,
+            e.Team.Id,
+            e.Player?.Id,
+            e.Detail,
+            i
+        )).ToList();
 
     public async Task<List<ApiLineupPlayerData>> GetLineupsAsync(int fixtureId, CancellationToken ct = default)
     {
