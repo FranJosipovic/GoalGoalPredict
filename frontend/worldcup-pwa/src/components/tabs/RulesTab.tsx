@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { getGroupRules, updateGroupRules, type GroupRulesUpdate } from '../../api/groups'
 import Icon from '../Icon'
 import type { GroupScoringRules, CardPredictionMode } from '../../types'
@@ -7,13 +8,14 @@ interface Props {
   groupId: string
 }
 
-const MODES: { value: CardPredictionMode; label: string; hint: string }[] = [
-  { value: 'Limited', label: 'Limited', hint: 'Cap picks per category' },
-  { value: 'Single', label: 'Single', hint: 'Exactly one pick each' },
-  { value: 'Net', label: 'Net', hint: 'Unlimited, wrong picks cost points' },
+const MODES: { value: CardPredictionMode; labelKey: string; hintKey: string }[] = [
+  { value: 'Limited', labelKey: 'rules.modeLimited', hintKey: 'rules.modeLimitedHint' },
+  { value: 'Single', labelKey: 'rules.modeSingle', hintKey: 'rules.modeSingleHint' },
+  { value: 'Net', labelKey: 'rules.modeNet', hintKey: 'rules.modeNetHint' },
 ]
 
 export default function RulesTab({ groupId }: Props) {
+  const { t } = useTranslation()
   const [rules, setRules] = useState<GroupScoringRules | null>(null)
   const [draft, setDraft] = useState<GroupRulesUpdate | null>(null)
   const [loading, setLoading] = useState(true)
@@ -28,7 +30,7 @@ export default function RulesTab({ groupId }: Props) {
   }, [groupId])
 
   if (loading) return <div className="loading-state"><span className="loading-ball"><Icon name="ball" size={34} /></span></div>
-  if (!rules || !draft) return <div className="empty-state"><p className="empty-title">Rules unavailable</p></div>
+  if (!rules || !draft) return <div className="empty-state"><p className="empty-title">{t('rules.unavailable')}</p></div>
 
   const editable = rules.canEdit
   const set = <K extends keyof GroupRulesUpdate>(key: K, val: GroupRulesUpdate[K]) =>
@@ -42,7 +44,7 @@ export default function RulesTab({ groupId }: Props) {
       setRules(updated); setDraft(stripMeta(updated))
       setSavedFlash(true); setTimeout(() => setSavedFlash(false), 1800)
     } catch (e: any) {
-      setError(e.response?.data?.error ?? 'Failed to save rules')
+      setError(e.response?.data?.error ?? t('rules.saveFailed'))
     } finally {
       setSaving(false)
     }
@@ -77,78 +79,78 @@ export default function RulesTab({ groupId }: Props) {
       {editable && (
         <div className="rules-banner">
           <Icon name="edit" size={15} className="rules-banner-icon" />
-          <span>Edits apply to matches that haven't kicked off yet. Matches already played keep the points they were scored with.</span>
+          <span>{t('rules.banner')}</span>
         </div>
       )}
       {!editable && (
         <div className="rules-banner">
-          👀 Only the group owner can edit the scoring rules.
+          {t('rules.bannerLocked')}
         </div>
       )}
 
       {/* Match result */}
       <section className="rules-card">
-        <h3 className="rules-card-title">Match result</h3>
+        <h3 className="rules-card-title">{t('rules.matchResult')}</h3>
         <div className="rules-row">
           <Toggle on={draft.exactScoreEnabled} onChange={v => set('exactScoreEnabled', v)} />
-          <span className="rules-label">Exact score</span>
+          <span className="rules-label">{t('rules.exactScore')}</span>
           <NumberField value={draft.exactScorePoints} onChange={v => set('exactScorePoints', v)} />
-          <span className="rules-unit">pts</span>
+          <span className="rules-unit">{t('rules.pts')}</span>
         </div>
         <div className="rules-row">
           <Toggle on={draft.outcomeEnabled} onChange={v => set('outcomeEnabled', v)} />
-          <span className="rules-label">Correct outcome (W/D/L)</span>
+          <span className="rules-label">{t('rules.correctOutcome')}</span>
           <NumberField value={draft.outcomePoints} onChange={v => set('outcomePoints', v)} />
-          <span className="rules-unit">pts</span>
+          <span className="rules-unit">{t('rules.pts')}</span>
         </div>
         <div className="rules-row">
           <Toggle on={draft.finishTypeEnabled} onChange={v => set('finishTypeEnabled', v)} />
-          <span className="rules-label">Knockout finish (Reg / ET / Pens)</span>
+          <span className="rules-label">{t('rules.knockoutFinish')}</span>
           <NumberField value={draft.finishTypePoints} onChange={v => set('finishTypePoints', v)} />
-          <span className="rules-unit">pts</span>
+          <span className="rules-unit">{t('rules.pts')}</span>
         </div>
-        <p className="rules-card-sub">Knockout-only: guess whether a tie ends in regular time, extra time or penalties.</p>
+        <p className="rules-card-sub">{t('rules.knockoutSub')}</p>
       </section>
 
       {/* Goalscorers */}
       <section className="rules-card">
         <div className="rules-card-head">
-          <h3 className="rules-card-title">Goalscorers</h3>
+          <h3 className="rules-card-title">{t('rules.goalscorers')}</h3>
           <Toggle on={draft.goalscorerEnabled} onChange={v => set('goalscorerEnabled', v)} />
         </div>
-        <p className="rules-card-sub">A goal is a goal — pick who scores, any goal counts. Points by position:</p>
+        <p className="rules-card-sub">{t('rules.goalscorersSub')}</p>
         <div className="rules-grid">
           <div className="rules-mini">
-            <span>Goalkeeper</span>
+            <span>{t('rules.goalkeeper')}</span>
             <NumberField value={draft.scorerGkPoints} onChange={v => set('scorerGkPoints', v)} />
           </div>
           <div className="rules-mini">
-            <span>Defender</span>
+            <span>{t('rules.defender')}</span>
             <NumberField value={draft.scorerDefPoints} onChange={v => set('scorerDefPoints', v)} />
           </div>
           <div className="rules-mini">
-            <span>Midfielder</span>
+            <span>{t('rules.midfielder')}</span>
             <NumberField value={draft.scorerMidPoints} onChange={v => set('scorerMidPoints', v)} />
           </div>
           <div className="rules-mini">
-            <span>Attacker</span>
+            <span>{t('rules.attacker')}</span>
             <NumberField value={draft.scorerAttPoints} onChange={v => set('scorerAttPoints', v)} />
           </div>
         </div>
         <div className="rules-row">
           <Toggle on={draft.ownGoalEnabled} onChange={v => set('ownGoalEnabled', v)} />
-          <span className="rules-label">Own goal (flat, any position)</span>
+          <span className="rules-label">{t('rules.ownGoal')}</span>
           <NumberField value={draft.ownGoalPoints} onChange={v => set('ownGoalPoints', v)} />
-          <span className="rules-unit">pts</span>
+          <span className="rules-unit">{t('rules.pts')}</span>
         </div>
       </section>
 
       {/* Cards & misc */}
       <section className="rules-card">
-        <h3 className="rules-card-title">Cards &amp; penalties</h3>
+        <h3 className="rules-card-title">{t('rules.cardsPenalties')}</h3>
 
         <div className="rules-mode">
-          <span className="rules-label">Anti-spam mode</span>
+          <span className="rules-label">{t('rules.antiSpamMode')}</span>
           <div className="rules-mode-opts">
             {MODES.map(m => (
               <button
@@ -157,29 +159,29 @@ export default function RulesTab({ groupId }: Props) {
                 className={`rules-mode-btn ${draft.cardPredictionMode === m.value ? 'rules-mode-btn--on' : ''}`}
                 disabled={!editable}
                 onClick={() => set('cardPredictionMode', m.value)}
-                title={m.hint}
+                title={t(m.hintKey)}
               >
-                {m.label}
+                {t(m.labelKey)}
               </button>
             ))}
           </div>
         </div>
         {draft.cardPredictionMode === 'Net' && (
           <div className="rules-row">
-            <span className="rules-label rules-label--indent">Wrong pick penalty</span>
+            <span className="rules-label rules-label--indent">{t('rules.wrongPickPenalty')}</span>
             <NumberField value={draft.wrongPickPenalty} onChange={v => set('wrongPickPenalty', v)} />
-            <span className="rules-unit">pts</span>
+            <span className="rules-unit">{t('rules.pts')}</span>
           </div>
         )}
 
         <CardRow
-          label="Yellow card" enabled={draft.yellowCardEnabled} points={draft.yellowCardPoints} max={draft.yellowCardMaxPicks}
-          mode={draft.cardPredictionMode} editable={editable}
+          label={t('rules.yellowCard')} enabled={draft.yellowCardEnabled} points={draft.yellowCardPoints} max={draft.yellowCardMaxPicks}
+          mode={draft.cardPredictionMode} editable={editable} t={t}
           onEnabled={v => set('yellowCardEnabled', v)} onPoints={v => set('yellowCardPoints', v)} onMax={v => set('yellowCardMaxPicks', v)}
         />
         <CardRow
-          label="Red card" enabled={draft.redCardEnabled} points={draft.redCardPoints} max={draft.redCardMaxPicks}
-          mode={draft.cardPredictionMode} editable={editable}
+          label={t('rules.redCard')} enabled={draft.redCardEnabled} points={draft.redCardPoints} max={draft.redCardMaxPicks}
+          mode={draft.cardPredictionMode} editable={editable} t={t}
           onEnabled={v => set('redCardEnabled', v)} onPoints={v => set('redCardPoints', v)} onMax={v => set('redCardMaxPicks', v)}
         />
       </section>
@@ -189,7 +191,7 @@ export default function RulesTab({ groupId }: Props) {
       {editable && (
         <div className="rules-save">
           <button className="btn-primary" style={{ width: '100%' }} onClick={save} disabled={saving}>
-            {saving ? <span className="spinner" /> : savedFlash ? 'Saved ✓' : 'Save rules'}
+            {saving ? <span className="spinner" /> : savedFlash ? `${t('rules.saved')} ✓` : t('rules.saveRules')}
           </button>
         </div>
       )}
@@ -199,10 +201,10 @@ export default function RulesTab({ groupId }: Props) {
 
 function CardRow(props: {
   label: string; enabled: boolean; points: number; max: number
-  mode: CardPredictionMode; editable: boolean
+  mode: CardPredictionMode; editable: boolean; t: (k: string) => string
   onEnabled: (v: boolean) => void; onPoints: (v: number) => void; onMax: (v: number) => void
 }) {
-  const { label, enabled, points, max, mode, editable, onEnabled, onPoints, onMax } = props
+  const { label, enabled, points, max, mode, editable, t, onEnabled, onPoints, onMax } = props
   return (
     <div className="rules-row rules-row--card">
       <button
@@ -218,14 +220,14 @@ function CardRow(props: {
         type="number" className="rules-num" value={points} min={0} disabled={!editable}
         onChange={e => onPoints(Math.max(0, Number(e.target.value) || 0))}
       />
-      <span className="rules-unit">pts</span>
+      <span className="rules-unit">{t('rules.pts')}</span>
       {mode === 'Limited' && (
         <>
           <input
             type="number" className="rules-num" value={max} min={1} disabled={!editable}
             onChange={e => onMax(Math.max(1, Number(e.target.value) || 1))}
           />
-          <span className="rules-unit">max</span>
+          <span className="rules-unit">{t('rules.max')}</span>
         </>
       )}
     </div>

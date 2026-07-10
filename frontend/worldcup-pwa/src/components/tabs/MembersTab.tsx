@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../../store/authStore'
 import { resetInviteCode, kickGroupMember } from '../../api/groups'
 import Icon from '../Icon'
@@ -6,6 +7,7 @@ import type { GroupDetail } from '../../types'
 
 export default function MembersTab({ group }: { group: GroupDetail }) {
   const { user } = useAuthStore()
+  const { t } = useTranslation()
   const isOwner = group.createdByUserId === user?.id
 
   const [inviteCode, setInviteCode] = useState(group.inviteCode)
@@ -28,7 +30,7 @@ export default function MembersTab({ group }: { group: GroupDetail }) {
   const handleShare = async () => {
     const shareData = {
       title: group.name,
-      text: `Join "${group.name}" on GoalGoalPredict!`,
+      text: t('groupDetail.shareText', { name: group.name }),
       url: inviteLink,
     }
     if (navigator.share) {
@@ -40,37 +42,37 @@ export default function MembersTab({ group }: { group: GroupDetail }) {
       }
     }
     await navigator.clipboard.writeText(inviteLink)
-    flash('Invite link copied!')
+    flash(t('groupDetail.inviteLinkCopied'))
   }
 
   const handleCopyCode = async () => {
     await navigator.clipboard.writeText(inviteCode)
-    flash('Code copied!')
+    flash(t('groupDetail.codeCopied'))
   }
 
   const handleKick = async (userId: string, name: string) => {
-    if (!confirm(`Remove ${name} from the group? Their predictions and points here will be deleted.`)) return
+    if (!confirm(t('groupDetail.confirmRemoveBody', { name }))) return
     setKicking(userId)
     try {
       await kickGroupMember(group.id, userId)
       setMembers(prev => prev.filter(m => m.userId !== userId))
-      flash(`${name} removed.`)
+      flash(t('groupDetail.memberRemoved', { name }))
     } catch (e: any) {
-      flash(e.response?.data?.error ?? 'Could not remove member.')
+      flash(e.response?.data?.error ?? t('groupDetail.removeMemberFailed'))
     } finally {
       setKicking(null)
     }
   }
 
   const handleReset = async () => {
-    if (!confirm('Reset the invite link? The old link will stop working.')) return
+    if (!confirm(`${t('groupDetail.confirmResetTitle')} ${t('groupDetail.confirmResetBody')}`)) return
     setResetting(true)
     try {
       const updated = await resetInviteCode(group.id)
       setInviteCode(updated.inviteCode)
-      flash('New invite link generated.')
+      flash(t('groupDetail.newLinkGenerated'))
     } catch {
-      flash('Could not reset link.')
+      flash(t('groupDetail.resetLinkFailed'))
     } finally {
       setResetting(false)
     }
@@ -80,12 +82,12 @@ export default function MembersTab({ group }: { group: GroupDetail }) {
     <div className="members-section">
       <div className="invite-share" style={{ margin: '20px auto', maxWidth: 420 }}>
         <button className="btn-primary btn-with-icon" onClick={handleShare} style={{ width: '100%' }}>
-          <Icon name="link" size={18} /> Invite people
+          <Icon name="link" size={18} /> {t('groupDetail.invitePeople')}
         </button>
 
         <button className="invite-code-btn" onClick={handleCopyCode} style={{ margin: '12px auto', display: 'flex' }}>
           <div>
-            <div className="invite-label">Invite Code</div>
+            <div className="invite-label">{t('groupDetail.inviteCodeLabel')}</div>
             <div className="invite-code">{inviteCode}</div>
           </div>
           <span className="invite-copy-icon"><Icon name="copy" size={18} /></span>
@@ -93,7 +95,7 @@ export default function MembersTab({ group }: { group: GroupDetail }) {
 
         {isOwner && (
           <button className="btn-ghost" onClick={handleReset} disabled={resetting} style={{ width: '100%' }}>
-            {resetting ? 'Resetting…' : 'Reset invite link'}
+            {resetting ? t('groupDetail.resetting') : t('groupDetail.resetLink')}
           </button>
         )}
 
@@ -101,7 +103,7 @@ export default function MembersTab({ group }: { group: GroupDetail }) {
       </div>
 
       <div className="members-header">
-        <span className="members-title">MEMBERS</span>
+        <span className="members-title">{t('groupDetail.membersHeader')}</span>
         <span className="members-count">{members.length}</span>
       </div>
 
@@ -114,16 +116,16 @@ export default function MembersTab({ group }: { group: GroupDetail }) {
             <div className="member-info">
               <div className="member-name">
                 {m.firstName} {m.lastName}
-                {m.userId === user?.id && <span className="member-you"> (you)</span>}
+                {m.userId === user?.id && <span className="member-you"> {t('groupDetail.youParen')}</span>}
               </div>
             </div>
-            {m.role === 'Owner' && <span className="member-role-badge">OWNER</span>}
+            {m.role === 'Owner' && <span className="member-role-badge">{t('groupDetail.roleOwner')}</span>}
             {isOwner && m.role !== 'Owner' && m.userId !== user?.id && (
               <button
                 className="member-kick-btn"
                 onClick={() => handleKick(m.userId, `${m.firstName} ${m.lastName}`)}
                 disabled={kicking === m.userId}
-                aria-label={`Remove ${m.firstName} ${m.lastName}`}
+                aria-label={t('groupDetail.removeAria', { name: `${m.firstName} ${m.lastName}` })}
               >
                 {kicking === m.userId ? '…' : '✕'}
               </button>

@@ -35,6 +35,10 @@ export const verifyEmail = (token: string) =>
 export const resendVerification = (email: string) =>
   client.post('/auth/resend-verification', { email }).then((r) => r.data)
 
+// Marks the current user onboarded and stores their chosen language. Returns the updated user.
+export const completeOnboarding = (language: string) =>
+  client.post<User>('/auth/onboarding', { language }).then((r) => r.data)
+
 export const getMe = () => client.get<User>('/auth/me').then((r) => r.data)
 
 export const updateProfile = (data: { firstName: string; lastName: string }) =>

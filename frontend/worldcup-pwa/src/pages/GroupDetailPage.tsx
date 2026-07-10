@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate, Navigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { getGroupDetail } from '../api/groups'
 import { getStandings } from '../api/tournament'
 import { getTeams } from '../api/teams'
@@ -21,17 +22,18 @@ const FULL_TABS: Tab[] = ['matches', 'mypicks', 'leaderboard', 'members', 'rules
 // appears once the group is unlocked for the knockout phase (i.e. predictions are possible).
 const GLOBAL_TABS: Tab[] = ['matches', 'leaderboard', 'rules']
 const GLOBAL_TABS_UNLOCKED: Tab[] = ['matches', 'mypicks', 'leaderboard', 'rules']
-const TAB_META: Record<Tab, { icon: IconName; label: string }> = {
-  matches: { icon: 'ball', label: 'Matches' },
-  mypicks: { icon: 'target', label: 'Picks' },
-  leaderboard: { icon: 'trophy', label: 'Board' },
-  members: { icon: 'users', label: 'Members' },
-  rules: { icon: 'sliders', label: 'Rules' },
+const TAB_META: Record<Tab, { icon: IconName; labelKey: string }> = {
+  matches: { icon: 'ball', labelKey: 'groupDetail.tabMatches' },
+  mypicks: { icon: 'target', labelKey: 'groupDetail.tabPicks' },
+  leaderboard: { icon: 'trophy', labelKey: 'groupDetail.tabBoard' },
+  members: { icon: 'users', labelKey: 'groupDetail.tabMembers' },
+  rules: { icon: 'sliders', labelKey: 'groupDetail.tabRules' },
 }
 
 export default function GroupDetailPage() {
   const { id, tab: tabParam } = useParams<{ id: string; tab: string }>()
   const navigate = useNavigate()
+  const { t: tr } = useTranslation()
   const tab = tabParam as Tab
   const setTab = (t: Tab) => navigate(`/groups/${id}/${t}`)
   const [group, setGroup] = useState<GroupDetail | null>(null)
@@ -106,7 +108,7 @@ export default function GroupDetailPage() {
       <Layout showBack>
         <div className="empty-state">
           <Icon name="search" size={40} className="empty-icon-svg" />
-          <p className="empty-title">Group not found</p>
+          <p className="empty-title">{tr('groupDetail.notFound')}</p>
         </div>
       </Layout>
     )
@@ -126,7 +128,7 @@ export default function GroupDetailPage() {
               onClick={() => setTab(t)}
             >
               <Icon name={TAB_META[t].icon} size={18} className="hub-tab-icon" />
-              <span className="hub-tab-label">{TAB_META[t].label}</span>
+              <span className="hub-tab-label">{tr(TAB_META[t].labelKey)}</span>
             </button>
           ))}
           <div className="hub-tab-indicator" style={{ left: `calc(${tabIndex} * ${100 / TABS.length}%)`, width: `${100 / TABS.length}%` }} />
@@ -138,7 +140,7 @@ export default function GroupDetailPage() {
               <rect x="3" y="11" width="18" height="11" rx="2" />
               <path d="M7 11V7a5 5 0 0110 0v4" />
             </svg>
-            <span>The global board unlocks at the <strong>knockout phase</strong> — everyone starts level at <strong>0</strong>. Browse the bracket and standings until then.</span>
+            <span>{tr('groupDetail.globalLock')}</span>
           </div>
         )}
 
@@ -147,8 +149,8 @@ export default function GroupDetailPage() {
             isGlobal ? (
               <>
                 <div className="match-subswitch">
-                  <button className={`match-subswitch-btn ${matchView === 'bracket' ? 'on' : ''}`} onClick={() => setMatchView('bracket')}>Bracket</button>
-                  <button className={`match-subswitch-btn ${matchView === 'upcoming' ? 'on' : ''}`} onClick={() => setMatchView('upcoming')}>Upcoming</button>
+                  <button className={`match-subswitch-btn ${matchView === 'bracket' ? 'on' : ''}`} onClick={() => setMatchView('bracket')}>{tr('groupDetail.bracket')}</button>
+                  <button className={`match-subswitch-btn ${matchView === 'upcoming' ? 'on' : ''}`} onClick={() => setMatchView('upcoming')}>{tr('groupDetail.upcoming')}</button>
                 </div>
                 {matchView === 'bracket'
                   ? <Bracket

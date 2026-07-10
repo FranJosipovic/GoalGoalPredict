@@ -14,6 +14,14 @@ public record ApiCardEventData(int Minute, int? ExtraMinute, int TeamId, int? Pl
 public record ApiShootoutEventData(int TeamId, int? PlayerId, bool Scored, int Order);
 public record ApiSubstitutionEventData(int Minute, int? ExtraMinute, int TeamId, int? PlayerInId, int? PlayerOutId, int Order);
 public record ApiVarEventData(int Minute, int? ExtraMinute, int TeamId, int? PlayerId, string Detail, int Order);
+// One untyped fixtures/events fetch, split into the same per-category projections the 5 old
+// methods produced — so a live poll hits the endpoint once instead of five times.
+public record ApiFixtureEvents(
+    List<ApiGoalEventData> Goals,
+    List<ApiCardEventData> Cards,
+    List<ApiShootoutEventData> Shootout,
+    List<ApiSubstitutionEventData> Substitutions,
+    List<ApiVarEventData> Var);
 public record ApiLineupPlayerData(int PlayerId, int TeamId, bool IsStarting, string Position, int ShirtNumber);
 public record ApiStandingData(
     int TeamId, string GroupName, int Rank, int Points, int GoalsDiff,
@@ -46,11 +54,7 @@ public interface IApiFootballClient
     Task<List<ApiSquadPlayerData>> GetSquadAsync(int teamId, CancellationToken ct = default);
     Task<List<ApiFixtureData>> GetFixturesAsync(CancellationToken ct = default);
     Task<ApiFixtureData?> GetFixtureAsync(int fixtureId, CancellationToken ct = default);
-    Task<List<ApiGoalEventData>> GetGoalEventsAsync(int fixtureId, CancellationToken ct = default);
-    Task<List<ApiCardEventData>> GetCardEventsAsync(int fixtureId, CancellationToken ct = default);
-    Task<List<ApiShootoutEventData>> GetShootoutEventsAsync(int fixtureId, CancellationToken ct = default);
-    Task<List<ApiSubstitutionEventData>> GetSubstitutionEventsAsync(int fixtureId, CancellationToken ct = default);
-    Task<List<ApiVarEventData>> GetVarEventsAsync(int fixtureId, CancellationToken ct = default);
+    Task<ApiFixtureEvents> GetFixtureEventsAsync(int fixtureId, CancellationToken ct = default);
     Task<List<ApiLineupPlayerData>> GetLineupsAsync(int fixtureId, CancellationToken ct = default);
     Task<List<ApiStandingData>> GetStandingsAsync(CancellationToken ct = default);
     Task<ApiTeamStatsData?> GetTeamStatisticsAsync(int teamId, CancellationToken ct = default);

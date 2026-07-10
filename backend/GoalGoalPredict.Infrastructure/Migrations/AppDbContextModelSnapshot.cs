@@ -1542,6 +1542,9 @@ namespace GoalGoalPredict.Infrastructure.Migrations
                         .HasColumnType("character varying(64)")
                         .HasColumnName("google_sub");
 
+                    b.Property<bool>("HasOnboarded")
+                        .HasColumnType("boolean");
+
                     b.Property<bool>("IsAdmin")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
@@ -1557,6 +1560,9 @@ namespace GoalGoalPredict.Infrastructure.Migrations
                     b.Property<string>("PasswordHash")
                         .HasColumnType("text")
                         .HasColumnName("password_hash");
+
+                    b.Property<string>("PreferredLanguage")
+                        .HasColumnType("text");
 
                     b.HasKey("Id");
 

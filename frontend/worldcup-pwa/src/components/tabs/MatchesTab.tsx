@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { getMatches } from '../../api/matches'
 import type { MatchListItem } from '../../types'
 
@@ -30,6 +31,7 @@ function isToday(utc: string) {
 }
 
 function MatchCard({ match, onClick }: { match: MatchListItem; onClick: () => void }) {
+  const { t } = useTranslation()
   const isLive = LIVE_STATUSES.includes(match.status)
   const isFinished = FINISHED_STATUSES.includes(match.status)
   const hasPred = match.myPrediction !== null
@@ -38,7 +40,7 @@ function MatchCard({ match, onClick }: { match: MatchListItem; onClick: () => vo
     <div className={`match-card ${isLive ? 'match-card--live' : ''}`} onClick={onClick}>
       {isLive && (
         <div className="live-indicator-corner">
-          <span className="live-badge">LIVE</span>
+          <span className="live-badge">{t('groupDetail.live')}</span>
           <div className="live-pulse" />
         </div>
       )}
@@ -90,16 +92,17 @@ function MatchCard({ match, onClick }: { match: MatchListItem; onClick: () => vo
           </span>
         ) : (
           !isFinished && !isLive && (
-            <span className="pred-badge pred-badge--empty">No prediction</span>
+            <span className="pred-badge pred-badge--empty">{t('groupDetail.noPrediction')}</span>
           )
         )}
-        {isFinished && <span className="ft-badge">FT</span>}
+        {isFinished && <span className="ft-badge">{t('groupDetail.ft')}</span>}
       </div>
     </div>
   )
 }
 
 export default function MatchesTab({ groupId, onMatchClick }: Props) {
+  const { t } = useTranslation()
   const [matches, setMatches] = useState<MatchListItem[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'today' | 'upcoming' | 'finished' | 'all'>(() => {
@@ -186,7 +189,7 @@ export default function MatchesTab({ groupId, onMatchClick }: Props) {
               sessionStorage.setItem(`matches_filter_${groupId}`, f)
             }}
           >
-            {f === 'today' ? 'Today' : f === 'upcoming' ? 'Upcoming' : f === 'finished' ? 'Finished' : 'All'}
+            {f === 'today' ? t('groupDetail.filterToday') : f === 'upcoming' ? t('groupDetail.filterUpcoming') : f === 'finished' ? t('groupDetail.filterFinished') : t('groupDetail.filterAll')}
           </button>
         ))}
         </div>
@@ -197,7 +200,7 @@ export default function MatchesTab({ groupId, onMatchClick }: Props) {
             onClick={() => onMatchClick(liveMatches[0].id, true)}
           >
             <div className="live-banner-dot" />
-            <span>{liveMatches.length} match{liveMatches.length > 1 ? 'es' : ''} live now</span>
+            <span>{t('groupDetail.liveNow', { count: liveMatches.length })}</span>
             <svg className="live-banner-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <path d="M9 6l6 6-6 6" />
             </svg>
@@ -209,14 +212,14 @@ export default function MatchesTab({ groupId, onMatchClick }: Props) {
       {Object.entries(grouped).length === 0 ? (
         <div className="empty-state">
           <span className="empty-icon">📅</span>
-          <p className="empty-title">No matches</p>
-          <p className="empty-sub">Try "All" to see the full schedule</p>
+          <p className="empty-title">{t('groupDetail.noMatchesTitle')}</p>
+          <p className="empty-sub">{t('groupDetail.noMatchesSub')}</p>
         </div>
       ) : (
         Object.entries(grouped).map(([date, dayMatches]) => (
           <div key={date} className="match-day-group">
             <div className="match-day-label">
-              {isToday(dayMatches[0].kickoffUtc) ? 'Today' : date}
+              {isToday(dayMatches[0].kickoffUtc) ? t('groupDetail.filterToday') : date}
             </div>
             {dayMatches.map(m => (
               <MatchCard
@@ -235,7 +238,7 @@ export default function MatchesTab({ groupId, onMatchClick }: Props) {
           disabled={loadingMore}
           onClick={() => { setLoadingMore(true); setFinishedLimit(n => n + 3) }}
         >
-          {loadingMore ? <><span className="load-more-spinner" />Loading…</> : 'Load more'}
+          {loadingMore ? <><span className="load-more-spinner" />{t('groupDetail.loading')}</> : t('groupDetail.loadMore')}
         </button>
       )}
     </div>

@@ -63,6 +63,7 @@ builder.Services.AddScoped<LinkGoogleAccount>();
 builder.Services.AddScoped<VerifyEmail>();
 builder.Services.AddScoped<ResendVerification>();
 builder.Services.AddScoped<UpdateProfile>();
+builder.Services.AddScoped<CompleteOnboarding>();
 builder.Services.AddScoped<CreateGroup>();
 builder.Services.AddScoped<JoinGroup>();
 builder.Services.AddScoped<GetMyGroups>();
