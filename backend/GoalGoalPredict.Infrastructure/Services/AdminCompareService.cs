@@ -135,10 +135,12 @@ public class AdminCompareService(AppDbContext db, IApiFootballClient api, ILogge
         var dbSubs = await db.MatchSubstitutions.AsNoTracking().Where(s => s.MatchId == matchId).ToListAsync(ct);
         var dbVars = await db.MatchVarDecisions.AsNoTracking().Where(v => v.MatchId == matchId).ToListAsync(ct);
 
-        var apiGoals = await api.GetGoalEventsAsync(matchId, ct);
-        var apiCards = await api.GetCardEventsAsync(matchId, ct);
-        var apiSubs = await api.GetSubstitutionEventsAsync(matchId, ct);
-        var apiVars = await api.GetVarEventsAsync(matchId, ct);
+        // One untyped fetch, split into all categories — one API call instead of four.
+        var apiEvents = await api.GetFixtureEventsAsync(matchId, ct);
+        var apiGoals = apiEvents.Goals;
+        var apiCards = apiEvents.Cards;
+        var apiSubs = apiEvents.Substitutions;
+        var apiVars = apiEvents.Var;
 
         // Resolve player names for everything referenced on either side.
         var ids = new HashSet<int>();
